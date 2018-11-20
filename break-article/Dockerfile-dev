@@ -1,0 +1,12 @@
+# Pull base image.
+FROM break-article-base:latest
+
+COPY ["logging-article.sample.json", "/etc/breaktime/logging-article.json"]
+COPY ["data/breaktime-article.conf", "/etc/breaktime/breaktime-article.conf"]
+COPY ["supervisor-uwsgi.conf", "supervisor-worker.conf", "wsgi.py", "manage.py", "initdb.py", "/opt/breaktime/"]
+RUN \
+  ln -s /opt/breaktime/supervisor-uwsgi.conf /etc/supervisor/conf.d/ && \
+  ln -s /opt/breaktime/supervisor-worker.conf /etc/supervisor/conf.d/
+COPY ["./breakarticle", "/opt/breaktime/breakarticle"]
+CMD ["supervisord", "-n"]
+

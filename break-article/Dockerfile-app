@@ -1,0 +1,12 @@
+# Pull base image.
+FROM break-article-base:latest
+
+COPY ["supervisor-uwsgi.conf", "supervisor-worker.conf", "wsgi.py", "manage.py", "/opt/breaktime/"]
+RUN \
+  ln -s /opt/breaktime/supervisor-uwsgi.conf /etc/supervisor/conf.d/ && \
+  ln -s /opt/breaktime/supervisor-worker.conf /etc/supervisor/conf.d/
+COPY ["./breakarticle", "/opt/breaktime/break-article"]
+COPY ["./alembic", "/opt/breaktime/alembic"]
+COPY ["alembic.ini", "/opt/breaktime/"]
+CMD ["supervisord", "-n"]
+

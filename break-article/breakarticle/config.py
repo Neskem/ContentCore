@@ -19,30 +19,42 @@ CELERY_RESULT_BACKEND = 'redis://redis:6379/7'
 CELERY_TIMEZONE = 'utc'
 CELERY_ENABLE_UTC = True
 CELERY_ACCEPT_CONTENT = ['json']
-"""
-CELERY_ROUTES = {
-   'breakarticle.tasks.test_queue': {'queue': 'test_queue'},
-}
-"""
+# CELERY_ROUTES = {
+#    'breakarticle.tasks.execute_aysnc_task': {'queue': 'aysnc_task'},
+# }
+
+# priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
 CELERYBEAT_SCHEDULE = {
-    'sysinfo-scheduler': {
-        'task': 'atomtarsier.tasks.start_sysinfo_gen_report_scheduler',
-        'schedule': crontab(minute='*/5'),
-        'args': (),
-    },
-    'hips-scheduler': {
-        'task': 'atomtarsier.tasks.notify_virtual_patch_gradually',
+    'aync_partner_task': {
+        'task': 'breakarticle.tasks.aync_filter_task',
+        # 'schedule': crontab(minute=30, hour=1),
+        # Testing schedule beat for sending task to content core in every minute.
         'schedule': crontab(minute='*'),
-        'args': (),
+        'args': ([2])
     },
-
+    'main_update_content_task': {
+        'task': 'breakarticle.tasks.main_update_content',
+        # 'schedule': crontab(minute=30, hour=2),
+        'schedule': crontab(minute='*'),
+        'args': ([6])
+    },
+    'sitemap_content_task': {
+        'task': 'breakarticle.tasks.sitemap_update_content',
+        'schedule': crontab(minute=30, hour=3),
+        'args': ([5])
+    },
+    # 'retry-content-core': {
+    #     'task': 'breakarticle.tasks.test_sync_beat',
+    #     'schedule': crontab(minute='*/2'),
+    #     'args': (),
+    # },
+    # 'scan-index-update': {
+    #     'task': 'breakarticle.tasks.execute_aysnc_task',
+    #     'schedule': crontab(minute='*'),
+    #     'args': (),
+    #     'options': {'queue': 'aysnc_task'}
+    # },
 }
 
-# enable this option to add a default schedule after baseline upload
-ADD_DEFAULT_SCHEDULE = False
-
-# Partner System MySQL
-MYSQL_HOST = '35.201.153.247'
-MYSQL_USER = 'bt_user'
-MYSQL_PASSWD = 'i<3Breaktime'
-MYSQL_DATABASE = 'alliance'
+# Partner System
+PARTNER_SYSTEM_API = 'https://partner.breaktime.com.tw/api'

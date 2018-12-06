@@ -11,15 +11,19 @@ docker network create dev-net
 # sleep 5
 
 # MAC OS need to download postgresql APP from postgres offical website.
-# PGPASSWORD=breaktime /Applications/Postgres.app/Contents/Versions/10/bin/psql -U postgres -h localhost < break-article/data/postgresql/init.sql
-PGPASSWORD=admin /Applications/Postgres.app/Contents/Versions/10/bin/psql -U postgres -h 35.194.207.202 < break-article/data/postgresql/init.sql
+if [ -e "/etc/os-release" ]; then
+	# This system is linux system not MAC OS.
+	PGPASSWORD=admin psql -U postgres -h 35.194.207.202 < break-article/data/postgresql/init.sql
+else
+	PGPASSWORD=admin /Applications/Postgres.app/Contents/Versions/10/bin/psql -U postgres -h 35.194.207.202 < break-article/data/postgresql/init.sql
+fi
 
 # Create redis server
 docker run --net=dev-net --name redis -d redis:4.0
 
 # Start the dev container, and mapping source code folder from hosted server.
 docker run --net=dev-net --name article-dev -d -v $curDir/break-article/breakarticle:/opt/breaktime/breakarticle break-article-dev
-docker exec -it article-dev python3 /opt/breaktime/initdb.py
+docker run --net=dev-net --name article-beat-dev -d -v $curDir/break-article/breakarticle:/opt/breaktime/breakarticle break-article-beat-dev
 
 # Start nginx and forword request to break-article uwsgi:8700
 docker run --net=dev-net --name nginx -d -p 80:80 nginx:1.10.3-alpine

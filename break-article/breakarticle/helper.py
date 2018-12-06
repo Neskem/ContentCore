@@ -1,4 +1,4 @@
-from flask import current_app, make_response, request
+from flask import current_app, make_response, g
 from flask.json import jsonify
 from breakarticle.model import db
 from sqlalchemy.exc import IntegrityError
@@ -6,6 +6,10 @@ from collections import defaultdict
 from functools import update_wrapper
 import datetime
 import logging
+from flask import request
+from urllib.parse import urlparse
+import re
+import hashlib
 
 # error codes should be tuned
 error_threshold = 400
@@ -133,3 +137,14 @@ def pg_add_wrapper(row, retry=2, with_primary_key=False):
             if retry <= 0:
                 db.session.rollback()
                 raise e
+
+
+def generate_url_hash(url):
+    url = text = re.sub(r'#.*', '', url)
+    o = urlparse(url)
+    if o.query != "":
+        text = "{}{}{}".format(o.netloc, o.path, o.query)
+    else:
+        text = "{}{}".format(o.netloc, o.path)
+    m = hashlib.sha1(text.encode('utf-8'))
+    return m.hexdigest(), text

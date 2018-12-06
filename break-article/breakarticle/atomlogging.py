@@ -34,7 +34,6 @@ def generate_request_id(original_id=''):
         new_id = original_id
     else:
         new_id = uuid.uuid4()
-
     return new_id
 
 
@@ -51,7 +50,7 @@ def request_id():
         return flask.g.request_id
 
     headers = flask.request.headers
-    original_request_id = headers.get("X-ATOM-REQUEST-ID")
+    original_request_id = headers.get("X-REQUEST-ID")
     new_uuid = generate_request_id(original_request_id)
     flask.g.request_id = new_uuid
 
@@ -74,4 +73,3 @@ def init_logging(console=False):
             log_filename = os.getenv('BREAKTIME_LOG_PATH', '/var/log/breaktime/article.log')
             logging.basicConfig(filename=log_filename, level=logging.DEBUG)
     log_init = True
-

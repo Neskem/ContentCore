@@ -21,4 +21,5 @@ cp -R docker-dev/* break-article
 cd $curDir/break-article
 docker build -t break-article-base .
 docker build -t break-article-dev -f Dockerfile-dev .
+docker build -t break-article-beat-dev -f Dockerfile-beat-dev .
 

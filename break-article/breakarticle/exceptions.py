@@ -8,6 +8,11 @@ class BreakPartnerError(BreakException):
     pass
 
 
+class BreakTaskError(BreakException):
+    """error during initial task or insert task record to database"""
+    pass
+
+
 class BreakPartnerMessageError(BreakException):
     """
     the sample for exception for out message.

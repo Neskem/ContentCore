@@ -14,3 +14,11 @@ if __name__ == '__main__':
 else:
     init_logging()
     app = create_app()
+
+    with app.app_context():
+        from breakarticle.model import db
+        # This command is necessary for create_all() that means which table will be created. ex: only article or ..etc
+        from breakarticle.model import article
+
+        db.create_all()
+        db.session.commit()

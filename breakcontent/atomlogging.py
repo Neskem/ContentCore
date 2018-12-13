@@ -60,14 +60,14 @@ def generate_request_id(original_id=''):
     return new_id
 
 
-def init_logging(console=False):
-    global log_init
-    if log_init:
-        return
+# def init_logging(console=False):
+#     global log_init
+#     if log_init:
+#         return
 
-    if console:
-        logging.basicConfig(
-            level=logging.DEBUG, format='%(asctime)s %(levelname)s %(module)s %(lineno)d %(message)s')
-    else:
-        logging.config.dictConfig(MY_LOGGINGS)
-    log_init = True
+#     if console:
+#         logging.basicConfig(
+#             level=logging.DEBUG, format='%(asctime)s %(levelname)s %(module)s %(lineno)d %(message)s')
+#     else:
+#         logging.config.dictConfig(MY_LOGGINGS)
+#     log_init = True

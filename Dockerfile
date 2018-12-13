@@ -15,18 +15,14 @@ RUN \
   apt-get -y install wget software-properties-common && \
   mkdir -p /opt/breaktime /var/log/breaktime /etc/breaktime/ssl
 
-
-COPY ["logging-content.sample.json", "/etc/breaktime/logging-content.json"]
 COPY ["breaktime-content.conf", "/etc/breaktime/breaktime-content.conf"]
 COPY ["uwsgi.ini", "requirements.txt", "wsgi.py", "manage.py", "/opt/breaktime/"]
-COPY ["./breakcontent", "/opt/breaktime/breakcontent"]
 
 RUN \
   pip3 install uwsgi && \
   pip3 install -r /opt/breaktime/requirements.txt && \
   echo Done
 
-VOLUME ["/var/log/breaktime", "/etc/breaktime", "/opt/breaktime"]
 
 COPY docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]

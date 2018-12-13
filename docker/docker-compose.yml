@@ -18,10 +18,11 @@ services:
         restart: always
     web:
         container_name: web
-        image: breakcontent:latest
+        image: breaktimeinc/breaktime.contentcore
         command: /usr/local/bin/uwsgi --ini /opt/breaktime/uwsgi.ini
 
-        #volumes:
+        volumes:
+           - ../breakcontent:/opt/breaktime/breakcontent
         env_file: breakcontent.env
         expose:
             - "8700"
@@ -34,8 +35,10 @@ services:
         restart: always
     worker:
         container_name: worker
-        image: breakcontent:latest
+        image: breaktimeinc/breaktime.contentcore
         command: celery -A breakcontent.tasks worker -l info --autoscale=2,1 -n worker.%%h
+        volumes:
+           - ../breakcontent:/opt/breaktime/breakcontent
         env_file: breakcontent.env
         logging:
             driver: "json-file"
@@ -44,8 +47,10 @@ services:
         restart: always
     beat:
         container_name: beat
-        image: breakcontent:latest
+        image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
+        volumes:
+           - ../breakcontent:/opt/breaktime/breakcontent
         env_file: breakcontent.env
         logging:
             driver: "json-file"

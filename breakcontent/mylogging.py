@@ -23,7 +23,7 @@ MY_LOGGINGS = {
             "formatter": "default",
             "filters": ["request_id"],
             "filename": "/var/log/breaktime/app-content.log",
-            "when": "D",
+            "when": "midnight",
             "interval": 1,
             "backupCount": 7,
             "encoding": None,

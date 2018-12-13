@@ -1,5 +1,6 @@
 # Pull base image.
 FROM ubuntu:18.04
+MAINTAINER BreakTime Inc. <lance@breaktime.com.tw>
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TERM linux

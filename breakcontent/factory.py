@@ -13,10 +13,9 @@ def create_app(config_obj=None):
     app = Flask(__name__)
     app.logger.info(f'flask app is up!')
     # load default settings
-    app.config.from_object(config)
+
     # load environment-specific settings
-    if os.getenv('BREAKTIME_CONTENT_SETTINGS_PATH'):
-        app.config.from_envvar('BREAKTIME_CONTENT_SETTINGS_PATH')
+    app.config.from_object(config)
     # load extra settings for testing purpose
     if config_obj:
         app.config.from_object(config_obj)

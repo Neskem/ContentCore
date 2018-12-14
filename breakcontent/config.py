@@ -1,24 +1,39 @@
 from celery.schedules import crontab
+import os
+
 
 OUTBOUND_PROXY = None  # for both http/https e.g.'http://127.0.0.1:8080'
 
-ALEMBIC_DATABASE_URI = 'sqlite:///:memory:'
+# ALEMBIC_DATABASE_URI = 'sqlite:///:memory:'
 SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 # Redis
-REDIS_HOST = 'localhost'
-REDIS_PORT = 6379
-REDIS_DB_NUMBER = 7
+REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+REDIS_PORT = os.environ.get('REDIS_PORT', 6379)
+REDIS_DB = os.environ.get('REDIS_DB', 4)
+REDIS_DB_NUMBER = os.environ.get('REDIS_DB_NUMBER', 7)
 
 # Worker
-CELERY_DISABLED = True
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_RESULT_BACKEND = 'redis://redis:6379/7'
-CELERY_TIMEZONE = 'utc'
+CELERY_DISABLED = os.environ.get('CELERY_DISABLED')
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL')
+CELERY_TASK_SERIALIZER = os.environ.get('CELERY_TASK_SERIALIZER')
+CELERY_RESULT_SERIALIZER = os.environ.get('CELERY_RESULT_SERIALIZER')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
+CELERY_TIMEZONE = os.environ.get('CELERY_TIMEZONE')
 CELERY_ENABLE_UTC = True
-CELERY_ACCEPT_CONTENT = ['json']
+CELERY_ACCEPT_CONTENT = os.environ.get('CELERY_ACCEPT_CONTENT')
+
+SINGLE_BEAT_REDIS_SERVER = os.environ.get('SINGLE_BEAT_REDIS_SERVER')
+
+ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
+
+
+ADD_DEFAULT_SCHEDULE = os.environ.get('ADD_DEFAULT_SCHEDULE')
+UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
+MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')
+
 # CELERY_ROUTES = {
 #    'breakcontent.tasks.execute_aysnc_task': {'queue': 'aysnc_task'},
 # }

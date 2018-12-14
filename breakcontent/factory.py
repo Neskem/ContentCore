@@ -1,7 +1,7 @@
 from flask import Flask
-from . import config
+from breakcontent import config
 import os
-from .model import db
+from breakcontent.model import db
 from celery import Celery
 import logging
 import logging.config

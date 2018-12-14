@@ -30,10 +30,6 @@ SINGLE_BEAT_REDIS_SERVER = os.environ.get('SINGLE_BEAT_REDIS_SERVER')
 ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
 
-ADD_DEFAULT_SCHEDULE = os.environ.get('ADD_DEFAULT_SCHEDULE')
-UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
-MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')
-
 # CELERY_ROUTES = {
 #    'breakcontent.tasks.execute_aysnc_task': {'queue': 'aysnc_task'},
 # }
@@ -71,5 +67,8 @@ CELERYBEAT_SCHEDULE = {
     # },
 }
 
-# Partner System
-PARTNER_SYSTEM_API = 'https://partner.breaktime.com.tw/api'
+
+PARTNER_SYSTEM_API = os.environ.get('PARTNER_SYSTEM_API')
+ADD_DEFAULT_SCHEDULE = os.environ.get('ADD_DEFAULT_SCHEDULE')
+UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
+MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')

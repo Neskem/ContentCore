@@ -23,8 +23,10 @@ services:
 
         volumes:
            - ../breakcontent:/opt/breaktime/breakcontent
-           - /var/log/contentcore-uwsgi:/var/log/breaktime
+           - /var/log/contentcore:/var/log/breaktime
         env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=web
         expose:
             - "8700"
         ports:
@@ -40,8 +42,10 @@ services:
         command: celery -A breakcontent.tasks worker -l info --autoscale=2,1 -n worker.%%h
         volumes:
            - ../breakcontent:/opt/breaktime/breakcontent
-           - /var/log/contentcore-worker:/var/log/breaktime
+           - /var/log/contentcore:/var/log/breaktime
         env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker
         logging:
             driver: "json-file"
             options:
@@ -53,8 +57,10 @@ services:
         command: single-beat celery beat -A breakcontent.tasks -l info
         volumes:
            - ../breakcontent:/opt/breaktime/breakcontent
-           - /var/log/contentcore-beat:/var/log/breaktime
+           - /var/log/contentcore:/var/log/breaktime
         env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=beat
         logging:
             driver: "json-file"
             options:

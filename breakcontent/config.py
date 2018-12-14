@@ -2,6 +2,8 @@ from celery.schedules import crontab
 import os
 
 
+CONTAINER_TAG = os.environ.get('CONTAINER_TAG', '')
+
 OUTBOUND_PROXY = None  # for both http/https e.g.'http://127.0.0.1:8080'
 
 # ALEMBIC_DATABASE_URI = 'sqlite:///:memory:'

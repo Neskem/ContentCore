@@ -25,7 +25,7 @@ RUN \
   echo Done
 
 
-COPY docker-entrypoint.sh /
-ENTRYPOINT ["/docker-entrypoint.sh"]
+COPY entrypoint.sh /
+ENTRYPOINT ["/entrypoint.sh"]
 WORKDIR /opt/breaktime
 

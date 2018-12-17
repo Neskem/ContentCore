@@ -2,16 +2,11 @@
 FROM            python:3.6
 MAINTAINER BreakTime Inc. <lance@breaktime.com.tw>
 
-RUN \
-  apt-get update ; \
-  apt-get -y install build-essential && \
-  apt-get -y install libmysqlclient-dev && \
-
-RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 COPY requirements.txt /usr/src/app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
+RUN pip install uwsgi
 
 COPY . /usr/src/app
 

@@ -1,2 +1,3 @@
 sftp-config*.json
 *.env
+docker-compose.yml

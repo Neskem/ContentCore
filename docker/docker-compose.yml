@@ -18,8 +18,9 @@ services:
         restart: always
     web:
         container_name: web
-        image: breaktimeinc/breaktime.contentcore
-        command: /usr/local/bin/uwsgi --ini /opt/breaktime/uwsgi.ini
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: uwsgi --ini uwsgi.ini
 
         volumes:
            - ..:/usr/src/app
@@ -38,7 +39,8 @@ services:
         restart: always
     worker:
         container_name: worker
-        image: breaktimeinc/breaktime.contentcore
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
         command: celery -A breakcontent.tasks worker -l info --autoscale=2,1 -n worker.%%h
         volumes:
            - ..:/opt/breaktime/breakcontent
@@ -53,7 +55,8 @@ services:
         restart: always
     beat:
         container_name: beat
-        image: breaktimeinc/breaktime.contentcore
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
         volumes:
            - ..:/opt/breaktime/breakcontent

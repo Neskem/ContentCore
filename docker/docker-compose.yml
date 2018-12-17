@@ -22,8 +22,8 @@ services:
         command: /usr/local/bin/uwsgi --ini /opt/breaktime/uwsgi.ini
 
         volumes:
-           - ../breakcontent:/opt/breaktime/breakcontent
-           - /var/log/contentcore:/var/log/breaktime
+           - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=web
@@ -41,8 +41,8 @@ services:
         image: breaktimeinc/breaktime.contentcore
         command: celery -A breakcontent.tasks worker -l info --autoscale=2,1 -n worker.%%h
         volumes:
-           - ../breakcontent:/opt/breaktime/breakcontent
-           - /var/log/contentcore:/var/log/breaktime
+           - ..:/opt/breaktime/breakcontent
+           - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker
@@ -56,8 +56,8 @@ services:
         image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
         volumes:
-           - ../breakcontent:/opt/breaktime/breakcontent
-           - /var/log/contentcore:/var/log/breaktime
+           - ..:/opt/breaktime/breakcontent
+           - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=beat

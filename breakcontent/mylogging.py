@@ -24,7 +24,7 @@ MY_LOGGINGS = {
             "level": "DEBUG",
             "formatter": "default",
             "filters": ["request_id"],
-            "filename": f"/var/log/breaktime/app-contentcore-{CONTAINER_TAG}.log" if CONTAINER_TAG else "/var/log/breaktime/app-contentcore.log",
+            "filename": f"/var/log/contentcore/app-contentcore-{CONTAINER_TAG}.log" if CONTAINER_TAG else "/var/log/contentcore/app-contentcore.log",
             "when": "midnight",
             "interval": 1,
             "backupCount": 7,

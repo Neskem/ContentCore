@@ -2,6 +2,7 @@ from flask import Flask
 from breakcontent import config
 import os
 from breakcontent.model import db
+from breakcontent.model import content
 from celery import Celery
 import logging
 import logging.config
@@ -11,7 +12,7 @@ from breakcontent.mylogging import MY_LOGGINGS
 def create_app(config_obj=None):
     logging.config.dictConfig(MY_LOGGINGS)
     app = Flask(__name__)
-    app.logger.info(f'flask app is up!')
+    app.logger.info(f'flask app is up by Lance!')
     # load default settings
 
     # load environment-specific settings
@@ -21,8 +22,12 @@ def create_app(config_obj=None):
         app.config.from_object(config_obj)
     with app.app_context():
         db.init_app(app)
-        from breakcontent.api.v1.aujs import bp as aujs_bp
-        app.register_blueprint(aujs_bp, url_prefix='/v1')
+        db.create_all()
+        db.session.commit()
+        # from breakcontent.api.v1.aujs import bp as aujs_bp
+        # app.register_blueprint(aujs_bp, url_prefix='/v1')
+        from breakcontent.api.v1.endpoints import bp as endpoints_bp
+        app.register_blueprint(endpoints_bp, url_prefix='/v1')
 
     return app
 

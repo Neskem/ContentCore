@@ -1,6 +1,7 @@
 from celery.schedules import crontab
 import os
 
+DEBUG = os.environ.get('DEBUG', False)
 
 CONTAINER_TAG = os.environ.get('CONTAINER_TAG', '')
 
@@ -38,24 +39,24 @@ ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
 CELERYBEAT_SCHEDULE = {
-    'aync_partner_task': {
-        'task': 'breakcontent.tasks.aync_filter_task',
-        # 'schedule': crontab(minute=30, hour=1),
-        # Testing schedule beat for sending task to content core in every minute.
-        'schedule': crontab(minute='*'),
-        'args': ([2])
-    },
-    'main_update_content_task': {
-        'task': 'breakcontent.tasks.main_update_content',
-        # 'schedule': crontab(minute=30, hour=2),
-        'schedule': crontab(minute='*'),
-        'args': ([6])
-    },
-    'sitemap_content_task': {
-        'task': 'breakcontent.tasks.sitemap_update_content',
-        'schedule': crontab(minute=30, hour=3),
-        'args': ([5])
-    },
+    # 'aync_partner_task': {
+    #     'task': 'breakcontent.tasks.aync_filter_task',
+    #     # 'schedule': crontab(minute=30, hour=1),
+    #     # Testing schedule beat for sending task to content core in every minute.
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([2])
+    # },
+    # 'main_update_content_task': {
+    #     'task': 'breakcontent.tasks.main_update_content',
+    #     # 'schedule': crontab(minute=30, hour=2),
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([6])
+    # },
+    # 'sitemap_content_task': {
+    #     'task': 'breakcontent.tasks.sitemap_update_content',
+    #     'schedule': crontab(minute=30, hour=3),
+    #     'args': ([5])
+    # },
     # 'retry-content-core': {
     #     'task': 'breakcontent.tasks.test_sync_beat',
     #     'schedule': crontab(minute='*/2'),

@@ -20,8 +20,8 @@ services:
         container_name: web
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: uwsgi --ini uwsgi.ini
-
+        # command: uwsgi --ini uwsgi.ini
+        command: python wsgi.py runserver
         volumes:
            - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -32,6 +32,7 @@ services:
             - "8700"
         ports:
             - "8700:8700"
+            - "8100:8100"
         logging:
             driver: "json-file"
             options:
@@ -43,7 +44,7 @@ services:
         # image: breaktimeinc/breaktime.contentcore
         command: celery -A breakcontent.tasks worker -l info --autoscale=2,1 -n worker.%%h
         volumes:
-           - ..:/opt/breaktime/breakcontent
+           - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -59,7 +60,7 @@ services:
         # image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
         volumes:
-           - ..:/opt/breaktime/breakcontent
+           - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:

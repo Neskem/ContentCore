@@ -1,6 +1,6 @@
 from flask import current_app, make_response, g
 from flask.json import jsonify
-from breakcontent.model import db
+from breakcontent import db
 from sqlalchemy.exc import IntegrityError
 from collections import defaultdict
 from functools import update_wrapper
@@ -14,28 +14,28 @@ import hashlib
 # error codes should be tuned
 error_threshold = 400
 err_dict = defaultdict(lambda: (500, "Unknown error"), {
-        # Generic
-        'OK': (200, 'OK'),
-        'CREATED': (201, 'CREATED'),
-        'ACCEPTED': (202, 'ACCEPTED'),
-        'NOT_MODIFIED': (304, 'Not modified'),
-        'BAD_REQUEST': (400, 'Bad request'),
-        'NOT_AUTHORIZED': (401, 'Not authorized'),
-        'NOT_FOUND': (404, 'Not Found'),
-        'INTERNAL_ERROR': (500, "Internal error"),
-        'NOT_IMPLEMENTED': (518, 'Method not implemented'),
-        'INVALID_APIKEY': (401, 'Apikey is missing or invalid'),
-        'INVALID_AUTH_INFO': (403, 'Auth info is missing or invalid'),
-        'AUTH_FAILED': (403, 'Auth failed'),
-        'CONFLICT': (409, 'Resource state is conflict'),
-        # API specific
-        'INVALID_KEY_TYPE': (1000, 'Key type is missing or invalid'),
-        'KEY_TYPE_NOT_ALLOWED': (1001, 'Key type is not allowed'),
-        'NO_PARENT_CERT': (1002, 'Parent certificate does not exist'),
-        'INVALID_KEY_NAME': (1010, 'Key name is invalid'),
-        'VALIDITY_PERIOD_TOO_LONG': (1020, 'Validity period is too long'),
-        'DUPLICATE_CLIENT_CERT': (1030, 'duplicate client crtificate'),
-        'INVALID_QURI': (1040, 'mqtt uri is invalid'),
+    # Generic
+    'OK': (200, 'OK'),
+    'CREATED': (201, 'CREATED'),
+    'ACCEPTED': (202, 'ACCEPTED'),
+    'NOT_MODIFIED': (304, 'Not modified'),
+    'BAD_REQUEST': (400, 'Bad request'),
+    'NOT_AUTHORIZED': (401, 'Not authorized'),
+    'NOT_FOUND': (404, 'Not Found'),
+    'INTERNAL_ERROR': (500, "Internal error"),
+    'NOT_IMPLEMENTED': (518, 'Method not implemented'),
+    'INVALID_APIKEY': (401, 'Apikey is missing or invalid'),
+    'INVALID_AUTH_INFO': (403, 'Auth info is missing or invalid'),
+    'AUTH_FAILED': (403, 'Auth failed'),
+    'CONFLICT': (409, 'Resource state is conflict'),
+    # API specific
+    'INVALID_KEY_TYPE': (1000, 'Key type is missing or invalid'),
+    'KEY_TYPE_NOT_ALLOWED': (1001, 'Key type is not allowed'),
+    'NO_PARENT_CERT': (1002, 'Parent certificate does not exist'),
+    'INVALID_KEY_NAME': (1010, 'Key name is invalid'),
+    'VALIDITY_PERIOD_TOO_LONG': (1020, 'Validity period is too long'),
+    'DUPLICATE_CLIENT_CERT': (1030, 'duplicate client crtificate'),
+    'INVALID_QURI': (1040, 'mqtt uri is invalid'),
 })
 
 
@@ -44,7 +44,8 @@ def api_err(name='INTERNAL_ERROR', data=None, message=None, log_level='INFO'):
     ret_obj = dict()
 
     try:
-        getattr(logging, log_level.lower())('API %s %s %s', request.method, request.path, name)
+        getattr(logging, log_level.lower())(
+            'API %s %s %s', request.method, request.path, name)
     except AttributeError:
         logging.error("logging method {} did not exist".format(log_level))
 
@@ -57,7 +58,7 @@ def api_err(name='INTERNAL_ERROR', data=None, message=None, log_level='INFO'):
         ret_obj['message'] = err_obj[1]
 
     if err_obj[0] >= error_threshold:
-       ret_obj['error_code'] = err_obj[0]
+        ret_obj['error_code'] = err_obj[0]
 
     return jsonify(ret_obj)
 
@@ -74,8 +75,10 @@ def api_pattern_exist(log_level='INFO', **kwargs):
 def api_created(log_level='INFO', **kwargs):
     return api_err(name='CREATED', data=kwargs, log_level=log_level)
 
+
 def api_accepted(log_level='INFO', **kwargs):
     return api_err(name='ACCEPTED', data=kwargs, log_level=log_level)
+
 
 def crossdomain(allow_origins=None, methods=None, headers='Authorization',
                 max_age=21600, attach_to_all=True,

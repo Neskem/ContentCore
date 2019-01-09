@@ -1,16 +1,74 @@
-from flask import Blueprint, request, g
+from flask import Blueprint, request, g, jsonify
 from flask_headers import headers
 from flask_cors import cross_origin
+from breakcontent import db
 # from breakcontent.contentclass.orm_content import init_url_info, update_partner_id_urlinfo, init_service_info
 # from breakcontent.contentclass.orm_content import exist_url_hash_urlinfo, update_service_info, init_task_info
 # from breakcontent.contentclass.orm_content import exist_url_hash_serviceinfo, exist_url_hash_taskinfo, update_task_info
 # from breakcontent.contentclass.orm_content import exist_finished_taskinfo
 # from breakcontent.contentclass.decorators import generate_urlhash_validate_partnerids
 from breakcontent.helper import api_ok
-import logging
 import json
 
+from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
+# import breakcontent.tasks as tasks
+
 bp = Blueprint('endpoints', __name__)
+
+
+@bp.route('/task', methods=['POST'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def init_task():
+    '''
+    test cmd:
+    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "test", "url": "test", "url_hash": "test", "priority": "0", "partner_id": "test", "generator": "test"}'
+    '''
+
+    res = {'msg': '', 'status': False}
+    indata = request.json
+
+    required = [
+        'request_id',
+        'url',
+        'url_hash',
+        'priority'
+    ]
+
+    optional = [
+        'partner_id',
+        'generator'
+    ]
+
+    outdata = {}
+
+    for r in required:
+        if indata.get(r, None):
+            pass
+        else:
+            res['msg'] = f'{r} is required'
+            return jsonify(res), 401
+
+    for i in indata.keys():
+        if i not in required + optional:
+            pass
+        else:
+            outdata[i] = indata[i]
+
+    print(f'outdata: {outdata}')
+    outdata_json = json.dumps(outdata)
+    print(outdata_json)
+    a = outdata['request_id']
+    print(a)
+    from breakcontent.tasks import upsert_main_task
+    upsert_main_task.delay()
+
+    # import breakcontent.tasks as tasks
+    # tasks.upsert_main_task.delay(outdata_json)
+
+    # upsert_main_task.delay()
+
+    return jsonify(res), 200
 
 
 # @bp.route('/admin/service/sync', methods=['GET', 'OPTIONS'])

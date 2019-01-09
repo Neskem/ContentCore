@@ -42,7 +42,7 @@ services:
         container_name: worker
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery -A breakcontent.tasks worker -l info --autoscale=2,1 -n worker.%%h
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=2,1 -n worker.%%h
         volumes:
            - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore

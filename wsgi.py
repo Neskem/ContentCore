@@ -1,6 +1,7 @@
 from breakcontent.factory import create_app
 from breakcontent import db
 from breakcontent import models
+# from breakcontent import tasks
 from flask_script import Server, Shell, Manager
 
 app = create_app()

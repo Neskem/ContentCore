@@ -3,38 +3,40 @@ from breakcontent.factory import create_celery_app
 # import loggings
 import json
 import requests
+from flask import current_app
 import xml.etree.ElementTree as ET
+from sqlalchemy.exc import IntegrityError
 from breakcontent import db
-celery = create_celery_app()
+from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
+
+try:
+    celery = create_celery_app()
+except Exception as e:
+    print('error here 01')
+    current_app.logger.error(f'error here')
+    raise
 
 
 # @celery.task(bind=True)
-# def upsert_main_task(task, data: 'json'):
+# def upsert_main_task(self, data: dict):
+#     '''
+#     structure check already done by endpoint func init_task()
+#     '''
+#     print(data)
+#     # current_app.logger.debug(data)
+#     try:
+#         idoc = TaskMain(**data)
+#         # with app.app_context():
+#         db.session.add(idoc)
+#         db.session.commit()
+#     except IntegrityError as e:
+#         # insert failure do update
+#         # current_app.logger.warning(f'{e}')
+#         raise e
+
+
+# @celery.task(bind=True)
+# def upsert_main_task(self, data):
+#     print('Lance test 01')
 #     print(data)
 #     print(type(data))
-#     indata = json.loads(data)
-#     print('Lance test')
-#     print(indata)
-#     print(type(indata))
-# for r in required:
-#     if data.get(r, None):
-#         kwargs = {}
-#         kwargs[r] = data[r]
-#         indoc = TaskMain(**kwargs)
-#         db.session.add(indoc)
-#     else:
-#         res['msg'] = f'{r} is required'
-
-# for o in optional:
-#     if data.get(o, None):
-#         kwargs = {}
-#         kwargs[o] = data[o]
-#         indoc = TaskMain(**kwargs)
-#         db.session.add(indoc)
-
-# db.session.commit()
-
-@celery.task(bind=True)
-def upsert_main_task(task):
-    print('Lance test')
-    # print(data)

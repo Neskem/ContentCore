@@ -19,22 +19,24 @@ REDIS_DB = os.environ.get('REDIS_DB', 4)
 REDIS_DB_NUMBER = os.environ.get('REDIS_DB_NUMBER', 7)
 
 # Worker
-CELERY_DISABLED = os.environ.get('CELERY_DISABLED')
+CELERY_DISABLED = os.environ.get('CELERY_DISABLED', False)
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL')
 CELERY_TASK_SERIALIZER = os.environ.get('CELERY_TASK_SERIALIZER')
 CELERY_RESULT_SERIALIZER = os.environ.get('CELERY_RESULT_SERIALIZER')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
 CELERY_TIMEZONE = os.environ.get('CELERY_TIMEZONE')
 CELERY_ENABLE_UTC = True
-CELERY_ACCEPT_CONTENT = os.environ.get('CELERY_ACCEPT_CONTENT')
-
+# CELERY_ACCEPT_CONTENT = os.environ.get('CELERY_ACCEPT_CONTENT')
+# copy the syntax from Eric
+CELERY_ACCEPT_CONTENT = (os.environ.get(
+    'CELERY_ACCEPT_CONTENT') or ' '.join(['msgpack'])).split()
 SINGLE_BEAT_REDIS_SERVER = os.environ.get('SINGLE_BEAT_REDIS_SERVER')
 
 ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
 # defines how tasks are sent into broker, which task to which queue
 CELERY_ROUTES = {
-   # 'breakcontent.tasks.upsert_main_task': {'queue': 'task_manager'},
+    # 'breakcontent.tasks.upsert_main_task': {'queue': 'task_manager'},
 }
 
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)

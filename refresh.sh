@@ -9,7 +9,7 @@ cd docker/
 docker-compose down -v
 docker-compose up -d
 
-# for python wsgi.py shell
+# for python wsgi.py shell use
 cat breakcontent.env | grep -v '^#' | grep -v '^$' | awk '{print "export "$0}'
 
 # copy & paste manually

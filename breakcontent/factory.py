@@ -16,6 +16,7 @@ def create_app(config_obj=None):
 
     if config_obj:
         app.config.from_object(config_obj)
+
     with app.app_context():
         db.init_app(app)
         db.create_all()
@@ -28,14 +29,17 @@ def create_app(config_obj=None):
 
 def create_celery_app(app=None):
     app = app or create_app()
+    # app.logger.info(app, type(app))
+    # app.logger.info(type(app.config['CELERY_DISABLED']))
     if app.config['CELERY_DISABLED']:
-        logging.info('Celery setting was disable, status: {}'.format(
-            app.config['CELERY_DISABLED']))
+        print(
+            f"Cerely setting was disable, status: {app.config['CELERY_DISABLED']}")
         return Celery(__name__)
 
     celery = Celery(__name__, broker=app.config['CELERY_BROKER_URL'])
     celery.conf.update(app.config)
     TaskBase = celery.Task
+    # app.logger.info(type(TaskBase))
 
     class ContextTask(TaskBase):
         abstract = True
@@ -46,4 +50,5 @@ def create_celery_app(app=None):
 
     celery.Task = ContextTask
     celery.app = app
+    print(f'Celery is up by Lance!')
     return celery

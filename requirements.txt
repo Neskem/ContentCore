@@ -15,3 +15,4 @@ flask_cors==3.0.7
 WTForms==2.1
 WTForms-JSON==0.3.3
 single-beat==0.3.1
+sentry-sdk[flask]==0.6.6

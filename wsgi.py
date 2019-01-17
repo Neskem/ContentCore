@@ -3,16 +3,27 @@ from breakcontent import db
 from breakcontent import models
 # from breakcontent import tasks
 from flask_script import Server, Shell, Manager
+from sys import argv
 
 app = create_app()
 
+
+
 if __name__ == '__main__':
+
     def _make_context():
         return dict(app=app, db=db, models=models)
+
     manager = Manager(app)
     manager.add_command("runserver", Server(host='0.0.0.0', port=8100))
     manager.add_command("shell", Shell(make_context=_make_context))
-    app.logger.info(f'init flask in debug mode')
+
+    if argv[1] == 'runserver':
+        app.logger.info(f'init flask in debug mode')
+    elif argv[1] == 'shell':
+        app.logger.info(f'enter flask shell mode')
+
     manager.run()
+
 else:
     app.logger.info(f'init flask in production mode')

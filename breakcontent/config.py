@@ -19,12 +19,14 @@ REDIS_DB = os.environ.get('REDIS_DB', 4)
 REDIS_DB_NUMBER = os.environ.get('REDIS_DB_NUMBER', 7)
 
 # Worker
-CELERY_DISABLED = os.environ.get('CELERY_DISABLED', False)
+CELERY_DISABLED = False if os.environ.get('CELERY_DISABLED', False) in [
+    'False', 'false', False] else True
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL')
 CELERY_TASK_SERIALIZER = os.environ.get('CELERY_TASK_SERIALIZER')
 CELERY_RESULT_SERIALIZER = os.environ.get('CELERY_RESULT_SERIALIZER')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
 CELERY_TIMEZONE = os.environ.get('CELERY_TIMEZONE')
+CELERY_TASK_RESULT_EXPIRES = os.environ.get('CELERY_TASK_RESULT_EXPIRES', 3600)
 CELERY_ENABLE_UTC = True
 # CELERY_ACCEPT_CONTENT = os.environ.get('CELERY_ACCEPT_CONTENT')
 # copy the syntax from Eric
@@ -41,35 +43,17 @@ CELERY_ROUTES = {
 
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
 CELERYBEAT_SCHEDULE = {
-    # 'aync_partner_task': {
-    #     'task': 'breakcontent.tasks.aync_filter_task',
-    #     # 'schedule': crontab(minute=30, hour=1),
-    #     # Testing schedule beat for sending task to content core in every minute.
+    # 'task_creator0': {
+    #     'task': 'breakcontent.tasks.task_creator',
     #     'schedule': crontab(minute='*'),
-    #     'args': ([2])
+    #     'args': ([0])
     # },
-    # 'main_update_content_task': {
-    #     'task': 'breakcontent.tasks.main_update_content',
-    #     # 'schedule': crontab(minute=30, hour=2),
+    # 'do_task': {
+    #     'task': 'breakcontent.tasks.do_task',
     #     'schedule': crontab(minute='*'),
-    #     'args': ([6])
+    #     'args': ([1])
     # },
-    # 'sitemap_content_task': {
-    #     'task': 'breakcontent.tasks.sitemap_update_content',
-    #     'schedule': crontab(minute=30, hour=3),
-    #     'args': ([5])
-    # },
-    # 'retry-content-core': {
-    #     'task': 'breakcontent.tasks.test_sync_beat',
-    #     'schedule': crontab(minute='*/2'),
-    #     'args': (),
-    # },
-    # 'scan-index-update': {
-    #     'task': 'breakcontent.tasks.execute_aysnc_task',
-    #     'schedule': crontab(minute='*'),
-    #     'args': (),
-    #     'options': {'queue': 'aysnc_task'}
-    # },
+
 }
 
 
@@ -77,3 +61,6 @@ PARTNER_SYSTEM_API = os.environ.get('PARTNER_SYSTEM_API')
 ADD_DEFAULT_SCHEDULE = os.environ.get('ADD_DEFAULT_SCHEDULE')
 UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
 MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')
+SENTRY_DSN = os.environ.get('SENTRY_DSN', None)
+
+print(f'SENTRY_DSN {SENTRY_DSN}')

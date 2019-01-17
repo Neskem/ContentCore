@@ -1,4 +1,5 @@
 from breakcontent.config import CONTAINER_TAG
+import logging.config
 
 MY_LOGGINGS = {
     "version": 1,
@@ -9,7 +10,7 @@ MY_LOGGINGS = {
     },
     "formatters": {
         "default": {
-            "format": "%(asctime)s - %(name)s.%(module)s.%(funcName)s:%(lineno)d - %(levelname)s - %(request_id)s - %(message)s"
+            "format": "%(asctime)s - %(name)s:%(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(process)d - %(request_id)s - %(message)s"
         }
     },
     "handlers": {
@@ -35,7 +36,7 @@ MY_LOGGINGS = {
         }
     },
     "root": {
-        'level': 'INFO',
+        'level': 'DEBUG',
         'handlers': ['console', 'file']
     },
     "loggers": {
@@ -46,3 +47,5 @@ MY_LOGGINGS = {
     },
     "disable_existing_loggers": False,
 }
+
+logging.config.dictConfig(MY_LOGGINGS)

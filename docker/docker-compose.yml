@@ -20,7 +20,7 @@ services:
         container_name: web
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: uwsgi --ini uwsgi.ini
+        #command: uwsgi --ini uwsgi.ini
         command: python wsgi.py runserver
         volumes:
            - ..:/usr/src/app

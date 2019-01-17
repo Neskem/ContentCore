@@ -23,9 +23,10 @@ def test_task():
 
 @celery.task()
 def delete_main_task(data: dict):
-    logger.debug(f'run delete_main_task()...')
-    tm = db.session.query(TaskMain).filter_by(**data).first()
-    db.session.delete(tm)
+    logger.debug(
+        f'run delete_main_task(), down stream records will also be deleted...')
+    tmd = TaskMain.query.filter_by(**data).first()
+    db.session.delete(tmd)
     db.session.commit()
     logger.debug('done delete_main_task()')
 
@@ -37,77 +38,81 @@ def upsert_main_task(data: dict):
     '''
     r_required = ['url_hash', 'url']
     rdata = {k: v for (k, v) in data.items() if k in r_required}
-    # logger.debug(f'rdata {rdata}')
 
     try:
-        logger.debug('start insert')
         tm = TaskMain(**data)
-        tm.task_service = TaskService(**rdata)
+        if data.get('partner_id', None):
+            tm.task_service = TaskService(**rdata)
+        else:
+            tm.task_noservice = TaskNoService(**rdata)
         db.session.add(tm)
         db.session.commit()
-        logger.debug('done insert')
+        logger.debug(f'done insert')
     except IntegrityError as e:
-        logger.error(e)
         db.session.rollback()
-        logger.debug('start update')
         udata = {'url_hash': data['url_hash']}
-        tmf = TaskMain.query.filter_by(**udata).first()
+        data.pop('url_hash')
+        rdata.pop('url_hash')
+        tmu = TaskMain.query.filter_by(**udata).first()
+        diff = None
         for k, v in data.items():
-            if hasattr(tmf, k):
-                setattr(tmf, k, v)
+            if hasattr(tmu, k) and getattr(tmu, k) != v:
+                setattr(tmu, k, v)
+                diff = True
         for k, v in rdata.items():
-            if hasattr(tmf.task_service, k):
-                setattr(tmf.task_service, k, v)
-        db.session.commit()
-        logger.debug('done update')
-
-    # if data.get('partner_id', None):
-    #     do_upsert(TaskMain, data, 'url_hash',
-    #               'task_service', TaskService, rdata, 'url_hash')
-    # else:
-    #     do_upsert(TaskMain, data, 'url_hash',
-    #               'task_noservice', TaskNoService, rdata, 'url_hash')
-
+            if data.get('partner_id', None):
+                if hasattr(tmu.task_service, k) and getattr(tmu.task_service, k) != v:
+                    setattr(tmu.task_service, k, v)
+                    diff = True
+            else:
+                if hasattr(tmu.task_noservice, k) and getattr(tmu.task_noservice, k) != v:
+                    setattr(tmu.task_noservice, k, v)
+                    diff = True
+        if diff:
+            db.session.commit()
+            logger.debug('done update')
+        else:
+            logger.debug('no change, quit update')
 
 
 @celery.task()
 def create_tasks(priority):
     '''
-    generate tasks
-
-    test in python shell:
-from breakcontent.tasks import create_tasks
-create_tasks.delay(1)
-
+    update status (pending > doing) and generate tasks
     '''
     logger.debug(f"run create_tasks()...")
     with db.session.no_autoflush:
-        tml = db.session.query(TaskMain).filter_by(
-            priority=priority).order_by(TaskMain._ctime.asc()).limit(10).all()
+        tml = TaskMain.query.filter_by(priority=priority).order_by(
+            TaskMain._ctime.asc()).limit(10).all()
 
         logger.debug(f'len {len(tml)}')
 
+        diff = None
         for tm in tml:
-            logger.debug(f'tm.url_hash: {tm.url_hash}')
-            if hasattr(tm, 'task_service'):
-                data = {
-                    'status_ai': 'doing',
-                    'status_xpath': 'doing'
-                }
-                data.update({'url_hash': tm.url_hash})
-                logger.debug(f'lance debug 001: {data}')
-                tm.task_service = TaskService(**data)
+            logger.debug(f'update {tm.task_service}...')
+            data = {
+                'status_ai': 'doing',
+                'status_xpath': 'doing'
+            }
+            for k, v in data.items():
+                if hasattr(tm.task_service, k) and getattr(tm.task_service, k) != v:
+                    setattr(tm.task_service, k, v)
+                    diff = True
 
-            # if hasattr(tm, 'task_noservice'):
-            #     data = {
-            #         'status': 'doing',
-            #     }
-            #     data.update({'url_hash': tm.url_hash})
-            #     logger.debug(f'lance debug 002: {data}')
-            #     tm.task_noservice = TaskNoService(**data)
-            # db.session.add(tm)
-        db.session.commit()
-        logger.debug('done create_tasks()')
+            # logger.debug(f'update {tm.task_noservice}...')
+            # data = {
+            #     'status': 'doing',
+            # }
+            # for k, v in data.items():
+            #     if hasattr(tm.task_noservice, k) and getattr(tm.notask_service, k) != v:
+            #         setattr(tm.task_noservice, k, v)
+            #         diff = True
+
+        if diff == True:
+            db.session.commit()
+            logger.debug('done create_tasks()')
+        else:
+            logger.debug('no change, quit update')
 
 
 @celery.task()

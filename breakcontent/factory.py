@@ -27,6 +27,10 @@ def create_app(config_obj=None):
 
     with app.app_context():
         db.init_app(app)
+        app.logger.debug(f"app.config['DEBUG'] {app.config['DEBUG']}")
+        if app.config['DEBUG']:
+            db.drop_all()
+            app.logger.debug('drop all tables')
         db.create_all()
         db.session.commit()
         from breakcontent.api.v1.endpoints import bp as endpoints_bp

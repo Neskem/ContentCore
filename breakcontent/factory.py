@@ -27,8 +27,8 @@ def create_app(config_obj=None):
 
     with app.app_context():
         db.init_app(app)
-        app.logger.debug(f"app.config['DEBUG'] {app.config['DEBUG']}")
-        if app.config['DEBUG']:
+        app.logger.debug(f"app.config['CLEAN_TABLE'] {app.config['CLEAN_TABLE']}")
+        if app.config['CLEAN_TABLE']:
             db.drop_all()
             app.logger.debug('drop all tables')
         db.create_all()

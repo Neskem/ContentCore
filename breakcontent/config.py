@@ -11,7 +11,7 @@ OUTBOUND_PROXY = None  # for both http/https e.g.'http://127.0.0.1:8080'
 # SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
-
+CLEAN_TABLE = True if os.environ.get('CLEAN_TABLE') == 'True' else False
 # Redis
 REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
 REDIS_PORT = os.environ.get('REDIS_PORT', 6379)

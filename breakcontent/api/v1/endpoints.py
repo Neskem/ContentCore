@@ -1,10 +1,12 @@
-from flask import Blueprint, request, g, jsonify, current_app
+from flask import Blueprint, request, g, jsonify, current_app, abort
 from flask_headers import headers
 from flask_cors import cross_origin
 from breakcontent import db
 from breakcontent.helper import api_ok
 import json
-
+from breakcontent.api import errors
+from breakcontent.api.v1 import alan
+# from breakcontent.api.v1.alan import AlanErrorClass
 
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 # import breakcontent.tasks as tasks
@@ -116,3 +118,46 @@ def create_tasks(priority):
     create_tasks.delay(priority)
 
     return jsonify(res), 200
+
+
+@bp.route('/error/<etype>', methods=['GET'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def error_handler(etype):
+    '''
+    curl -v -X GET 'http://localhost:8100/v1/error/2'
+    '''
+    res = {'msg': '', 'status': False}
+
+    current_app.logger.debug(f'type {type(etype)}')
+    etype = int(etype)
+    current_app.logger.debug(f'type {type(etype)}')
+    if etype == 1:
+        # current_app.logger.debug(f'view {etype}')
+        raise errors.LanceError
+    elif etype == 2:
+        # current_app.logger.debug(f'view {etype}')
+        abort(404)
+    elif etype == 3:
+        raise errors.InvalidUsage('invalid usage', status_code=410)
+    elif etype == 4:
+        # raise KeyError
+        adict = {'a': 'aaa'}
+        # try:
+        #     tmp = adict['b']
+        # except Exception as e:
+        #     raise
+        tmp = adict['b']
+    elif etype == 5:
+        current_app.logger.debug('alan error test')
+        try:
+            alan.sub_error()
+        except:
+            pass
+        # aec = AlanErrorClass()
+        # try:
+        #     aec.sub_error()
+        # except Exception as e:
+        #     # raise
+        #     pass
+        return jsonify(res), 200

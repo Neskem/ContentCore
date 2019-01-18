@@ -99,14 +99,14 @@ def create_tasks(priority):
                     setattr(tm.task_service, k, v)
                     diff = True
 
-            # logger.debug(f'update {tm.task_noservice}...')
-            # data = {
-            #     'status': 'doing',
-            # }
-            # for k, v in data.items():
-            #     if hasattr(tm.task_noservice, k) and getattr(tm.notask_service, k) != v:
-            #         setattr(tm.task_noservice, k, v)
-            #         diff = True
+            logger.debug(f'update {tm.task_noservice}...')
+            data = {
+                'status': 'doing',
+            }
+            for k, v in data.items():
+                if hasattr(tm.task_noservice, k) and getattr(tm.notask_service, k) != v:
+                    setattr(tm.task_noservice, k, v)
+                    diff = True
 
         if diff == True:
             db.session.commit()

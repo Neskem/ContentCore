@@ -29,7 +29,8 @@ MY_LOGGINGS = {
             "when": "midnight",
             "interval": 1,
             "backupCount": 7,
-            "encoding": None,
+            # "encoding": None,
+            "encoding": 'utf-8',  # if not set to 'utf-8', Unicode char will fail to log
             "delay": False,
             "utc": False,
             "atTime": None

@@ -35,8 +35,11 @@ def test():
 @cross_origin()
 def init_task():
     '''
-    # insert partner
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "test1", "url": "test1", "url_hash": "test1", "priority": 1, "partner_id": "test1", "generator": "test1", "notexpected": "test1"}'
+    # insert singlepage partner
+    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
+
+    # insert multipage partner
+    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://kafkalin.com/magpiecafe/", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "UYTFH18", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
     # insert not partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "test2", "url": "test2", "url_hash": "test2", "priority": 1, "generator": "test2", "notexpected": "test2"}'
@@ -88,7 +91,8 @@ def init_task():
 def delete_task():
     '''
     # delete partner from maintask
-    curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "test1"}'
+    curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "ce65ca9a29f408496abfb7e7a978b2d4e31d93df"}'
+
     # delete nopartner from maintask
     curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "test2"}'
     '''
@@ -133,15 +137,12 @@ def error_handler(etype):
     etype = int(etype)
     current_app.logger.debug(f'type {type(etype)}')
     if etype == 1:
-        # current_app.logger.debug(f'view {etype}')
         raise errors.LanceError
     elif etype == 2:
-        # current_app.logger.debug(f'view {etype}')
         abort(404)
     elif etype == 3:
         raise errors.InvalidUsage('invalid usage', status_code=410)
     elif etype == 4:
-        # raise KeyError
         adict = {'a': 'aaa'}
         # try:
         #     tmp = adict['b']
@@ -158,6 +159,7 @@ def error_handler(etype):
         # try:
         #     aec.sub_error()
         # except Exception as e:
-        #     # raise
         #     pass
         return jsonify(res), 200
+    elif etype == 6:
+        pass

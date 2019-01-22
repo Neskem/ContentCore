@@ -63,4 +63,9 @@ UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
 MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')
 SENTRY_DSN = os.environ.get('SENTRY_DSN', None)
 
-print(f'SENTRY_DSN {SENTRY_DSN}')
+# PartnerSystem
+PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)
+
+# AI crawler
+MERCURY_TOKEN = os.environ.get(
+    'MERCURY_TOKEN', "sJ4GrxyzEik4wKfwATu4zszm8azpZV0tusuO4B2m")

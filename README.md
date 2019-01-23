@@ -45,19 +45,23 @@ vi refresh.sh
 **Request**
 
 * Endpoint: ```POST /v1/task```
-* Content-Type: ```application/json```
+* Header:
+    - Content-Type: application/json
+    - X-REQUEST-ID: d5c7fd14-4987-4921-9ddc-e4d63cf6620a
 
 | Parameter | Type | Default/Required | Description | Example |
 |:---------:|:----:|:----------------:|:-----------:|:-------:|
-| ```request_id``` | ```String``` | Y | request id | aaaa619f-576c-4473-add2-e53d08b74ac7 |
+| ```request_id``` | ```String``` | N | request id | aaaa619f-576c-4473-add2-e53d08b74ac7 |
 | ```url``` | ```String``` | Y | url| https://www.kocpc.com.tw/archives/693 |
 | ```url_hash``` | ```String``` | Y | url hash encoded by AC | a6d62aaef4856b23d7d8016e4e77409001d999fa |
 | ```partner_id``` | ```String``` | N | partner id | 3WYST18 |
 | ```generator``` | ```String``` | N | generator | WordPress2, PChoc, blogger, |
 
+
+
 **Example**
 ```shell
-curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
+curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
 ```
 ```json
 {

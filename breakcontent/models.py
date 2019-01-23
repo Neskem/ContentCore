@@ -228,7 +228,7 @@ class WebpagesPartnerXpath(db.Model):
         '''
         return {
             'id': self.id,
-            'request_id': self.task_service.request_id,
+            # 'request_id': self.task_service.request_id, # check!
             'task_service_id': self.task_service_id,
             'domain': self.domain,
             'url_hash': self.url_hash,

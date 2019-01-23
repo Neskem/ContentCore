@@ -393,18 +393,35 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
 
     wpx_data = a_wpx.to_dict()
     WebpagesPartnerXpath.query.filter_by(
-            task_service_id=a_wpx.task_service_id).update(wpx_data)
-
+            id=a_wpx.id).update(wpx_data)
+    # request_id = wpx_data['request_id']
+    # logger.debug(f'request_id {request_id}')
     db.session.commit()
     logger.debug('update successful')
 
     inform_ac_dict = inform_ac.to_dict()
-
+    # inform_ac_dict.set('request_id', request_id)
+    # logger.debug(f'inform_ac_dict {inform_ac_dict}')
     data = json.dumps(inform_ac_dict)
     headers = {'Content-Type': "application/json"}
-    r = requests.put(ac_content_status_api, json=data, headers=headers)
-    # inform AC
 
+    # inform AC
+    r = requests.put(ac_content_status_api, json=data, headers=headers)
+    logger.debug(f'r {r}')
+    logger.debug(f'r type {type(r)}')
+    logger.debug(f'r dir {dir(r)}')
+    logger.debug(f'r.json {r.json}')
+    logger.debug(f'r.json dir {dir(r.json)}')
+    logger.debug(f'r.text {r.text}')
+    logger.debug(f'r.content {r.content}')
+    if r.status_code == 200:
+        # json = r.json()
+        logger.debug('inform AC successful')
+    elif r.status_code == 400:
+        logger.debug('inform AC failed, bad request')
+    else:
+        logger.error('inform AC failed')
+        pass
 
 @celery.task()
 def xpath_multi_crawler(tid: int, partner_id: str, domain: str, ds: object):

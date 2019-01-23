@@ -47,26 +47,33 @@ def init_task():
 
     # insert not partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "test2", "url": "test2", "url_hash": "test2", "priority": 1, "generator": "test2", "notexpected": "test2"}'
+
+    # 20190123 update
+    get request_id from header
+
     '''
 
     current_app.logger.error(f'use current_app and sentry to log')
     res = {'msg': '', 'status': False}
+    request_id = request.headers.get("X-REQUEST-ID", None)
+    current_app.logger.debug(f'request_id {request_id}')
+
     data = request.json
 
     required = [
-        'request_id',
         'url',
         'url_hash',
         'priority'
     ]
 
     optional = [
+        'request_id',
         'partner_id',
         'generator'
     ]
 
     odata = {}
-
+    odata['request_id'] = request_id
     for r in required:
         if not data.get(r, None):
             res['msg'] = f'{r} is required'

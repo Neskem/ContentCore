@@ -27,7 +27,7 @@ class InformAC():
         'url': None,
         'old_url_hash': None,  # yet
         'content_update': None,  # yet
-        'reqeuest_id': None,
+        'request_id': None,
         'publish_date': None,
         'url_structure_type': None,  # yet
         'secret': False,
@@ -48,7 +48,7 @@ class InformAC():
             'url': self.url,
             'old_url_hash': self.old_url_hash,
             'content_update': self.content_update,
-            'reqeuest_id': self.reqeuest_id,
+            'request_id': self.request_id,
             'publish_date': self.publish_date,
             'url_structure_type': self.url_structure_type,
             'secret': self.secret,

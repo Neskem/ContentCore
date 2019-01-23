@@ -69,3 +69,6 @@ PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)
 # AI crawler
 MERCURY_TOKEN = os.environ.get(
     'MERCURY_TOKEN', "sJ4GrxyzEik4wKfwATu4zszm8azpZV0tusuO4B2m")
+
+# Article Center
+AC_CONTENT_STATUS_API = os.environ.get('AC_CONTENT_STATUS_API', None)

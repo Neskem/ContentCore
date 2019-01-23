@@ -27,6 +27,10 @@ def test():
     from breakcontent.tasks import test_task
     test_task.delay()
 
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
     return jsonify(res), 200
 
 
@@ -78,10 +82,10 @@ def init_task():
     from breakcontent.tasks import upsert_main_task
     upsert_main_task.delay(odata)
 
-    # # for testing purpose
-    # from breakcontent.tasks import create_tasks
-    # create_tasks.delay(1)
-
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
     return jsonify(res), 200
 
 
@@ -91,7 +95,7 @@ def init_task():
 def delete_task():
     '''
     # delete partner from maintask
-    curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "ce65ca9a29f408496abfb7e7a978b2d4e31d93df"}'
+    curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa"}'
 
     # delete nopartner from maintask
     curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "test2"}'
@@ -102,7 +106,10 @@ def delete_task():
 
     from breakcontent.tasks import delete_main_task
     delete_main_task.delay(data)
-
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
     return jsonify(res), 200
 
 
@@ -120,7 +127,37 @@ def create_tasks(priority):
 
     from breakcontent.tasks import create_tasks
     create_tasks.delay(priority)
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
+    return jsonify(res), 200
 
+
+@bp.route('/content/<url_hash>', methods=['GET'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def get_content(url_hash):
+    '''
+    AC requesting article
+
+    this is a sync function
+
+    <example>
+    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/content/a6d62aaef4856b23d7d8016e4e77409001d999fa'
+    '''
+
+    res = {'msg': '', 'status': False}
+
+    wpxf = WebpagesPartnerXpath.query.filter_by(url_hash=url_hash).first()
+    data = {'data': wpxf.to_ac()}
+    res.update(data)
+    # wpxf_json = json.dumps(wpxf.to_ac())
+    # current_app.logger.debug(f'wpxf_json {wpxf_json}')
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
     return jsonify(res), 200
 
 

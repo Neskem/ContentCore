@@ -1,5 +1,5 @@
 from breakcontent.factory import create_celery_app
-from breakcontent.utils import Secret
+from breakcontent.utils import Secret, InformAC, DomainSetting
 import os
 import json
 import requests
@@ -219,7 +219,7 @@ def prepare_task(task: dict):
                 # key check and filter (not sure if necessary)
                 domain_info = {kk: vv for kk,
                                vv in v.items() if kk in optional}
-                logger.debug(f'filtered domain_info {domain_info}')
+                # logger.debug(f'filtered domain_info {domain_info}')
                 return domain_info
             else:
                 continue
@@ -229,8 +229,6 @@ def prepare_task(task: dict):
 
     logger.debug('run prepare_task()...')
     logger.debug(f'task {task}')
-
-    # task {'id': 1, 'task_main_id': 1, 'webpages_partner_xpath': None, 'webpages_partner_ai': None, 'url_hash': 'ce65ca9a29f408496abfb7e7a978b2d4e31d93df', 'url': 'https://fangcat.com/autonomic-instability-summer-strategy/', 'request_id': 'b9da619f-576c-4473-add2-e53d08b74ac7', 'page_query_param': None, 'secret': None, 'retry_xpath': 0, 'status_xpath': 'doing', 'retry_ai': 0, 'status_ai': 'doing', '_ctime': '2019-01-18T09:12:43.033354', '_mtime': '2019-01-18T09:29:49.076318'}
 
     if task.get('partner_id', None):
 
@@ -253,18 +251,26 @@ def prepare_task(task: dict):
             # logger.debug(f'type {type(json_resp)}')
             domain_info = parse_data(json_resp)
             logger.debug(f'domain_info {domain_info}')
+            # ds = DomainSetting()
+            # logger.debug(f'ds {ds.to_dict()}')
+
+            # ds = DomainSetting(domain_info)
+            # logger.debug(f'ds {ds.to_dict()}')
 
             if domain_info.get('page', None):
+            # if hasattr(ds, 'page') and ds.page and ds.page != '':
                 # to be revised!
 
                 # send job to multipage crawler
-                logger.debug(f"domain_info['page'] {domain_info['page']}")
+                logger.debug(f'ds.page {ds.page}')
+
                 logger.debug(f'task {task}')
                 # update db
                 tsf = TaskService.query.filter_by(id=task['id']).first()
                 logger.debug(f'tsf {tsf}')
                 tsf.is_multipage = True
                 tsf.page_query_param = domain_info['page']
+                # tsf.page_query_param = ds.page
                 logger.debug(f'tsf {tsf}')
                 db.session.commit()
                 logger.debug('update successful')
@@ -296,6 +302,9 @@ def do_task(priority):
 def prepare_crawler(tid: int) -> dict:
     '''
     init record in WebpagesPartnerXpath for singlepage or multipage crawler, so the fk will be linked to TaskService and the pk will be created.
+
+    return:
+
     '''
 
     retry = 1
@@ -328,41 +337,77 @@ def prepare_crawler(tid: int) -> dict:
         # insert should will violate unique constraint but update won't
         db.session.rollback()
         logger.warning(e)
+        wpxf = WebpagesPartnerXpath.query.filter_by(
+            url_hash=tsf.url_hash).first()
+        logger.debug(f'wpxf {wpxf}')
         WebpagesPartnerXpath.query.filter_by(
             url_hash=tsf.url_hash).update(wpx)
         db.session.commit()
-        logger.debug('update tsf succesful')
-    tsf_wpx_dic = tsf.webpages_partner_xpath.to_dict()
-    # logger.debug(f'tsf_wpx_dic {tsf_wpx_dic}')
+        logger.debug('update WebpagesPartnerXpath succesful')
+    wpx_dict = tsf.webpages_partner_xpath.to_inform()
+
+
+    # logger.debug(f'wpx_dict {wpx_dict}')
     # get generator from TaskMain through TaskService
     try:
         generator = tsf.task_main.generator
+        wpx_dict['generator'] = generator
         logger.debug(f'generator {generator}')
-        tsf_wpx_dic.update(dict(generator=generator))
     except Exception as e:
         # might need more script here!
         logger.error(e)
         raise e
 
-    return tsf_wpx_dic
+    return wpx_dict
 
 
 @celery.task()
 def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: dict):
     '''
+    <purpose>
+    use the domain config from Partner System to crawl through the entire page, then inform AC with request
+
+    <notice>
     partner only
+
+    <arguments>
+    tid,
+    partner_id,
+    domain,
+    domain_info,
+
+    <return>
     '''
+    ac_content_status_api = os.environ.get('AC_CONTENT_STATUS_API', None)
+    logger.debug(f'ac_content_status_api {ac_content_status_api}')
+
     logger.debug(f'start to crawl single-paged url on tid {tid}')
     # logger.debug(f'tid type {type(tid)}')
-
+    # iac = InformAC()
     wpx = prepare_crawler(tid)
     # logger.debug(f'wpx {wpx}')
 
-    xpath_a_crawler(wpx, partner_id, domain, domain_info)
+    a_wpx, inform_ac = xpath_a_crawler(wpx, partner_id, domain, domain_info)
+    logger.debug(f'a_wpx from xpath_a_crawler(): {a_wpx}')
+    logger.debug(f'inform_ac {inform_ac.to_dict()}')
+
+    wpx_data = a_wpx.to_dict()
+    WebpagesPartnerXpath.query.filter_by(
+            task_service_id=a_wpx.task_service_id).update(wpx_data)
+
+    db.session.commit()
+    logger.debug('update successful')
+
+    inform_ac_dict = inform_ac.to_dict()
+
+    data = json.dumps(inform_ac_dict)
+    headers = {'Content-Type': "application/json"}
+    r = requests.put(ac_content_status_api, json=data, headers=headers)
+    # inform AC
 
 
 @celery.task()
-def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dict):
+def xpath_multi_crawler(tid: int, partner_id: str, domain: str, ds: object):
     '''
     partner only
 
@@ -374,35 +419,66 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     # xpath_a_crawler()
 
 
-def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
+def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict) -> (object, object):
     '''
+    note: this is not a celey task function
+
     use xpath to crawl a page
+
+    <arguments>
+    wpx,
+    partner_id,
+    domain,
+    domain_info, dict
+
+    <return>
+    (obj1, obj2)
+    obj1, a WebpagesPartnerXpath instance
+    obj2, an InformAC instance
+
+
     '''
     logger.debug(f'run the basic unit of xpath crawler')
-    logger.debug(f'wpx {wpx}')
+    # logger.debug(f'wpx {wpx}')
     # logger.debug(f'domain_info {domain_info}')
 
     task_service_id = wpx['task_service_id']
     tsf = TaskService.query.filter_by(id=task_service_id).first()
     logger.debug(f'tsf {tsf}')
 
-    url = wpx.get('url')
-    generator = wpx.get('generator', None)
-    secrt = Secret()
+    ds = DomainSetting(domain_info)
+    logger.debug(f'ds {ds.to_dict()}')
 
-    # use an object to store the required and optional attribute
-    a_wpx = WebpagesPartnerXpath()
+    a_wpx = tsf.webpages_partner_xpath
+    a_wpx.domain = domain
+    a_wpx.task_service_id = task_service_id
     logger.debug(f'a_wpx {a_wpx}')
     logger.debug(f'type(a_wpx) {type(a_wpx)}')
 
+    iac = InformAC()
+    iac.url_hash = wpx['url_hash']
+    iac.url = wpx['url']
+    iac.request_id = tsf.request_id
+
+    logger.debug(f'iac {iac.to_dict()}')
+
+    url = wpx.get('url')
+    generator = wpx.get('generator', None)
+    logger.warning('optimization required here!')
+
+    secrt = Secret()
+
+    if iac.zi_sync_rule != False: # default is None
+        iac.zi_sync_rule = ds.checkSyncRule(url)
 
     # if generator == "blogger":
     #     url = re.sub(r'\?.*?$', '', url)
     # if generator == "PChoc" or domain == "blog.xuite.net":
     #     if url.find("preview=") != -1:
-    #         return
-    #     url = re.sub('-.*', '', url)
-    # # AC has done this already
+    #         pass
+    #     else:
+    #         url = re.sub('-.*', '', url)
+    # AC has done this already
 
     # x_generator = tree.xpath('/html/head/meta[@name="generator"]')
     # if len(x_generator) > 0:
@@ -410,18 +486,19 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
     # x_shortlink = tree.xpath('//link[@rel="shortlink"]/@href')
     # if len(x_shortlink) > 0:
     #     if generator != None and re.search('wordpress', generator, re.I):
-    #         wp_real_link = getWpRealLink(url, x_shortlink[0])
+    #         wp_url = getWpRealLink(url, x_shortlink[0])
 
     html = None
     r = requests.get(url, verify=False, allow_redirects=True)
     if r.status_code == 200:
         r.encoding = 'utf-8'
         html = r.text  # full html here!
-        generator = None
+        # generator = None
         content = None
         cd = None
         category = None
-        wp_real_link = None
+        url = None
+        wp_url = None
 
         tStart = time.time()
         try:
@@ -429,13 +506,14 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                 re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
             logger.debug(f'aujs {aujs}')
 
-            if aujs != None:
+            if aujs:
                 aujs = True
                 logger.debug(f'aujs {aujs}')
+                iac.has_page_code = True
             else:
                 pass
         except:
-            aujs = 'None'
+            aujs = None
             logger.debug(f'aujs {aujs}')
         tEnd = time.time()
         logger.debug(f"scanning aujs cost {tEnd - tStart} sec")
@@ -443,11 +521,11 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
         tree = lxml.html.fromstring(html)
         match_xpath = None
 
-        for xpath in domain_info['xpath']:
+        for xpath in ds.xpath:
             xpath = unquote(xpath)
             cd = tree.xpath(xpath) # content directory
             if len(cd) > 0:
-                #print("match xpath")
+                logger.debug("match xpath")
                 match_xpath = xpath
                 logger.info("match xpath: {}".format(xpath))
                 x_canonical_url = tree.xpath(
@@ -465,6 +543,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
 
         # ----- parsing content ----
         if match_xpath != None:
+            a_wpx.content_xpath = match_xpath
             logger.debug("xpath matched!")
 
             # ----- parsing meta ----
@@ -484,126 +563,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                     if meta_name not in meta_all:
                         meta_all[meta_name] = []
                     meta_all[meta_name].append(meta.get('content', None))
-
-            # ----- parsing present_image ----
-            present_image = None
-            x_og_images = tree.xpath('/html/head/meta[@property="og:image"]')
-            if len(x_og_images) > 0:
-                present_image = x_og_images[0].get('content')
-                logger.debug(f'og img: {present_image}')
-
-            if present_image:
-                present_image = urljoin(url, present_image)
-                cover = present_image
-
-            # ----- parsing script ----
-            for script in cd[0].xpath("//noscript"):
-                logger.debug(f'script.text {script.text}')
-                script.getparent().remove(script)
-
-            # ----- parsing generator ----
-            x_generator = tree.xpath('/html/head/meta[@name="generator"]')
-            if len(x_generator) > 0:
-                generator = x_generator[0].get('content')
-                # parse generator from full html again, replace
-
-            # ----- parsing wp url ----
-            x_shortlink = tree.xpath('//link[@rel="shortlink"]/@href')
-            if len(x_shortlink) > 0:
-                if generator != None and re.search('wordpress', generator, re.I):
-                    wp_real_link = getWpRealLink(url, x_shortlink[0])
-
-            # ----- parsing categories ----
-            categories = []
-            x_categories = tree.xpath(
-                '/html/head/meta[@property="article:section"]')
-            if len(x_categories) > 0:
-                category = x_categories[0].get('content')
-                for c in x_categories:
-                    if c.get('content') not in categories:
-                        categories.append(c.get('content'))
-            if generator == "PChoc" and category == None:
-                g_x_categories = tree.xpath(
-                    '//ul[@class="refer"]/li[1]/a/text()')
-                if len(g_x_categories) == 0:
-                    tsf.status_xpath = 'done'
-                    db.session.commit()
-                    return
-                x_categories = tree.xpath(
-                    '//ul[@class="refer"]/li[2]/a/text()')
-                if len(x_categories) > 0:
-                    category = x_categories[0]
-                else:
-                    pass
-            # domain specific logic
-            if len(categories) == 0 and "thebetteraging.businesstoday.com.tw" in url:
-                x_categories = tree.xpath(
-                    '//span[contains(@class, "service-type")]/text()')
-                x_cat = x_categories[0].replace('分類：', '')
-                categories.append(x_cat)
-
-            # ----- parsing content_h1 ----
-            xh1 = tree.xpath('//h1/text()')
-            content_h1 = ''
-            for h1 in xh1:
-                if h1.strip():
-                    content_h1 += '<h1>{}</h1>'.format(h1)
-
-            # ----- parsing content_h2 ----
-            xh2 = tree.xpath('//h2/text()')
-            content_h2 = ''
-            for h2 in xh2:
-                if h2.strip():
-                    content_h2 += '<h2>{}</h2>'.format(h2)
-
-            # ----- parsing content_p ----
-            # h = HTMLParser()
-            content = etree.tostring(
-                cd[0], pretty_print=True, method='html').decode("utf-8")
-            content = unquote(content)
-            cd[0] = lxml.html.fromstring(content)
-            xp = cd[0].xpath('.//p')
-            len_xp = len(xp)
-            content_p = ''
-            len_p = 0
-
-            # content = etree.tostring(cd[0], pretty_print=True, method='html').decode("utf-8")
-            # content = unquote(content)
-            for p in xp:
-                txt = remove_html_tags(etree.tostring(
-                    p, pretty_print=True, method='html').decode("utf-8"))
-                s = unescape(txt.strip())
-                if s.strip():
-                    content_p += '<p>{}</p>'.format(s)
-                    len_p = len_p + 1
-
-            # ----- parsing secret ----
-            # Paul version
-            # ppf = re.search('post-password-form', content) or None
-
-            # if ppf != None:
-            #     logger.debug('this is a secrete article w/ password lock')
-
-            # Eric version
-            password_check_forms = cd[0].xpath("//form[contains(@class, 'post-password-form')]")
-            if len(password_check_forms) > 0:
-                logger.debug('this is a secret article w/ password lock')
-                # secret = True
-                secrt.secret = True
-            logger.debug(f'{secrt.to_dict()}')
-
-            # ----- parsing href (what for?) ----
-            xarch = cd[0].xpath('.//a')
-            for a in xarch:
-                href = a.get('href')
-                if href != None and href.strip():
-                    href = urljoin(url, href)
-                    logger.debug(f'href {href}')
-                    try:
-                        a.set('href', str(href))
-                    except:
-                        pass
-
+            a_wpx.meta_jdoc = meta_all
             # ----- parsing images ----
             ximage = cd[0].xpath('.//img')
             len_img = len(ximage)
@@ -628,7 +588,134 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
             if "www.iphonetaiwan.org" in url and len(ximage) > 0:
                 present_image = ximage[0].get('src')
 
+            a_wpx.content_image = content_image
+            a_wpx.len_img = len_img
+            # ----- parsing present_image ----
+            present_image = None
+            x_og_images = tree.xpath('/html/head/meta[@property="og:image"]')
+            if len(x_og_images) > 0:
+                present_image = x_og_images[0].get('content')
+                logger.debug(f'present_image: {present_image}')
+
+            if present_image:
+                present_image = urljoin(url, present_image)
+                cover = present_image
+
+            if present_image:
+                if len_img == 0 or "thebetteraging.businesstoday.com.tw" in url:
+                    logger.debug('code block here is weird!')
+                    h_img = etree.Element('img', src=present_image)
+                    cd[0].insert(0, h_img)
+
+            a_wpx.cover = cover
+            # ----- removing script ----
+            for script in cd[0].xpath("//noscript"):
+                logger.debug(f'script.text {script.text}')
+                script.getparent().remove(script)
+
+            # ----- parsing generator ----
+            if not generator:
+                x_generator = tree.xpath('/html/head/meta[@name="generator"]')
+                if len(x_generator) > 0:
+                    generator = x_generator[0].get('content')
+            # ----- parsing wp_url ----
+            wp_url = None
+            x_shortlink = tree.xpath('//link[@rel="shortlink"]/@href')
+            if len(x_shortlink) > 0:
+                if generator != None and re.search('wordpress', generator, re.I):
+                    wp_url = getWpRealLink(url, x_shortlink[0])
+            a_wpx.wp_url = wp_url
+            # ----- parsing categories ----
+            category = None
+            categories = []
+            # domain specific logic
+            if category == None and "thebetteraging.businesstoday.com.tw" in url:
+                x_categories = tree.xpath(
+                    '//span[contains(@class, "service-type")]/text()')
+                x_cat = x_categories[0].replace('分類：', '')
+                categories.append(x_cat)
+            # bsp specific logic: pixnet
+            if category == None and generator == "PChoc":
+                g_x_categories = tree.xpath(
+                    '//ul[@class="refer"]/li[1]/a/text()')
+                if len(g_x_categories) > 0:
+                    category = x_categories[0].get('content')
+                    for c in x_categories:
+                        if c.get('content') not in categories:
+                            categories.append(c.get('content'))
+            # universal logic
+            if category == None:
+                x_categories = tree.xpath(
+                    '/html/head/meta[@property="article:section"]')
+                if len(x_categories) > 0:
+                    category = x_categories[0].get('content')
+                    for c in x_categories:
+                        if c.get('content') not in categories:
+                            categories.append(c.get('content'))
+
+            # i_category = domain_info.get('category', None)
+            # e_category = domain_info.get('e_category', None)
+            # check if category should sync
+            isc = ds.isSyncCategory(categories)
+            if iac.zi_sync_rule != False:
+                iac.zi_sync_rule = isc
+
+            a_wpx.category = category
+            a_wpx.categories = categories
+            # ----- parsing content_h1 ----
+            content_h1 = None
+            xh1 = tree.xpath('//h1/text()')
+            for h1 in xh1:
+                if h1.strip():
+                    content_h1 += '<h1>{}</h1>'.format(h1)
+            a_wpx.content_h1 = content_h1
+            # ----- parsing content_h2 ----
+            content_h2 = None
+            xh2 = tree.xpath('//h2/text()')
+            for h2 in xh2:
+                if h2.strip():
+                    content_h2 += '<h2>{}</h2>'.format(h2)
+            a_wpx.content_h2 = content_h2
+            # ----- parsing content_p ----
+            content = etree.tostring(
+                cd[0], pretty_print=True, method='html').decode("utf-8")
+            content = unquote(content)
+            cd[0] = lxml.html.fromstring(content)
+            xp = cd[0].xpath('.//p')
+            len_xp = len(xp)
+            content_p = ''
+            len_p = 0
+            for p in xp:
+                txt = remove_html_tags(etree.tostring(
+                    p, pretty_print=True, method='html').decode("utf-8"))
+                s = unescape(txt.strip())
+                if s.strip():
+                    content_p += '<p>{}</p>'.format(s)
+                    len_p = len_p + 1
+            a_wpx.content_p = content_p
+            a_wpx.len_p = len_p
+            # ----- parsing secret ----
+            password_check_forms = cd[0].xpath("//form[contains(@class, 'post-password-form')]")
+            if len(password_check_forms) > 0:
+                logger.debug('this is a secret article w/ password lock')
+                secrt.secret = True
+                iac.secret = True
+            logger.debug(f'{secrt.to_dict()}')
+            # ----- parsing href (what for?) ----
+            # reformating href?
+            xarch = cd[0].xpath('.//a')
+            for a in xarch:
+                href = a.get('href')
+                if href != None and href.strip():
+                    href = urljoin(url, href)
+                    logger.debug(f'href {href}')
+                    try:
+                        a.set('href', str(href))
+                    except:
+                        pass
+            logger.debug(f'xarch {xarch}')
             # ----- parsing iframe ----
+            # reformating
             xiframe = cd[0].xpath('//iframe')
             for iframe in xiframe:
                 src = iframe.get('src')
@@ -641,8 +728,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                     iframe.set('src', src)
 
             # ----- parsing publish_date ----
-            if wp_real_link:
-                wp_url = wp_real_link
+
             publish_date = None
             x_publish_date = tree.xpath(
                 '/html/head/meta[@property="article:published_time"]')
@@ -669,30 +755,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                             publish_date = data.get("datePublished")
                             break
 
-            # ----- parsing title ----
-            x_title = tree.xpath('/html/head/title/text()')
-
-            if len(x_title):
-                title = x_title[0]
-                if domain_info.get('e_title', None):
-                    title = title.replace(domain_info['e_title'][0], "")
-
-                # check is pixnet or not
-                # BSP specific logic
-                logger.debug(f'this code block is weird!!!')
-                if publish_date == None and generator == "PChoc":
-                    publish_date = getPixnetPublishTime(tree)
-                    title = re.sub('@(?!.*?@).*:: 痞客邦 ::', '', title)
-            else:
-                # if failed to parse title
-                # domain specific logic
-                if "www.soft4fun.net" in url:
-                    x_title = tree.xpath(
-                        '//*[@class="post"]/div[1]/h1/span/text()')
-                    title = x_title[0]
-                    if domain_info.get('e_title', None):
-                        title = title.replace(domain_info['e_title'][0], "")
-
+            # domain specific logic
             if publish_date == None and "blogspot.com" in url:
                 published_dates = tree.xpath(
                     '//abbr[@itemprop="datePublished"]')
@@ -762,7 +825,11 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                     publish_date = "{}-{:02d}-{:02d}".format(
                         int(groups[1]), int(groups[2]), int(groups[3]))
 
-            # non-domain specifc
+            # bsp specific logic
+            if publish_date == None and generator == "PChoc":
+                publish_date = getPixnetPublishTime(tree)
+
+            # universal logic
             if publish_date == None:
                 published_dates = tree.xpath(
                     '//abbr[contains(@class, "published")]')
@@ -852,8 +919,32 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                                       published_dates[2].strip())
                     publish_date = "{}-{:02d}-{:02d}".format(
                         int(groups[1]), int(groups[2]), int(groups[3]))
+            a_wpx.publish_date = publish_date
+            iac.publish_date = publish_date
+            # ----- parsing title ----
+            title = None
+            x_title = tree.xpath('/html/head/title/text()')
 
+            if len(x_title):
+                title = x_title[0]
+
+            # domain specific logic:
+            if title == None and "www.soft4fun.net" in url:
+                x_title = tree.xpath(
+                    '//*[@class="post"]/div[1]/h1/span/text()')
+                title = x_title[0]
+
+            # domain specific: title exclude words
+            if getattr(ds, 'e_title', None):
+                title = title.replace(ds.e_title[0], "")
+
+            # BSP specific logic: pixnet
+            if title and generator == "PChoc":
+                title = re.sub('@(?!.*?@).*:: 痞客邦 ::', '', title)
+
+            a_wpx.title = title
             # ----- parsing meta_keywords ----
+            meta_keywords = None
             x_news_keywords = tree.xpath(
                 '/html/head/meta[@property="news_keywords"]')
             if len(x_news_keywords) > 0:
@@ -863,8 +954,10 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                     '/html/head/meta[@property="keywords"]')
                 if len(x_keywords) > 0:
                     meta_keywords = x_keywords[0].get('content').split(',')
+            a_wpx.meta_keywords = meta_keywords
 
             # ----- parsing meta_description ----
+            meta_description = None
             x_description = tree.xpath('/html/head/meta[@name="description"]')
             if len(x_description) > 0:
                 meta_description = x_description[0].get('content')
@@ -873,25 +966,9 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                     '/html/head/meta[@property="og:description"]')
                 if len(x_description) > 0:
                     meta_description = x_description[0].get('content')
-
+            a_wpx.meta_description = meta_description
             # ----- parsing author ----
-
-            # universal logic
-            x_author = tree.xpath('/html/head/meta[@property="author"]')
-            if len(x_author) > 0:
-                author = x_author[0].get('content')
-            else:
-                x_author = tree.xpath(
-                    '/html/head/meta[@property="article:author"]/@content')
-                if len(x_author) > 0:
-                    author = x_author[0]
-
-            if author == None:
-                x_author = tree.xpath(
-                    '/html/head/meta[@property="dable:author"]')
-                if len(x_author) > 0:
-                    author = x_author[0].get('content')
-
+            author = None
             # domain specific logic
             if "blog.tripbaa.com" in url:
                 x_author = tree.xpath(
@@ -924,6 +1001,28 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                 if len(x_author) > 0:
                     author = x_author[0].strip()
 
+            # universal logic
+            if author == None:
+                x_author = tree.xpath('/html/head/meta[@property="author"]')
+                if len(x_author) > 0:
+                    author = x_author[0].get('content')
+            if author == None:
+                x_author = tree.xpath(
+                    '/html/head/meta[@property="article:author"]/@content')
+                if len(x_author) > 0:
+                    author = x_author[0]
+            if author == None:
+                x_author = tree.xpath(
+                    '/html/head/meta[@property="dable:author"]')
+                if len(x_author) > 0:
+                    author = x_author[0].get('content')
+
+            # i_author = domain_info.get('authorList', None)
+            # e_author = domain_info.get('e_authorList', None)
+            isa = ds.isSyncAuthor(author)
+            if iac.zi_sync_rule != False:
+                iac.zi_sync_rule = isa
+            a_wpx.author = author
             # ----- removing style ----
             for style in cd[0].xpath("//style"):
                 style.getparent().remove(style)
@@ -947,9 +1046,9 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                         logger.debug(script.text)
                         script.getparent().remove(script)
 
-            # ----- removing script and exclude tag ----
-            if domain_info.get('e_xpath', None) and len(domain_info['e_xpath']) > 0:
-                for badnode in domain_info['e_xpath']:
+            # ----- removing excluded xpath ----
+            if getattr(ds, 'e_xpath', None) and len(ds.e_xpath) > 0:
+                for badnode in ds.e_xpath:
                     exclude_xpath = unquote(badnode)
                     logger.debug("exclude xpath: {}".format(exclude_xpath))
                     for bad in cd[0].xpath(exclude_xpath):
@@ -968,23 +1067,17 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
             chars_p = len(content)
             logger.info("chars: {},p count: {}, img count: {}".format(chars_p, len_p, len_img))
             if len_img < 2 and chars_p < 100:
-                pass
                 # content of poor quality
-                quality = False
+                iac.quality = False
 
-            if present_image != None:
-                if len_img == 0 or "thebetteraging.businesstoday.com.tw" in url:
-                    logger.debug('code block here is weird!')
-                    h_img = etree.Element('img', src=present_image)
-                    cd[0].insert(0, h_img)
-
-            # re-parse content
+            # ----- re-parse content -----
             content = etree.tostring(cd[0], pretty_print=True, method='html').decode("utf-8")
+            a_wpx.content = content
 
             # ----- constructing content_hash -----
             content_hash = ''
             # wp_url, meta_description or title
-            if wp_real_link:
+            if wp_url:
                 o = urlparse(url)
                 if o.query != "":
                     text = "{}{}{}".format(o.netloc, o.path, o.query)
@@ -1009,15 +1102,18 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
             logger.debug(f'content_hash: {content_hash}')
             m = hashlib.sha1(content_hash.encode('utf-8'))
             content_hash = partner_id + '_' + m.hexdigest()
-
+            logger.debug(f'content_hash: {content_hash}')
+            a_wpx.content_hash = content_hash
             # ----- check if publish_date changed -----
             # todo
 
-            logger.info('crawling succesful')
-
+            logger.debug(f'a_wpx {a_wpx}')
+            # logger.debug(f'a_wpx.to_dict() {a_wpx.to_dict()}')
+            iac.status = True
+            logger.info('crawling successful')
+            return a_wpx, iac
         else:
             logger.debug('xpath not matched')
-
 
             secret = None
             # BSP specific: Pixnet 痞客邦
@@ -1028,7 +1124,6 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                     secrt.secret = True
                     secrt.bsp = 'pixnet'
 
-
             # BSP specific: Xuite 隨意窩
             if secret == None:
                 metas = tree.xpath("//form[@name='main']/text()")
@@ -1037,12 +1132,20 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict):
                     secrt.secret = True
                     secrt.bsp = 'xuite'
 
-            if secret:
+            if secrt.secret: # this obj is not yet used
+                logger.debug(f'secrt.bsp {secrt.bsp}, secrt.secret {secrt.secret}')
                 logger.debug(f'{secrt.to_dict()}')
+                iac.secret = True
+
+            iac.status = False
+            # should I update db in this condition?
+            return a_wpx, iac
+
 
     else:
         # request failed goes here
-        pass
+        iac.status = False
+        return a_wpx, iac
 
 
 @celery.task()

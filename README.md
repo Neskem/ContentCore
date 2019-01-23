@@ -2,16 +2,21 @@
 
 ### Prerequisite
 
+### Dev env
+* ip: 192.168.18.111
+
 ### Installation
 * clone the repo
 * cd docker/
+* check your settings (docker-compose.yml & breakcontent.env)
 * docker-compose up -d
 
-# Usage
+## CC Endpoints & purpose
+1. Inform CC a crawler task
+2. Trigger a task to run
+3. Get content from CC
 
-# CC Endpoints & purpose
-
-### inform CC a crawler task
+### Inform CC a crawler task
 **Request**
 
 * Endpoint: ```POST /v1/task```
@@ -36,7 +41,7 @@ curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/js
 }
 ```
 
-### trigger a task to run
+### Trigger a task to run
 **Request**
 
 * Endpoint: ```GET /v1/create_tasks/{priority: int}```
@@ -52,7 +57,7 @@ curl -v -X GET 'http://localhost:8100/v1/create_tasks/1'
 }
 ```
 
-### get content from CC
+### Get content from CC
 **Request**
 * Endpoint: ```GET /v1/content/{url_hash}```
 
@@ -76,18 +81,34 @@ curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/con
 ```
 
 
-### AC Endpoints & purpose
-* register url & send request to CC
+## AC Endpoints & purpose
+### Register url & send request to CC
+**Request**
+* Endpoint: ```GET /v1/admin/service/sync?service\_name={service}&status={behavior}&partner_id={partner_id}&url={url}```
+
+| Parameter | Type | Default/Required | Description | Example |
+|:---------:|:----:|:----------------:|:-----------:|:-------:|
+| ```service_name``` | ```String``` | Y | Zi_C | aaaa619f-576c-4473-add2-e53d08b74ac7 |
+| ```status``` | ```String``` | Y | url| behavior, e.g. sync |
+| ```partner_id``` | ```String``` | N | partner id | 3WYST18 |
+| ```url``` | ```String``` | N | url | https://www.kocpc.com.tw/archives/693 |
+
+**Example**
 ```shell
 curl -X GET 'http://35.236.166.182:80/v1/admin/service/sync?service\_name=Zi_C&status=sync&partner_id=3WYST18&url=https://www.kocpc.com.tw/archives/693'
 ```
 
-* inform AC when crawler is done
+### Inform AC when the crawler is done
+**Request**
+* Endpoint: ```PUT /v1/content/status```
+
+**Example**
 ```shell
 curl -H "Content-Type: application/json; charset=UTF-8" -X PUT "http://35.236.166.182:80/v1/content/status" -d '{"url": "https://www.kocpc.com.tw/archives/693", "url_hash": "13e83fc609e45fc3aea1bedac006629bee505265", "content_update": false, "request_id": "ef114158-b445-4285-bebf-b129d8b7e0df", "publish_date": "2018-12-29 06:22:00.000Z", "parent_url": "http://d0169953.crlab.com.tw/?p=23", "url_structure_type": "content", "secret": false, "has_page_code": true, "status": "True", "quality": true, "old_url_hash": "847844911ffe6af2d9d9fcee69ab10f7cb2db63f"}'
 ```
-
+```json
 {“data”:{},“message”:“OK”}
+```
 
 # AC PSQL access info
 How to enter postgresql:

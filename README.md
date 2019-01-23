@@ -5,11 +5,36 @@
 ### Dev env
 * ip: 192.168.18.111
 
+### Stg env
+* AC IP: 35.236.166.182
+* AC/CC PSQL GCP IP: 35.194.207.202
+* CC GCP IP: 35.234.56.85
+* CC IDC IP: wait for Cr
+
 ### Installation
-* clone the repo
-* cd docker/
-* check your settings (docker-compose.yml & breakcontent.env)
-* docker-compose up -d
+#### IDC dev env
+```shell
+git clone blabla
+cd docker/
+check your settings (docker-compose.yml & breakcontent.env)
+docker-compose up -d
+```
+
+#### GCP stg env
+```shell
+ssh changteanhsu@35.234.56.85
+sudo su
+apt-get install tmux
+cd /home/lance
+git clone blablabla
+git pull origin develop
+git checkout develop
+git pull origin develop
+apt-get install docker-compose
+# check ip 
+vi refresh.sh
+```
+
 
 ## CC Endpoints & purpose
 1. Inform CC a crawler task

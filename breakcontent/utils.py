@@ -1,5 +1,12 @@
 import re
 from urllib.parse import unquote, urlparse
+# from breakcontent.tasks import logger
+from breakcontent import mylogging
+from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
+
+
+import logging
+logger = logging.getLogger('default')
 
 
 class Secret():
@@ -165,3 +172,81 @@ class DomainSetting():
                 if status:
                     return status
         return False
+
+
+def db_session_insert(db_session: object, doc: object):
+    '''
+    handle insert
+
+    to avoid OperationalError, redo with loop
+
+    IntegrityError was handled elsewhere
+    '''
+    retry = 0
+    while 1:
+        try:
+            db_session.add(doc)
+            db_session.commit()
+            logger.debug('insert successful')
+            break
+        except OperationalError as e:
+            db_session.rollback()
+            if retry > 5:
+                logger.error(f'{e}: retry {retry}')
+                logger.debug('usually this should not happen')
+                raise
+                # break
+            retry += 1
+
+
+def db_session_update(db_session: object, table: object, query: dict, data: dict):
+    '''
+    handle update retry
+    '''
+    retry = 0
+    while 1:
+        try:
+            # db_session.add(doc)
+            table.query.filter_by(**query).update(data)
+            db_session.commit()
+            logger.debug('update successful')
+            break
+        except OperationalError as e:
+            db_session.rollback()
+            if retry > 5:
+                logger.error(f'{e}: retry {retry}')
+                logger.debug('usually this should not happen')
+                raise
+                # break
+            retry += 1
+
+
+def db_session_query(db_session: object, table: object, query: dict, order_by: 'method of a table col'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
+    '''
+    return a table record object
+    '''
+    retry = 0
+    while 1:
+        try:
+            # logger.debug(f'order_by {order_by}')
+            # logger.debug(f'limit {limit}')
+            if order_by and limit:
+                if asc:
+                    docs = table.query.filter_by(
+                        **query).order_by(order_by.asc()).limit(limit).all()
+                else:
+                    docs = table.query.filter_by(
+                        **query).order_by(order_by.desc()).limit(limit).all()
+                logger.debug('query many record successful')
+                return docs
+            else:
+                doc = table.query.filter_by(**query).first()
+                logger.debug('query a record successful')
+                return doc
+            # break
+        except OperationalError as e:
+            retry += 1
+            db_session.rollback()
+            if retry > 5:
+                logger.error(f'{e}, retry {retry}')
+                raise

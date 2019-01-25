@@ -9,7 +9,8 @@
 * AC IP: 35.236.166.182
 * AC/CC PSQL GCP IP: 35.194.207.202
 * CC GCP IP: 35.234.56.85
-* CC IDC IP: wait for Cr
+* CC IDC IP: 112.121.109.120 (192.168.250.140) (ubuntu/1qaz@WSX)
+
 
 ### Installation
 #### IDC dev env

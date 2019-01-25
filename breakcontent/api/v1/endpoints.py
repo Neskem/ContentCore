@@ -43,7 +43,7 @@ def init_task():
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
 
     # insert multipage partner
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://kafkalin.com/magpiecafe/", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "UYTFH18", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
+    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932?page=1", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
     # insert not partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "test2", "url": "test2", "url_hash": "test2", "priority": 1, "generator": "test2", "notexpected": "test2"}'
@@ -55,6 +55,8 @@ def init_task():
 
     current_app.logger.error(f'use current_app and sentry to log')
     res = {'msg': '', 'status': False}
+
+    current_app.logger.debug(f'request.json {request.json}')
     request_id = request.headers.get("X-REQUEST-ID", None)
     current_app.logger.debug(f'request_id {request_id}')
 

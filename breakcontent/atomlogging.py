@@ -3,18 +3,8 @@ import logging.config
 import uuid
 import flask
 import os
-import simplejson
+# import simplejson
 from breakcontent.mylogging import MY_LOGGINGS
-
-# Available logging levels:
-# DEBUG
-# INFO
-# WARNING
-# ERROR
-# CRITICAL
-
-# make sure to initialize logging once to avoid breaking logging for Flask
-log_init = False
 
 
 # Custom logging filter class
@@ -58,16 +48,3 @@ def generate_request_id(original_id=''):
     else:
         new_id = uuid.uuid4()
     return new_id
-
-
-# def init_logging(console=False):
-#     global log_init
-#     if log_init:
-#         return
-
-#     if console:
-#         logging.basicConfig(
-#             level=logging.DEBUG, format='%(asctime)s %(levelname)s %(module)s %(lineno)d %(message)s')
-#     else:
-#         logging.config.dictConfig(MY_LOGGINGS)
-#     log_init = True

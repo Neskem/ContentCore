@@ -110,6 +110,40 @@ curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/con
 }
 ```
 
+### update domain specific config in CC
+**Request**
+* Endpoint: ```GET /v1/partner/setting/{partner_id}/{domain}```
+
+* Header:
+    - Content-Type: application/json
+
+| Parameter | Type | Default/Required | Description | Example |
+|:---------:|:----:|:----------------:|:-----------:|:-------:|
+| ```xpath``` | ```String``` | N |  |  |
+| ```e_xpath``` | ```String``` | N |  |  |
+| ```category``` | ```String``` | N |  |  |
+| ```e_category``` | ```String``` | N |  |  |
+| ```authorList``` | ```String``` | N |  |  |
+| ```e_authorList``` | ```String``` | N |  |  |
+| ```regex``` | ```String``` | N |  |  |
+| ```e_title``` | ```String``` | N |  |  |
+| ```syncDate``` | ```String``` | N |  |  |
+| ```page``` | ```String``` | N |  |  |
+| ```delayday``` | ```String``` | N |  |  |
+| ```sitemap``` | ```String``` | N |  |  |
+
+
+**Example**
+```shell
+curl -v -X PUT -H 'Content-Type: application/json' 'http://localhost:8100/v1/partner/setting/3WYST18/www.kocpc.com.tw' -d '{"xpath": "blablabla"}'
+
+```
+```json
+{
+  "msg": "ok",
+  "status": true
+}
+```
 
 ## AC Endpoints & purpose
 ### Register url & send request to CC
@@ -127,6 +161,7 @@ curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/con
 ```shell
 curl -X GET 'http://35.236.166.182:80/v1/admin/service/sync?service\_name=Zi_C&status=sync&partner_id=3WYST18&url=https://www.kocpc.com.tw/archives/693'
 ```
+
 
 ### Inform AC when the crawler is done
 **Request**

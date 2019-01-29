@@ -229,14 +229,10 @@ def partner_setting_add_update(partner_id, domain):
 
     q = dict(domain=domain, partner_id=partner_id)
     data = request.json  # data should be a dict
-    # current_app.logger.debug(f'type(data) {type(data)}')
-    # current_app.logger.debug(f'data {data}')
     res = {'msg': '', 'status': False}
     idata = dict(rules=data)
     idata.update(q)
 
-    # current_app.logger.debug(f'q {q}')
-    # current_app.logger.debug(f'idata {idata}')
     di = DomainInfo.query.filter_by(**q).first()
 
     if di:

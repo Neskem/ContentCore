@@ -11,7 +11,11 @@ MY_LOGGINGS = {
     "formatters": {
         "default": {
             "format": "%(asctime)s - %(name)s:%(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(process)d - %(request_id)s - %(message)s"
+        },
+        "tmp1": {
+            "format": "%(asctime)s - %(name)s:%(module)s:%(funcName)s:%(lineno)d - %(levelname)s - %(process)d - %(message)s"
         }
+
     },
     "handlers": {
         "console": {
@@ -37,16 +41,21 @@ MY_LOGGINGS = {
         }
     },
     "root": {
-        'level': 'DEBUG',
+        'level': 'DEBUG',  # change to higher level when switching to prd
         'handlers': ['console', 'file']
     },
     "loggers": {
-        "default": {
-            "level": "DEBUG",
-            "handlers": ["console", "file"]
+        "default": {  # this is for celery logger
+            "level": "DEBUG",  # change to higher level when switching to prd
+            "handlers": ['console', 'file']
         }
     },
-    "disable_existing_loggers": False,
+    "disable_existing_loggers": True,
 }
 
 logging.config.dictConfig(MY_LOGGINGS)
+
+'''
+further study: https://docs.python.org/3/howto/logging-cookbook.html
+
+'''

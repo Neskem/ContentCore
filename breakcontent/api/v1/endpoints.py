@@ -9,7 +9,8 @@ from breakcontent.api.v1 import alan
 # from breakcontent.api.v1.alan import AlanErrorClass
 
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
-# import breakcontent.tasks as tasks
+from breakcontent.utils import db_session_insert, db_session_update, db_session_query, parse_domain_info, bp_test_logger
+
 
 bp = Blueprint('endpoints', __name__)
 
@@ -44,6 +45,9 @@ def init_task():
 
     # insert multipage partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932?page=1", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
+
+    # insert multipage parent page
+    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "eeee619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932", "url_hash": "eeeef49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
     # insert not partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "test2", "url": "test2", "url_hash": "test2", "priority": 1, "generator": "test2", "notexpected": "test2"}'
@@ -209,3 +213,40 @@ def error_handler(etype):
         return jsonify(res), 200
     elif etype == 6:
         pass
+
+
+@bp.route('/partner/setting/<partner_id>/<domain>', methods=['PUT', 'POST'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def partner_setting_add_update(partner_id, domain):
+    '''
+    curl -v -X PUT -H 'Content-Type: application/json' 'http://localhost:8100/v1/partner/setting/3WYST18/www.kocpc.com.tw' -d '{"xpath": "blablabla"}'
+
+    this is a sync func
+    '''
+    current_app.logger.debug('run partner_setting_add_update()...')
+    bp_test_logger()
+
+    q = dict(domain=domain, partner_id=partner_id)
+    data = request.json  # data should be a dict
+    # current_app.logger.debug(f'type(data) {type(data)}')
+    # current_app.logger.debug(f'data {data}')
+    res = {'msg': '', 'status': False}
+    idata = dict(rules=data)
+    idata.update(q)
+
+    # current_app.logger.debug(f'q {q}')
+    # current_app.logger.debug(f'idata {idata}')
+    di = DomainInfo.query.filter_by(**q).first()
+
+    if di:
+        # update no matter what
+        db_session_update(db.session, DomainInfo, q, idata)
+
+    else:
+        # insert
+        doc = DomainInfo(**idata)
+        db_session_insert(db.session, doc)
+
+    res = {'msg': 'ok', 'status': True}
+    return jsonify(res), 200

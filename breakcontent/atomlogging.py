@@ -3,8 +3,6 @@ import logging.config
 import uuid
 import flask
 import os
-# import simplejson
-from breakcontent.mylogging import MY_LOGGINGS
 
 
 # Custom logging filter class

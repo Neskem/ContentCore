@@ -38,7 +38,8 @@ ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
 # defines how tasks are sent into broker, which task to which queue
 CELERY_ROUTES = {
-    # 'breakcontent.tasks.upsert_main_task': {'queue': 'task_manager'},
+    'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
+    'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},
 }
 
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)

@@ -1,6 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
-# db.session.autoflush = False
 
 
 def do_upsert(table: object, data: dict, key: 'string: column with unique constraint', rkey: 'string: relationship column' = None, rtable: 'object: backref table object' = None, rdata: 'dict: required column in downstream table' = None, rukey: str = None):

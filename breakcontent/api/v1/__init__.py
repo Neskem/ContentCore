@@ -3,6 +3,8 @@ from flask import Blueprint, jsonify, redirect, url_for, Response, current_app
 import json
 from breakcontent.api.v1.endpoints import bp
 from breakcontent.api.errors import LanceError, InvalidUsage, AlanError
+from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
+
 
 # from breakcontent import mylogging
 # import logging
@@ -19,8 +21,14 @@ def handle_lance_error(e):
 @bp.errorhandler(404)
 def error_404(e):
     current_app.logger.error(f'this is a 404 error')
-    response = dict(status=0, message="404 Error by Lance")
+    response = dict(status=0, message="404 Error from CC")
     return jsonify(response), 404
+
+
+@bp.errorhandler(OperationalError)
+def handle_operationalerror(e):
+    response = dict(status=0, message="DB OperationalError")
+    return jsonify(response), 500
 
 
 @bp.errorhandler(InvalidUsage)
@@ -34,7 +42,7 @@ def handle_invalid_usage(e):
 # @bp.errorhandler(Exception)
 def handle_key_error(e):
     current_app.logger.error(f'this is a KeyError')
-    response = dict(status=0, message="KeyError by Lance")
+    response = dict(status=0, message="KeyError from CC")
     return jsonify(response), 401
 
 

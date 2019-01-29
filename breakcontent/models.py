@@ -36,7 +36,7 @@ class TaskMain(db.Model):
     # task_noservice_id = Column(Integer, nullable=True)
     # notify AC when the task is finished
     status = Column(Enum('pending', 'doing', 'done',
-                         'failed', name='status_tm'), default='pending')
+                         'failed', name='status_tm'), default='pending', index=True)
     notify_status = Column(
         Enum('yes', 'no', name='notify_status'), default='no')
     notify_time = Column(DateTime(timezone=False), nullable=True)
@@ -47,7 +47,7 @@ class TaskMain(db.Model):
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)
     _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow, index=True)
 
     def __init__(self, *args, **kwargs):
         super(TaskMain, self).__init__(*args, **kwargs)
@@ -77,10 +77,10 @@ class TaskService(db.Model):
     secret = Column(Boolean, default=False)
     retry_xpath = Column(Integer, default=0)
     status_xpath = Column(Enum('pending', 'doing', 'done',
-                               'failed', name='status_xpath'), default='pending')
+                               'failed', name='status_xpath'), default='pending', index=True)
     retry_ai = Column(Integer, default=0)
     status_ai = Column(Enum('pending', 'doing', 'done',
-                            'failed', name='status_ai'), default='pending')
+                            'failed', name='status_ai'), default='pending', index=True)
     # webpages_xpath_id = Column(Integer, nullable=True)
     # webpages_ai_id = Column(Integer, nullable=True)
     # start datetime
@@ -88,7 +88,7 @@ class TaskService(db.Model):
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)
     _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow, index=True)
 
     def __repr__(self):
         return f'<TaskService(id={self.id}, url_hash={self.url_hash}, url={self.url}, request_id={self.request_id})>'
@@ -110,8 +110,8 @@ class TaskService(db.Model):
             'status_xpath': self.status_xpath,
             'retry_ai': self.retry_ai,
             'status_ai': self.status_ai,
-            '_ctime': self._ctime,
-            '_mtime': self._mtime
+            # '_ctime': self._ctime,
+            # '_mtime': self._mtime
         }
 
 
@@ -122,11 +122,14 @@ class TaskNoService(db.Model):
         'task_main.id', ondelete='CASCADE'))
     task_main = relationship(
         'TaskMain', foreign_keys=task_main_id, single_parent=True)
+
+    webpages_noservice = relationship("WebpagesNoService", back_populates="task_noservice", uselist=False,
+                                      foreign_keys='WebpagesNoService.task_noservice_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), ForeignKey(
         'task_main.url_hash'), nullable=False, unique=True)
     url = Column(String(1000), unique=True)
-    request_id = Column(String(256), index=True, nullable=True)
-    secret = Column(Boolean, nullable=True)  # not required
+    # request_id = Column(String(256), index=True, nullable=True)
+    # secret = Column(Boolean, nullable=True)  # not required
     retry = Column(Integer, default=0)
     status = Column(Enum('pending', 'doing', 'done',
                          'failed', name='task_noservice_status'), default='pending')
@@ -142,8 +145,15 @@ class TaskNoService(db.Model):
         return f'<TaskNoService(id={self.id}, url_hash={self.url_hash}, url={self.url}, request_id={self.request_id})>'
 
     def to_dict(self):
-        pass
-        # to do
+        return {
+            'id': self.id,
+            'task_main_id': self.task_main_id,
+            'url_hash': self.url_hash,
+            'url': self.url,
+            # 'request_id': self.request_id,
+            'retry': self.retry,
+            'status': self.status
+        }
 
 
 class WebpagesPartnerXpath(db.Model):
@@ -172,6 +182,7 @@ class WebpagesPartnerXpath(db.Model):
     category = Column(String(100), nullable=True)
     categories = Column(postgresql.ARRAY(Text(), dimensions=1))
     content = Column(Text, nullable=True)
+    len_char = Column(Integer, nullable=True)
     content_h1 = Column(Text, nullable=True)
     content_h2 = Column(Text, nullable=True)
     content_p = Column(Text, nullable=True)
@@ -198,23 +209,24 @@ class WebpagesPartnerXpath(db.Model):
             'url_hash': self.url_hash,
             'url': self.url,
             'wp_url': self.wp_url,
-            'multi_page_urls': self.multi_page_urls,
+            'multi_page_urls': self.multi_page_urls or [],
             'url_structure_type': self.url_structure_type,
             'title': self.title,
             'meta_keywords': self.meta_keywords,
             'meta_description': self.meta_description,
-            'meta_jdoc': self.meta_jdoc,
+            'meta_jdoc': self.meta_jdoc or {},
             'cover': self.cover,
             'author': self.author,
             'category': self.category,
             'categories': self.categories,
             'content': self.content,
-            'content_h1': self.content_h1,
-            'content_h2': self.content_h2,
-            'content_p': self.content_p,
-            'len_p': self.len_p,
-            'content_image': self.content_image,
-            'len_img': self.len_img,
+            'len_char': self.len_char or 0,
+            'content_h1': self.content_h1 or '',
+            'content_h2': self.content_h2 or '',
+            'content_p': self.content_p or '',
+            'len_p': self.len_p or 0,
+            'content_image': self.content_image or '',
+            'len_img': self.len_img or 0,
             'publish_date': self.publish_date,
             'content_hash': self.content_hash,
             'content_xpath': self.content_xpath,
@@ -233,9 +245,9 @@ class WebpagesPartnerXpath(db.Model):
             'domain': self.domain,
             'url_hash': self.url_hash,
             'url': self.url,
-            'wp_url': self.wp_url,
+            # 'wp_url': self.wp_url,
             # 'multi_page_urls': self.multi_page_urls,
-            'url_structure_type': self.url_structure_type,
+            # 'url_structure_type': self.url_structure_type,
             'title': self.title,
             # 'author': self.author,
             # 'category': self.category,
@@ -258,6 +270,40 @@ class WebpagesPartnerXpath(db.Model):
             'publishedAt': self.publish_date.isoformat(),
         }
 
+    def to_dict(self):
+
+        return {
+            'id': self.id,
+            'task_service_id': self.task_service_id,
+            'domain': self.domain,
+            'url_hash': self.url_hash,
+            'url': self.url,
+            'wp_url': self.wp_url,
+            'multi_page_urls': self.multi_page_urls or [],
+            'url_structure_type': self.url_structure_type,
+            'title': self.title,
+            'meta_keywords': self.meta_keywords,
+            'meta_description': self.meta_description,
+            'meta_jdoc': self.meta_jdoc or {},
+            'cover': self.cover,
+            'author': self.author,
+            'category': self.category,
+            'categories': self.categories,
+            'content': self.content,
+            'len_char': self.len_char or 0,
+            'content_h1': self.content_h1 or '',
+            'content_h2': self.content_h2 or '',
+            'content_p': self.content_p or '',
+            'len_p': self.len_p or 0,
+            'content_image': self.content_image or '',
+            'len_img': self.len_img or 0,
+            'publish_date': self.publish_date,
+            'content_hash': self.content_hash,
+            'content_xpath': self.content_xpath,
+            # '_ctime': self._ctime,
+            # '_mtime': self._mtime
+        }
+
 
 class WebpagesPartnerAi(db.Model):
     __tablename__ = 'webpages_partner_ai'
@@ -272,8 +318,8 @@ class WebpagesPartnerAi(db.Model):
     content_hash = Column(String(256), nullable=True)
     multi_page_urls = Column(postgresql.ARRAY(Text, dimensions=1))
     url = Column(String(1000), nullable=False)
-    title = Column(Text, nullable=False)
-    author = Column(String(100), nullable=False)
+    title = Column(Text, nullable=True)
+    author = Column(String(100), nullable=True)
     meta_jdoc = Column(postgresql.JSONB(
         none_as_null=False, astext_type=None), nullable=True)
     cover = Column(Text, nullable=True)
@@ -288,6 +334,46 @@ class WebpagesPartnerAi(db.Model):
     _mtime = Column(DateTime(
         timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
+    def to_inform(self):
+        '''
+        return only the required key/value for ai_a_crawler()
+        '''
+        return {
+            'id': self.id,
+            # 'request_id': self.task_service.request_id, # check!
+            'task_service_id': self.task_service_id,
+            'domain': self.domain,
+            'url_hash': self.url_hash,
+            'url': self.url,
+            # 'wp_url': self.wp_url,
+            # 'multi_page_urls': self.multi_page_urls,
+            'title': self.title,
+            'publish_date': self.publish_date,
+            # 'content_hash': self.content_hash,
+        }
+
+    def to_dict(self):
+
+        return {
+            'id': self.id,
+            'task_service_id': self.task_service_id,
+            'domain': self.domain,
+            'url_hash': self.url_hash,
+            'url': self.url,
+            'multi_page_urls': self.multi_page_urls or [],
+            'title': self.title,
+            'meta_jdoc': self.meta_jdoc or {},
+            'cover': self.cover,
+            'author': self.author,
+            'content': self.content,
+            'content_h1': self.content_h1 or '',
+            'content_h2': self.content_h2 or '',
+            'content_p': self.content_p or '',
+            'content_image': self.content_image or '',
+            'publish_date': self.publish_date,
+            'content_hash': self.content_hash,
+        }
+
 
 class WebpagesNoService(db.Model):
     __tablename__ = 'webpages_noservice'
@@ -300,10 +386,10 @@ class WebpagesNoService(db.Model):
     domain = Column(String(500), nullable=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     content_hash = Column(String(256), index=True, nullable=True)
-    multi_page_urls = Column(postgresql.ARRAY(Text, dimensions=1))
+    # multi_page_urls = Column(postgresql.ARRAY(Text, dimensions=1))
     url = Column(String(1000), nullable=False)
-    title = Column(Text, nullable=False)
-    author = Column(String(100), nullable=False)
+    title = Column(Text, nullable=True)
+    author = Column(String(100), nullable=True)
     meta_jdoc = Column(postgresql.JSONB(
         none_as_null=False, astext_type=None), nullable=True)
     cover = Column(Text, nullable=True)
@@ -363,11 +449,31 @@ class DomainInfo(db.Model):
     __tablename__ = 'domain_info'
 
     id = Column(Integer, primary_key=True)
-    domain = Column(String(500), nullable=True)
-    rule = Column(postgresql.JSONB(
+    domain = Column(String(500), nullable=False, unique=True)
+    partner_id = Column(String(64), nullable=True)
+    rules = Column(postgresql.JSONB(
         none_as_null=False, astext_type=None), nullable=True)  # to be checked!
+
+    xpath = Column(postgresql.ARRAY(Text, dimensions=1))
+    e_xpath = Column(postgresql.ARRAY(Text, dimensions=1))
+    category = Column(postgresql.ARRAY(Text, dimensions=1))
+    e_category = Column(postgresql.ARRAY(Text, dimensions=1))
+    authorList = Column(postgresql.ARRAY(Text, dimensions=1))
+    e_authorList = Column(postgresql.ARRAY(Text, dimensions=1))
+    regex = Column(postgresql.ARRAY(Text, dimensions=1))
+    e_title = Column(postgresql.ARRAY(Text, dimensions=1))
+    syncDate = Column(postgresql.ARRAY(Text, dimensions=1))
+    page = Column(postgresql.ARRAY(Text, dimensions=1))
+    delayday = Column(postgresql.ARRAY(Text, dimensions=1))
+    sitemap = Column(postgresql.ARRAY(Text, dimensions=1))
+
+    _ctime = Column(DateTime(timezone=False),
+                    default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(
+        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+
     __table_args__ = (
-        Index('idx_domain_info_rule_gin', rule, postgresql_using="gin"),
+        Index('idx_domain_info_rules_gin', rules, postgresql_using="gin"),
     )
 
 

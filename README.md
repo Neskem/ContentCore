@@ -14,14 +14,15 @@
 ### Prd env & spec
 | Machine | FQDN/IP | CPU | RAM | DISK | Pub_IP |
 |:-------:|:--------:|:---:|:---:|:----:|:-----:|
-| CC server | 192.168.18.? | 10vCPU | 38G | 100G | Y |
+| CC Server | 192.168.18.? | 10vCPU | 38G | 100G | Y |
 | CC Redis | 192.168.18.? | 2vCPU | 15G | 60G | N |
 | CC PSQL | 192.168.18.? | 6vCPU | 30G |400G | N |
 
-
-* CC service
-* CC PSQL
-* CC Redis
+### todo list
+1. selenium for infinity page
+2. extract domain/bsp specific rules from code
+2. og and item parser
+3. study bs4
 
 ### Installation
 #### IDC dev env

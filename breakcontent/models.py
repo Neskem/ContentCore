@@ -23,7 +23,7 @@ class TaskMain(db.Model):
     task_noservice = relationship(
         "TaskNoService", back_populates="task_main", uselist=False, foreign_keys='TaskNoService.task_main_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
-    url = Column(String(1000), nullable=False, unique=True)
+    url = Column(String(1000), nullable=False)
     # request_id = Column(String(256), index=True, nullable=True)
     request_id = Column(String(256), nullable=True)
     partner_id = Column(String(64), nullable=True)
@@ -31,19 +31,14 @@ class TaskMain(db.Model):
     generator = Column(String(100), nullable=True)
     # generate many from one
     parent_url = Column(String(1000), nullable=True)
-    # is_multipage = Column(Boolean, nullable=True)
-    # task_service_id = Column(Integer, nullable=True)
-    # task_noservice_id = Column(Integer, nullable=True)
-    # notify AC when the task is finished
+
+    # notify ac after crawler done, no matter partner or non-partner
     status = Column(Enum('pending', 'doing', 'done',
-                         'failed', name='status_tm'), default='pending', index=True)
-    notify_status = Column(
-        Enum('yes', 'no', name='notify_status'), default='no')
-    notify_time = Column(DateTime(timezone=False), nullable=True)
-    # return article data as AC requested
-    article_send_status = Column(
-        Enum('yes', 'no', name='article_send_status'), default='no')
-    article_send_time = Column(DateTime(timezone=False), nullable=True)
+                         name='status_tm'), default='pending', index=True)
+    doing_time = Column(DateTime(timezone=False), nullable=True)
+    # notify_ac_time
+    done_time = Column(DateTime(timezone=False), nullable=True)
+    # notify_ac_time = Column(DateTime(timezone=False), nullable=True)
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)
     _mtime = Column(DateTime(
@@ -69,22 +64,21 @@ class TaskService(db.Model):
     webpages_partner_ai = relationship("WebpagesPartnerAi", back_populates="task_service", uselist=False,
                                        foreign_keys='WebpagesPartnerAi.task_service_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), unique=True, nullable=False)
-    url = Column(String(1000), unique=True)
+    url = Column(String(1000))
     partner_id = Column(String(64), nullable=True)
     request_id = Column(String(256), index=True, nullable=True)
     page_query_param = Column(String(50), nullable=True)
     is_multipage = Column(Boolean, default=False)
     secret = Column(Boolean, default=False)
-    retry_xpath = Column(Integer, default=0)
+    # retry_xpath = Column(Integer, default=0)
     status_xpath = Column(Enum('pending', 'doing', 'done',
                                'failed', name='status_xpath'), default='pending', index=True)
-    retry_ai = Column(Integer, default=0)
+    # retry_ai = Column(Integer, default=0)
     status_ai = Column(Enum('pending', 'doing', 'done',
                             'failed', name='status_ai'), default='pending', index=True)
-    # webpages_xpath_id = Column(Integer, nullable=True)
-    # webpages_ai_id = Column(Integer, nullable=True)
-    # start datetime
-    # _stime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    # partner only
+    sent_ac_time = Column(DateTime(timezone=False), nullable=True)
+    sent_ac_ini_time = Column(DateTime(timezone=False), nullable=True)
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)
     _mtime = Column(DateTime(
@@ -106,9 +100,9 @@ class TaskService(db.Model):
             'is_multipage': self.is_multipage,
             'page_query_param': self.page_query_param,
             'secret': self.secret,
-            'retry_xpath': self.retry_xpath,
+            # 'retry_xpath': self.retry_xpath,
             'status_xpath': self.status_xpath,
-            'retry_ai': self.retry_ai,
+            # 'retry_ai': self.retry_ai,
             'status_ai': self.status_ai,
             # '_ctime': self._ctime,
             # '_mtime': self._mtime
@@ -127,10 +121,10 @@ class TaskNoService(db.Model):
                                       foreign_keys='WebpagesNoService.task_noservice_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), ForeignKey(
         'task_main.url_hash'), nullable=False, unique=True)
-    url = Column(String(1000), unique=True)
+    url = Column(String(1000))
     # request_id = Column(String(256), index=True, nullable=True)
     # secret = Column(Boolean, nullable=True)  # not required
-    retry = Column(Integer, default=0)
+    # retry = Column(Integer, default=0)
     status = Column(Enum('pending', 'doing', 'done',
                          'failed', name='task_noservice_status'), default='pending')
     # webpages_id = Column(Integer, nullable=True)
@@ -151,7 +145,7 @@ class TaskNoService(db.Model):
             'url_hash': self.url_hash,
             'url': self.url,
             # 'request_id': self.request_id,
-            'retry': self.retry,
+            # 'retry': self.retry,
             'status': self.status
         }
 
@@ -181,14 +175,14 @@ class WebpagesPartnerXpath(db.Model):
     author = Column(String(100), nullable=True)
     category = Column(String(100), nullable=True)
     categories = Column(postgresql.ARRAY(Text(), dimensions=1))
-    content = Column(Text, nullable=True)
-    len_char = Column(Integer, nullable=True)
-    content_h1 = Column(Text, nullable=True)
-    content_h2 = Column(Text, nullable=True)
-    content_p = Column(Text, nullable=True)
-    len_p = Column(Integer, nullable=True)
-    content_image = Column(Text, nullable=True)
-    len_img = Column(Integer, nullable=True)
+    content = Column(Text, default='')
+    len_char = Column(Integer, default=0)
+    content_h1 = Column(Text, default='')
+    content_h2 = Column(Text, default='')
+    content_p = Column(Text, default='')
+    len_p = Column(Integer, default=0)
+    content_image = Column(Text, default='')
+    len_img = Column(Integer, default=0)
     publish_date = Column(DateTime, nullable=True)
     content_xpath = Column(Text, nullable=True)
     _ctime = Column(DateTime(timezone=False),
@@ -429,20 +423,37 @@ class StructureData(db.Model):
 
 class UrlToContent(db.Model):
     '''
+    only partner xpath is stored
+
     record all the url_hash and its content_hash history
+
     '''
     __tablename__ = 'url_to_content'
 
     id = Column(Integer, primary_key=True)
-    request_id = Column(String(256), index=True, nullable=True)
-    url_hash = Column(String(64), nullable=False, index=True)
+    request_id = Column(String(256), nullable=True)
+    url_hash = Column(String(64), nullable=False)
     url = Column(String(1000), nullable=False)
-    content_hash = Column(String(256), index=True, nullable=True)
+    content_hash = Column(String(256), nullable=False)
+    # a tag to present if AC is informed to replace this url_hash with new one
+    replaced = Column(Boolean, default=False)
+    _ctime = Column(DateTime(timezone=False),
+                    default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(
+        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
     __table_args__ = (
         Index('idx_url_to_content_url_hash_content_hash',
               url_hash, content_hash, unique=True),
     )
+
+    def to_dict(self):
+        return {
+            'request_id': self.request_id,
+            'url_hash': self.url_hash,
+            'url': self.url,
+            'content_hash': self.content_hash
+        }
 
 
 class DomainInfo(db.Model):

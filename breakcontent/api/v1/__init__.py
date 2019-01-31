@@ -13,21 +13,21 @@ from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 
 @bp.errorhandler(LanceError)
 def handle_lance_error(e):
-    current_app.logger.error(f'this is a customized Exception:')
+    # current_app.logger.error(f'this is a customized Exception:')
     response = dict(status=0, message="500 Error")
-    return jsonify(response), 400
+    return jsonify(response), 500
 
 
 @bp.errorhandler(404)
 def error_404(e):
-    current_app.logger.error(f'this is a 404 error')
+    # current_app.logger.error(f'this is a 404 error')
     response = dict(status=0, message="404 Error from CC")
     return jsonify(response), 404
 
 
 @bp.errorhandler(OperationalError)
 def handle_operationalerror(e):
-    response = dict(status=0, message="DB OperationalError")
+    response = dict(status=0, message="DB OperationalError from CC")
     return jsonify(response), 500
 
 

@@ -1,8 +1,8 @@
 import re
 from urllib.parse import unquote, urlparse
 # from breakcontent.tasks import logger
-
-from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
+from sqlalchemy.orm import load_only
+from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
 from breakcontent import db
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 
@@ -22,10 +22,14 @@ import hashlib, base64
 import calendar
 import os
 import json
+import requests
 
-from breakcontent import mylogging
-import logging
-logger = logging.getLogger('')
+
+# from breakcontent import mylogging
+# import logging
+# logger = logging.getLogger('default')
+
+from breakcontent import logger
 
 def bp_test_logger():
     logger.debug('run bp_test_logger()...')
@@ -64,7 +68,8 @@ class InformAC():
         'secret': False,
         'has_page_code': None,
         'quality': None,
-        'zi_sync_rule': None,
+        'zi_sync': True,
+        'zi_defy': set(),
         'status': True
     }
 
@@ -73,21 +78,77 @@ class InformAC():
             setattr(self, k, v)
 
     def to_dict(self):
-        return {
+
+        data = {
             'url_hash': self.url_hash,
-            'parent_url': self.parent_url,
+            'parent_url': self.parent_url, # yet
             'url': self.url,
-            'old_url_hash': self.old_url_hash,
-            'content_update': self.content_update,
+            'old_url_hash': self.old_url_hash, # todo
+            'content_update': self.content_update, # done
             'request_id': self.request_id,
-            'publish_date': self.publish_date,
-            'url_structure_type': self.url_structure_type,
+            'publish_date': str(self.publish_date), # for JSON transfer
+            'url_structure_type': self.url_structure_type, # yet
             'secret': self.secret,
             'has_page_code': self.has_page_code,
             'quality': self.quality,
-            'zi_sync_rule': self.zi_sync_rule,
+            'zi_sync': self.zi_sync,
+            'zi_defy': self.zi_defy,
             'status': self.status
         }
+
+        if data['zi_sync']:
+            data.pop('zi_defy')
+
+        return data
+
+    def check_content_hash(self, wp: object):
+        '''
+        1. search for content_hash and url_hash
+        2. if not exists, insert
+        3. if exists, update
+        4. delete the old_url_hash related docs in db
+        '''
+        if not self.url_hash or not wp.content_hash:
+            return
+
+        q = {
+            'url_hash': self.url_hash,
+            'content_hash': wp.content_hash
+        }
+        idata = {
+            'request_id': self.request_id,
+            'url_hash': self.url_hash,
+            'url': self.url,
+            'content_hash': wp.content_hash,
+            'replaced': False,
+        }
+        doc = db_session_query(UrlToContent, q)
+        logger.debug(f'doc {doc}')
+        if doc:
+            logger.debug('do update')
+            # update
+            db_session_update(UrlToContent, q, idata)
+        else:
+            logger.debug('do insert')
+            # insert
+            u2c = UrlToContent(**idata)
+            db_session_insert(u2c)
+
+        q = {
+            'content_hash': wp.content_hash
+        }
+
+        u2c = UrlToContent.query.options(load_only('url_hash', 'replaced')).filter_by(**q).filter(
+            UrlToContent.url_hash != self.url_hash).order_by(UrlToContent._mtime.desc()).first()
+        if u2c and not u2c.replaced:
+            logger.debug(f'u2c {u2c}')
+            logger.debug(f'inform ac with this url_hash {u2c.url_hash}')
+            u2c.replaced = True
+            self.old_url_hash = u2c.url_hash
+            db.session.delete(wp.task_service.task_main)
+            db.session.commit()
+
+
 
 
 class DomainSetting():
@@ -103,7 +164,7 @@ class DomainSetting():
         'e_title': None,
         'syncDate': None,
         'page': None,
-        'delayday': None,
+        'delayday': 0,
         'sitemap': None
     }
 
@@ -197,6 +258,47 @@ class DomainSetting():
                     return status
         return False
 
+    def isSyncDay(self, publish_date: object):
+        '''
+        check if the published_date violates the delayday
+        '''
+        logger.debug(f'publish_date {publish_date}')
+        logger.debug(f'type(publish_date) {type(publish_date)}')
+        # if isinstance(publish_date, str):
+        #     publish_date = parser.parse(publish_date)
+
+        delaydt = publish_date + timedelta(days=self.delayday)
+
+        # if not isinstance(delaydt, datetime):
+        #     logger.error(f'delaydt {delaydt} is not a datetime object')
+        #     raise
+
+        if delaydt < datetime.utcnow():
+            return True
+        else:
+            return False
+
+
+
+
+
+def retry_request(method: str, api: str, json: dict=None, headers: dict=None, retry: int=5):
+
+    while retry:
+        if method == 'put':
+            r = requests.put(api, json=json, headers=headers)
+        elif method == 'post':
+            r = requests.post(api, json=json, headers=headers)
+        elif method == 'get':
+            r = requests.get(api, json=json, headers=headers)
+
+        if r.status_code == 200:
+            return r.json()
+        else:
+            retry -= 1
+
+    logger.error(f'failed requesting {api} {retry} times')
+    return False
 
 def parse_domain_info(data: dict) -> dict:
     '''
@@ -286,7 +388,8 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
     <note> requires a mechanism to update db when settings changed
     '''
     q = dict(domain=domain, partner_id=partner_id)
-    di = DomainInfo.query.filter_by(**q).first()
+    # di = DomainInfo.query.filter_by(**q).first()
+    di = db_session_query(DomainInfo, q)
     if di:
         # 1. get domain info from db
         domain_info = di.rules
@@ -295,6 +398,7 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
         return domain_info
     elif not di:
         # 2. get domain info from api
+        ps_domain_api_prefix = os.environ.get('PS_DOMAIN_API') or 'https://partner.breaktime.com.tw/api/config/'
         ps_domain_api = ps_domain_api_prefix + f'{partner_id}/{domain}/'
         logger.debug(f'ps_domain_api {ps_domain_api}')
         headers = {'Content-Type': "application/json"}
@@ -308,7 +412,7 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
             idata = dict(domain=domain, partner_id=partner_id,
                          rules=domain_info)
             doc = DomainInfo(**idata)
-            db_session_insert(db.session, doc)
+            db_session_insert(doc)
             logger.debug('done inserting DomainInfo db')
             return domain_info
         else:
@@ -316,10 +420,7 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
             return None
 
 
-
-
-
-def db_session_insert(db_session: object, doc: object):
+def db_session_insert(doc: object):
     '''
     handle insert
 
@@ -330,21 +431,22 @@ def db_session_insert(db_session: object, doc: object):
     retry = 0
     while 1:
         try:
-            db_session.add(doc)
-            db_session.commit()
+            db.session.add(doc)
+            db.session.commit()
             logger.debug('insert successful')
-            break
+            return True
         except OperationalError as e:
-            db_session.rollback()
+            db.session.rollback()
             if retry > 5:
                 logger.error(f'{e}: retry {retry}')
                 logger.debug('usually this should not happen')
-                raise
+                return False
+                # raise
                 # break
             retry += 1
 
 
-def db_session_update(db_session: object, table: object, query: dict, data: dict):
+def db_session_update(table: object, query: dict, data: dict):
     '''
     handle update retry
     '''
@@ -353,12 +455,12 @@ def db_session_update(db_session: object, table: object, query: dict, data: dict
         try:
             logger.debug(f'data {data}')
             table.query.filter_by(**query).update(data)
-            db_session.commit()
+            db.session.commit()
             logger.debug('update successful')
             break
         except OperationalError as e:
             logger.error(e)
-            db_session.rollback()
+            db.session.rollback()
             if retry > 5:
                 logger.error(f'{e}: retry {retry}')
                 logger.debug('usually this should not happen')
@@ -367,7 +469,7 @@ def db_session_update(db_session: object, table: object, query: dict, data: dict
             retry += 1
 
 
-def db_session_query(db_session: object, table: object, query: dict, order_by: 'method of a table col'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
+def db_session_query(table: object, query: dict, order_by: 'column name'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
     '''
     return a table record object
     '''
@@ -392,10 +494,18 @@ def db_session_query(db_session: object, table: object, query: dict, order_by: '
             # break
         except OperationalError as e:
             retry += 1
-            db_session.rollback()
+            db.session.rollback()
             if retry > 5:
                 logger.error(f'{e}, retry {retry}')
                 raise
+        except DatabaseError as e:
+            retry += 1
+            db.session.rollback()
+            logger.error(e)
+            if retry > 5:
+                logger.error(f'{e}, retry {retry}')
+                raise
+
 
 def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     '''
@@ -409,10 +519,10 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     a WebpagesNoService dict
     '''
     if partner:
-        ts = db_session_query(db.session, TaskService, dict(id=tid))
+        ts = db_session_query(TaskService, dict(id=tid))
 
     else:
-        ts = db_session_query(db.session, TaskNoService, dict(id=tid))
+        ts = db_session_query(TaskNoService, dict(id=tid))
         ts.status = 'doing'
 
     # logger.debug(f'ts {ts}')
@@ -435,7 +545,7 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
             wp = WebpagesPartnerXpath.query.filter_by(
                 url_hash=ts.url_hash).first()
             # logger.debug(f'wp {wp}')
-            db_session_update(db.session, WebpagesPartnerXpath, dict(url_hash=ts.url_hash), udata)
+            db_session_update(WebpagesPartnerXpath, dict(url_hash=ts.url_hash), udata)
             logger.debug('update WebpagesPartnerXpath succesful')
         wp_data = ts.webpages_partner_xpath.to_inform()
         try:
@@ -461,7 +571,7 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
             wp = WebpagesPartnerAi.query.filter_by(
                 url_hash=ts.url_hash).first()
             # logger.debug(f'wp {wp}')
-            db_session_update(db.session, WebpagesPartnerAi, dict(url_hash=ts.url_hash), udata)
+            db_session_update(WebpagesPartnerAi, dict(url_hash=ts.url_hash), udata)
             logger.debug('update WebpagesPartnerAi succesful')
         wp_data = ts.webpages_partner_ai.to_inform()
         try:
@@ -486,7 +596,7 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
             wp = WebpagesPartnerAi.query.filter_by(
                 url_hash=ts.url_hash).first()
             # logger.debug(f'wp {wp}')
-            db_session_update(db.session, WebpagesNoService, dict(url_hash=ts.url_hash), udata)
+            db_session_update(WebpagesNoService, dict(url_hash=ts.url_hash), udata)
             logger.debug('update WebpagesNoService succesful')
         wp_data = ts.webpages_noservice.to_inform()
         try:
@@ -526,31 +636,32 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
 
     task_service_id = wpx['task_service_id']
     tsf = TaskService.query.filter_by(id=task_service_id).first()
-    logger.debug(f'tsf {tsf}')
+    # logger.debug(f'tsf {tsf}')
 
     ds = DomainSetting(domain_info)
-    logger.debug(f'ds {ds.to_dict()}')
+    # logger.debug(f'ds {ds.to_dict()}')
 
-    a_wpx = tsf.webpages_partner_xpath # required
-    # a_wpx = WebpagesPartnerXpath() # empty
+    # required, some previous data will be brought in for comparison use
+    a_wpx = tsf.webpages_partner_xpath
     a_wpx.domain = domain
     a_wpx.task_service_id = task_service_id
-    logger.debug(f'a_wpx {a_wpx}')
-    logger.debug(f'type(a_wpx) {type(a_wpx)}')
+    # logger.debug(f'a_wpx {a_wpx}')
+    # logger.debug(f'type(a_wpx) {type(a_wpx)}')
 
     iac = InformAC()
     iac.url_hash = wpx['url_hash']
     iac.url = wpx['url']
     iac.request_id = tsf.request_id
 
-    logger.debug(f'iac {iac.to_dict()}')
+    # logger.debug(f'iac {iac.to_dict()}')
     generator = wpx.get('generator', None)
-    logger.warning('optimization required here!')
 
     secrt = Secret()
 
-    if iac.zi_sync_rule != False: # default is None
-        iac.zi_sync_rule = ds.checkSyncRule(url)
+    check_rule = ds.checkSyncRule(url)
+    iac.zi_sync = check_rule if iac.zi_sync else True
+    if not check_rule:
+        iac.zi_defy.add('regex')
 
     html = None
     if multipaged:
@@ -746,38 +857,35 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             # e_category = domain_info.get('e_category', None)
             # check if category should sync
             isc = ds.isSyncCategory(categories)
-            if iac.zi_sync_rule != False:
-                iac.zi_sync_rule = isc
+            iac.zi_sync = isc if iac.zi_sync else True
+            if not isc:
+                iac.zi_defy.add('category')
 
             a_wpx.category = category
             a_wpx.categories = categories
             # ----- parsing content_h1 ----
-            content_h1 = None
+            content_h1 = ''
             xh1 = tree.xpath('//h1/text()')
             for h1 in xh1:
                 if h1.strip():
-                    if not content_h1:
-                        content_h1 = ''
                     content_h1 += '<h1>{}</h1>'.format(h1)
             a_wpx.content_h1 = content_h1
             # ----- parsing content_h2 ----
-            content_h2 = None
+            content_h2 = ''
             xh2 = tree.xpath('//h2/text()')
             for h2 in xh2:
                 if h2.strip():
-                    if not content_h2:
-                        content_h2 = ''
                     content_h2 += '<h2>{}</h2>'.format(h2)
             a_wpx.content_h2 = content_h2
             # ----- parsing content_p ----
+            content_p = ''
+            len_p = 0
             content = etree.tostring(
                 cd[0], pretty_print=True, method='html').decode("utf-8")
             content = unquote(content)
             cd[0] = lxml.html.fromstring(content)
             xp = cd[0].xpath('.//p')
             len_xp = len(xp)
-            content_p = ''
-            len_p = 0
             for p in xp:
                 txt = remove_html_tags(etree.tostring(
                     p, pretty_print=True, method='html').decode("utf-8"))
@@ -1012,8 +1120,28 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                                       published_dates[2].strip())
                     publish_date = "{}-{:02d}-{:02d}".format(
                         int(groups[1]), int(groups[2]), int(groups[3]))
+
+            if not publish_date and ds.delayday:
+                logger.critical(f'failed to parse publish_date for {url}')
+
+            # assume all the parsed publish_date is in TW format, must convert them to utc before storing them in psql db
+
+            # logger.debug(f'before {publish_date}')
+            # ignore the time zone str if any
+            publish_date = publish_date.split('+')[0]
+            publish_date = dateparser.parse(publish_date, date_formats=['%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
+
+            # logger.debug(publish_date)
+            # logger.debug(f'after {publish_date}')
+            # logger.debug(f'publish_date type {type(publish_date)}')
+
             a_wpx.publish_date = publish_date
             iac.publish_date = publish_date
+
+            isd = ds.isSyncDay(publish_date)
+            iac.zi_sync = isd if iac.zi_sync else True
+            if not isd:
+                iac.zi_defy.add('delayday')
             # ----- parsing title ----
             title = None
             x_title = tree.xpath('/html/head/title/text()')
@@ -1113,8 +1241,10 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             # i_author = domain_info.get('authorList', None)
             # e_author = domain_info.get('e_authorList', None)
             isa = ds.isSyncAuthor(author)
-            if iac.zi_sync_rule != False:
-                iac.zi_sync_rule = isa
+            iac.zi_sync = isa if iac.zi_sync else True
+            if not isa:
+                iac.zi_defy.add('authorList')
+
             a_wpx.author = author
             # ----- removing style ----
             for style in cd[0].xpath("//style"):
@@ -1200,6 +1330,9 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             m = hashlib.sha1(content_hash.encode('utf-8'))
             content_hash = partner_id + '_' + m.hexdigest()
             logger.debug(f'content_hash: {content_hash}')
+
+            if a_wpx.content_hash and a_wpx.content_hash != content_hash:
+                iac.content_update = True
             a_wpx.content_hash = content_hash
             # ----- check if publish_date changed -----
             # todo
@@ -1240,7 +1373,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
     else:
         logger.error(f'requesting {url} failed!')
         # request failed goes here
-        tsf.retry_xpath += 1
+        # tsf.retry_xpath += 1
         db.session.commit()
         iac.status = False
         return a_wpx, iac

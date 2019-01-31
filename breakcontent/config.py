@@ -1,6 +1,7 @@
 from celery.schedules import crontab
 import os
 
+
 DEBUG = os.environ.get('DEBUG', False)
 
 CONTAINER_TAG = os.environ.get('CONTAINER_TAG', '')
@@ -38,23 +39,55 @@ ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
 # defines how tasks are sent into broker, which task to which queue
 CELERY_ROUTES = {
+    # aicrawler
     'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
     'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},
+    # xpcrawler
+    'breakcontent.tasks.xpath_single_crawler': {'queue': 'xpcrawler'},
+    # cpmcrawler
+    'breakcontent.tasks.xpath_multi_crawler': {'queue': 'xpmcrawler'},
+    # others will go to 'default' queue
+
 }
 
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
 CELERYBEAT_SCHEDULE = {
-    # 'task_creator0': {
-    #     'task': 'breakcontent.tasks.task_creator',
-    #     'schedule': crontab(minute='*'),
-    #     'args': ([0])
-    # },
-    # 'do_task': {
-    #     'task': 'breakcontent.tasks.do_task',
-    #     'schedule': crontab(minute='*'),
-    #     'args': ([1])
-    # },
-
+    'create_tasks_1': {
+        'task': 'breakcontent.tasks.create_tasks',
+        'schedule': crontab(minute='*'),
+        'args': ([1]),
+        'options': {'queue': 'postman'}
+    },
+    'create_tasks_2': {
+        'task': 'breakcontent.tasks.create_tasks',
+        'schedule': crontab(minute='*/3'),
+        'args': ([2]),
+        'options': {'queue': 'postman'}
+    },
+    'create_tasks_3': {
+        'task': 'breakcontent.tasks.create_tasks',
+        'schedule': crontab(minute='*/5'),
+        'args': ([3]),
+        'options': {'queue': 'postman'}
+    },
+    'create_tasks_4': {
+        'task': 'breakcontent.tasks.create_tasks',
+        'schedule': crontab(minute='*/10'),
+        'args': ([4]),
+        'options': {'queue': 'postman'}
+    },
+    'create_tasks_5': {
+        'task': 'breakcontent.tasks.create_tasks',
+        'schedule': crontab(minute='*/30'),
+        'args': ([5]),
+        'options': {'queue': 'postman'}
+    },
+    'create_tasks_6': {
+        'task': 'breakcontent.tasks.create_tasks',
+        'schedule': crontab(hour='0'),  # trigger at midnight
+        'args': ([6]),
+        'options': {'queue': 'postman'}
+    },
 }
 
 

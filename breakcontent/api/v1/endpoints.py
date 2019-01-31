@@ -5,34 +5,13 @@ from breakcontent import db
 from breakcontent.helper import api_ok
 import json
 from breakcontent.api import errors
-from breakcontent.api.v1 import alan
-# from breakcontent.api.v1.alan import AlanErrorClass
+import datetime
 
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 from breakcontent.utils import db_session_insert, db_session_update, db_session_query, parse_domain_info, bp_test_logger
 
 
 bp = Blueprint('endpoints', __name__)
-
-
-@bp.route('/test', methods=['POST'])
-@headers({'Cache-Control': 's-maxage=0, max-age=0'})
-@cross_origin()
-def test():
-    '''
-    curl -v -X POST 'http://localhost:8100/v1/test' -H 'Content-Type: application/json'
-
-    '''
-    res = {'msg': '', 'status': False}
-
-    from breakcontent.tasks import test_task
-    test_task.delay()
-
-    res.update({
-        'msg': 'ok',
-        'status': True
-    })
-    return jsonify(res), 200
 
 
 @bp.route('/task', methods=['POST'])
@@ -43,6 +22,9 @@ def init_task():
     # insert singlepage partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
 
+    # only url_hash changed
+    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "aaaa2aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
+
     # insert multipage partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932?page=1", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
@@ -51,6 +33,8 @@ def init_task():
 
     # insert not partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "test2", "url": "test2", "url_hash": "test2", "priority": 1, "generator": "test2", "notexpected": "test2"}'
+
+    if {"500": "blablabla"} exists return 500
 
     # 20190123 update
     get request_id from header
@@ -89,6 +73,8 @@ def init_task():
         if i not in required + optional:
             current_app.logger.warning(
                 f'drop unexpected key {i}:{data[i]} from input payload')
+            if i == '500':
+                return jsonify(res), 500
         else:
             odata[i] = data[i]
 
@@ -158,6 +144,9 @@ def get_content(url_hash):
 
     <example>
     curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/content/a6d62aaef4856b23d7d8016e4e77409001d999fa'
+
+    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/content/2151238f566088dd8f5b56857938f28dced4d899'
+
     '''
 
     res = {'msg': '', 'status': False}
@@ -167,6 +156,67 @@ def get_content(url_hash):
     res.update(data)
     # wpxf_json = json.dumps(wpxf.to_ac())
     # current_app.logger.debug(f'wpxf_json {wpxf_json}')
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
+    # record sent_ac_time/sent_ac_ini_time in TaskMain
+    wpxf.task_service.sent_ac_time = datetime.datetime.utcnow()
+    if not wpxf.task_service.sent_ac_ini_time:
+        wpxf.task_service.sent_ac_ini_time = datetime.datetime.utcnow()
+    db.session.commit()
+    return jsonify(res), 200
+
+
+@bp.route('/partner/setting/<partner_id>/<domain>', methods=['PUT', 'POST'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def partner_setting_add_update(partner_id, domain):
+    '''
+    curl -v -X PUT -H 'Content-Type: application/json' 'http://localhost:8100/v1/partner/setting/3WYST18/www.kocpc.com.tw' -d '{"xpath": "blablabla"}'
+
+    this is a sync func
+    '''
+    current_app.logger.debug('run partner_setting_add_update()...')
+
+    q = dict(domain=domain, partner_id=partner_id)
+    data = request.json  # data should be a dict
+    res = {'msg': '', 'status': False}
+    idata = dict(rules=data)
+    idata.update(q)
+
+    di = DomainInfo.query.filter_by(**q).first()
+
+    if di:
+        # update no matter what
+        db_session_update(db.session, DomainInfo, q, idata)
+    else:
+        # insert
+        doc = DomainInfo(**idata)
+        db_session_insert(db.session, doc)
+
+    res = {'msg': 'ok', 'status': True}
+    return jsonify(res), 200
+
+# ===== Below are for debug use =====
+
+
+@bp.route('/test', methods=['GET'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def test():
+    '''
+    curl -v -X POST 'http://localhost:8100/v1/test' -H 'Content-Type: application/json'
+
+    '''
+    res = {'msg': '', 'status': False}
+
+    from breakcontent.tasks import test_task
+    test_task.delay()
+
+    current_app.logger.debug('run bp_test_logger()...')
+    bp_test_logger()
+
     res.update({
         'msg': 'ok',
         'status': True
@@ -199,50 +249,17 @@ def error_handler(etype):
         # except Exception as e:
         #     raise
         tmp = adict['b']
-    elif etype == 5:
-        current_app.logger.debug('alan error test')
-        try:
-            alan.sub_error()
-        except:
-            pass
-        # aec = AlanErrorClass()
-        # try:
-        #     aec.sub_error()
-        # except Exception as e:
-        #     pass
-        return jsonify(res), 200
+    # elif etype == 5:
+    #     current_app.logger.debug('alan error test')
+    #     try:
+    #         alan.sub_error()
+    #     except:
+    #         pass
+    #     # aec = AlanErrorClass()
+    #     # try:
+    #     #     aec.sub_error()
+    #     # except Exception as e:
+    #     #     pass
+    #     return jsonify(res), 200
     elif etype == 6:
         pass
-
-
-@bp.route('/partner/setting/<partner_id>/<domain>', methods=['PUT', 'POST'])
-@headers({'Cache-Control': 's-maxage=0, max-age=0'})
-@cross_origin()
-def partner_setting_add_update(partner_id, domain):
-    '''
-    curl -v -X PUT -H 'Content-Type: application/json' 'http://localhost:8100/v1/partner/setting/3WYST18/www.kocpc.com.tw' -d '{"xpath": "blablabla"}'
-
-    this is a sync func
-    '''
-    current_app.logger.debug('run partner_setting_add_update()...')
-    bp_test_logger()
-
-    q = dict(domain=domain, partner_id=partner_id)
-    data = request.json  # data should be a dict
-    res = {'msg': '', 'status': False}
-    idata = dict(rules=data)
-    idata.update(q)
-
-    di = DomainInfo.query.filter_by(**q).first()
-
-    if di:
-        # update no matter what
-        db_session_update(db.session, DomainInfo, q, idata)
-
-    else:
-        # insert
-        doc = DomainInfo(**idata)
-        db_session_insert(db.session, doc)
-
-    res = {'msg': 'ok', 'status': True}
-    return jsonify(res), 200

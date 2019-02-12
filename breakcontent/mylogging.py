@@ -93,7 +93,7 @@ MY_LOGGINGS = {
             "handlers": ['console', 'file']
         }
     },
-    "disable_existing_loggers": True,
+    "disable_existing_loggers": False,
 }
 
 logging.config.dictConfig(MY_LOGGINGS)

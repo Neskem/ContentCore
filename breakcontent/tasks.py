@@ -1,5 +1,5 @@
 from breakcontent.factory import create_celery_app
-from breakcontent.utils import Secret, InformAC, DomainSetting, db_session_insert, db_session_query, db_session_update, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
+from breakcontent.utils import Secret, InformAC, DomainSetting, db_session_query, db_session_update, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
 
 from breakcontent.utils import mercuryContent, prepare_crawler, ai_a_crawler
 
@@ -54,59 +54,52 @@ def upsert_main_task(data: dict):
     upsert doc in TaskMain, TaskService and TaskNoService
     '''
     logger.debug(f'data: {data}')
-    r_required = [
+    task_required = [
         'url_hash',
         'url',
         'request_id',
         'partner_id',
     ]
-    rdata = {k: v for (k, v) in data.items() if k in r_required}
+    task_data = {k: v for (k, v) in data.items() if k in task_required}
 
-    try:
-        logger.debug('start inserting')
-        # logger.debug(f'data {data}')
-        # logger.debug(f'rdata {rdata}')
-        tm = TaskMain(**data)
-        if data.get('partner_id', None):
-            tm.task_service = TaskService(**rdata)
-        else:
-            rdata.pop('partner_id')
-            tm.task_noservice = TaskNoService(**rdata)
-        db_session_insert(tm)
-        logger.debug(f'done insert')
-    except IntegrityError as e:
-        logger.warning(e)
-        db.session.rollback()
-        logger.debug('update TaskMain...')
-        q = {
-            'url_hash': data['url_hash']
-        }
+    q = {
+        'url_hash': data['url_hash']
+    }
+    udata = {
+        'status': 'pending',
+        'doing_time': None,
+        'done_time': None
+    }
+    data.update(udata)
+    tm = TaskMain(**data)
+    tm.upsert(q)
+
+    # tm = tm.select(q)
+    logger.debug(f'tm.id {tm.id}')
+    if data.get('partner_id', None):
         udata = {
-            'status': 'pending',
-            'doing_time': None,
-            'done_time': None
+            'task_main_id': tm.id, # for insert use
+            'status_ai': 'pending',
+            'status_xpath': 'pending',
+            # 'retry_ai': 0,
+            # 'retry_xpath': 0
         }
-        data.update(udata)
-        db_session_update(TaskMain, q, data)
-        if data.get('partner_id', None):
-            udata = {
-                'status_ai': 'pending',
-                # 'retry_ai': 0,
-                'status_xpath': 'pending',
-                # 'retry_xpath': 0
-            }
-            rdata.update(udata)
-            db_session_update(TaskService, q, rdata)
-            logger.debug('done update for partner')
-        else:
-            rdata.pop('partner_id')
-            udata = {
-                'status': 'pending',
-                # 'retry': 0,
-            }
-            rdata.update(udata)
-            db_session_update(TaskNoService, q, rdata)
-            logger.debug('done update for non partner')
+        task_data.update(udata)
+        ts = TaskService(**task_data)
+        ts.upsert(q) # for insert
+        # logger.debug(f'tm.task_service {tm.task_service}')
+        # logger.debug(f'tm {tm}')
+    else:
+        udata = {
+            'task_main_id': tm.id, # for insert use
+            'status': 'pending',
+            # 'retry': 0,
+        }
+        task_data.update(udata)
+        tns = TaskNoService(**task_data)
+        tns.upsert(q)
+
+    logger.debug('upsert successful')
 
 
 @celery.task()
@@ -115,45 +108,64 @@ def create_tasks(priority):
     update status (pending > doing) and generate tasks
     '''
     logger.debug(f"run create_tasks()...")
-    with db.session.no_autoflush:
+    # with db.session.no_autoflush:
 
-        q = dict(priority=priority, status='pending')
-        tml = db_session_query(TaskMain, q,
-                               order_by=TaskMain._mtime, asc=True, limit=10)
+    q = dict(priority=priority, status='pending')
+    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=10)
+    # tml = db_session_query(TaskMain, q,
+                           # order_by=TaskMain._mtime, asc=True, limit=10)
 
-        logger.debug(f'len {len(tml)}')
-        if len(tml) == 0:
-            logger.debug(f'no result, quit')
-            return
+    logger.debug(f'len {len(tml)}')
+    if len(tml) == 0:
+        logger.debug(f'no result, quit')
+        return
 
-        for tm in tml:
-            logger.debug(f'update {tm}...')
-            tm.status = 'doing'
-            tm.doing_time = datetime.datetime.utcnow()
-            db.session.commit()
+    for tm in tml:
+        logger.debug(f'update {tm}...')
+        # tm.status = 'doing'
+        # tm.doing_time = datetime.datetime.utcnow()
+        # tm.commit()
+        q = dict(url_hash=tm.url_hash)
+        data = {
+            'status': 'doing',
+            'doing_time': datetime.datetime.utcnow()
+        }
+        tm.upsert(q, data)
 
-            if tm.task_service:
-                logger.debug(f'update {tm.task_service}...')
-                udata = {
-                    'status_ai': 'doing',
-                    'status_xpath': 'doing',
-                }
-                # TaskService.query.filter_by(
-                # id=tm.task_service.id).update(udata)
-                q = {'id': tm.task_service.id}
-                db_session_update(TaskService, q, udata)
-                prepare_task.delay(tm.task_service.to_dict())
+        # return # Lance debug
+        if tm.task_service:
+            logger.debug(f'update {tm.task_service}...')
+            udata = {
+                'url_hash': tm.url_hash,
+                'status_ai': 'doing',
+                'status_xpath': 'doing',
+            }
+            # TaskService.query.filter_by(
+            # id=tm.task_service.id).update(udata)
+            q = {'id': tm.task_service.id}
+            # db_session_update(TaskService, q, udata)
+            # tm.task_service = TaskService(**udata)
+            # tm.task_service.status_ai = 'doing'
+            # tm.task_service.status_xpath = 'doing'
+            tm.task_service.upsert(q, udata)
+            prepare_task.delay(tm.task_service.to_dict())
 
-            if tm.task_noservice:
-                logger.debug(f'update {tm.task_noservice}...')
-                udata = {'status': 'doing'}
-                # TaskNoService.query.filter_by(
-                # id=tm.task_noservice.id).update(udata)
-                q = {'id': tm.task_noservice.id}
-                db_session_update(TaskNoService, q, udata)
-                prepare_task.delay(tm.task_noservice.to_dict())
+        if tm.task_noservice:
+            logger.debug(f'update {tm.task_noservice}...')
+            udata = {
+                'url_hash': tm.url_hash,
+                'status': 'doing'
+            }
+            # TaskNoService.query.filter_by(
+            # id=tm.task_noservice.id).update(udata)
+            q = {'id': tm.task_noservice.id}
+            # db_session_update(TaskNoService, q, udata)
+            # tm.task_noservice = TaskNoService(**udata)
+            # tm.task_noservice.status = 'doing'
+            tm.task_noservice.upsert(q, udata)
+            prepare_task.delay(tm.task_noservice.to_dict())
 
-        logger.debug('done sending a batch of tasks to broker')
+    logger.debug('done sending a batch of tasks to broker')
 
 
 @celery.task()
@@ -185,11 +197,18 @@ def prepare_task(task: dict):
             if domain_info.get('page', None) and domain_info['page'] != '':
                 # preparing for multipage crawler
                 page_query_param = domain_info['page'][0]
-                tsf = db_session_query(TaskService, dict(id=task['id']))
-                tsf.is_multipage = True
-                tsf.page_query_param = page_query_param
-                db.session.commit()
-                logger.debug('update successful')
+                # tsf = db_session_query(TaskService, dict(id=task['id']))
+                q = dict(id=task['id'])
+                tsf = TaskService().select(q)
+                udata = {
+                    'is_multipage': True,
+                    'page_query_param': page_query_param
+                }
+                # tsf.is_multipage = True
+                # tsf.page_query_param = page_query_param
+                tsf.upsert(q, udata)
+                # db.session.commit()
+                # logger.debug('update successful')
 
                 mp_url = url
                 if page_query_param:
@@ -217,10 +236,13 @@ def prepare_task(task: dict):
                     if resp_data:
                         logger.debug(f'resp_data {resp_data}')
                         logger.debug('inform AC successful')
-                        tmf = db_session_query(
-                            TaskMain, dict(id=tsf.task_main_id))
-                        db.session.delete(tmf)
-                        db.session.commit()
+                        # tmf = db_session_query(
+                            # TaskMain, dict(id=tsf.task_main_id))
+                        q = dict(id=tsf.task_main_id)
+                        tmf = TaskMain().select(q)
+                        tmf.delete()
+                        # db.session.delete(tmf)
+                        # db.session.commit()
                     else:
                         logger.error(f'inform AC failed')
 
@@ -246,6 +268,7 @@ def prepare_task(task: dict):
 
     else:
         # not partner goes here
+        # to do
         pass
 
 
@@ -269,19 +292,20 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     logger.debug(f'start to crawl single-paged url on tid {tid}')
     # logger.debug(f'tid type {type(tid)}')
     # iac = InformAC()
-    wpx = prepare_crawler(tid, partner=True, xpath=True)
+    wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
     # logger.debug(f'wpx {wpx}')
 
-    a_wpx, inform_ac = xpath_a_crawler(wpx, partner_id, domain, domain_info)
+    a_wpx, inform_ac = xpath_a_crawler(wpx_dict, partner_id, domain, domain_info)
     logger.debug(f'a_wpx from xpath_a_crawler(): {a_wpx}')
     logger.debug(f'inform_ac {inform_ac.to_dict()}')
 
     wpx_data = a_wpx.to_dict()
     # WebpagesPartnerXpath.query.filter_by(
     # id=a_wpx.id).update(wpx_data)
-
-    db_session_update(WebpagesPartnerXpath,
-                      dict(id=a_wpx.id), wpx_data)
+    q = dict(id=a_wpx.id)
+    a_wpx.update(q, wpx_data)
+    # db_session_update(WebpagesPartnerXpath,
+                      # dict(id=a_wpx.id), wpx_data)
     # request_id = wpx_data['request_id']
     # logger.debug(f'request_id {request_id}')
     logger.debug('update successful, crawler completed')
@@ -321,8 +345,8 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     '''
     logger.debug(f'start to crawl multipaged url on tid {tid}')
 
-    wpx = prepare_crawler(tid, partner=True, xpath=True)
-    url = wpx['url']
+    wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
+    url = wpx_dict['url']
     page_query_param = domain_info['page'][0]
 
     # logger.debug(f'url {url}')
@@ -348,9 +372,9 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
             i_url = f'{url}?{page_query_param}={page_num}'
 
         # replace url
-        wpx['url'] = i_url
+        wpx_dict['url'] = i_url
         a_wpx, inform_ac = xpath_a_crawler(
-            wpx, partner_id, domain, domain_info, multipaged=True)
+            wpx_dict, partner_id, domain, domain_info, multipaged=True)
 
         if not inform_ac.status:
             logger.debug(f'failed to crawl {i_url}')
@@ -457,11 +481,11 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
     logger.debug('run ai_single_crawler()...')
 
     if partner_id:
-        wp = prepare_crawler(tid, partner=True, xpath=False)
-        a_wp = ai_a_crawler(wp, partner_id)
+        wp_dict = prepare_crawler(tid, partner=True, xpath=False)
+        a_wp = ai_a_crawler(wp_dict, partner_id)
     else:
-        wp = prepare_crawler(tid, partner=False, xpath=False)
-        a_wp = ai_a_crawler(wp)
+        wp_dict = prepare_crawler(tid, partner=False, xpath=False)
+        a_wp = ai_a_crawler(wp_dict)
 
     wp_data = a_wp.to_dict()
 
@@ -512,11 +536,11 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
     logger.debug('run ai_multi_crawler()...')
 
     if partner_id:
-        wp = prepare_crawler(tid, partner=True, xpath=False)
+        wp_dict = prepare_crawler(tid, partner=True, xpath=False)
         cat_wp_data = WebpagesPartnerAi().to_dict()
         logger.debug(f'cat_wp_dataf {cat_wp_data}')
 
-    url = wp['url']
+    url = wp_dict['url']
 
     if domain_info['page']:
         page_query_param = domain_info['page'][0]
@@ -532,8 +556,8 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
             i_url = f'{url}?{page_query_param}={page_num}'
 
         # replace url
-        wp['url'] = i_url
-        a_wp = ai_a_crawler(wp, partner_id, multipaged=True)
+        wp_dict['url'] = i_url
+        a_wp = ai_a_crawler(wp_dict, partner_id, multipaged=True)
         if not a_wp:
             break
         wp_data = a_wp.to_dict()

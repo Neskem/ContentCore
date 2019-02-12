@@ -23,6 +23,8 @@
 2. extract domain/bsp specific rules from code
 2. og and item parser
 3. study bs4
+4. install psql with password
+5. install redis with password
 
 ### Installation
 #### IDC dev env

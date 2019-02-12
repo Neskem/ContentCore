@@ -25,11 +25,11 @@ import json
 import requests
 
 
-# from breakcontent import mylogging
-# import logging
-# logger = logging.getLogger('default')
+from breakcontent import mylogging
+import logging
+logger = logging.getLogger('default')
 
-from breakcontent import logger
+# from breakcontent import logger
 
 def bp_test_logger():
     logger.debug('run bp_test_logger()...')
@@ -122,17 +122,19 @@ class InformAC():
             'content_hash': wp.content_hash,
             'replaced': False,
         }
-        doc = db_session_query(UrlToContent, q)
+        doc = UrlToContent().select(q)
         logger.debug(f'doc {doc}')
         if doc:
             logger.debug('do update')
             # update
-            db_session_update(UrlToContent, q, idata)
+            # db_session_update(UrlToContent, q, idata)
+            doc.update(q, idata)
         else:
             logger.debug('do insert')
             # insert
-            u2c = UrlToContent(**idata)
-            db_session_insert(u2c)
+            doc = UrlToContent(**idata)
+            # db_session_insert(u2c)
+            doc.upsert(q)
 
         q = {
             'content_hash': wp.content_hash
@@ -387,14 +389,17 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
 
     <note> requires a mechanism to update db when settings changed
     '''
+    logger.debug('start get_domain_info()...')
     q = dict(domain=domain, partner_id=partner_id)
     # di = DomainInfo.query.filter_by(**q).first()
-    di = db_session_query(DomainInfo, q)
+    di = DomainInfo().select(q)
+    logger.debug(f'di {di}')
+    # di = db_session_query(DomainInfo, q)
     if di:
         # 1. get domain info from db
         domain_info = di.rules
-        logger.debug(f'domain_info {domain_info}')
-        logger.debug(f'type(domain_info) {type(domain_info)}')
+        # logger.debug(f'domain_info {domain_info}')
+        # logger.debug(f'type(domain_info) {type(domain_info)}')
         return domain_info
     elif not di:
         # 2. get domain info from api
@@ -412,7 +417,8 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
             idata = dict(domain=domain, partner_id=partner_id,
                          rules=domain_info)
             doc = DomainInfo(**idata)
-            db_session_insert(doc)
+            doc.upsert(q)
+            # db_session_insert(doc)
             logger.debug('done inserting DomainInfo db')
             return domain_info
         else:
@@ -518,15 +524,17 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     or
     a WebpagesNoService dict
     '''
+    logger.debug('start prepare_crawler()...')
+    q = dict(id=tid)
     if partner:
-        ts = db_session_query(TaskService, dict(id=tid))
-
+        ts = TaskService().select(q)
     else:
-        ts = db_session_query(TaskNoService, dict(id=tid))
-        ts.status = 'doing'
+        ts = TaskNoService().select(q)
 
     # logger.debug(f'ts {ts}')
-
+    # q = {
+    #     'url_hash': ts.url_hash
+    # }
     udata = {
         'url_hash': ts.url_hash,
         'url': ts.url,  # should url be updated here?
@@ -534,80 +542,33 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
 
     if partner and xpath:
         ts.status_xpath = 'doing'
-        try:
-            ts.webpages_partner_xpath = WebpagesPartnerXpath(**udata)
-            db.session.commit()
-            logger.debug('insert succesful')
-        except IntegrityError as e:
-            # insert should violate unique constraint but update won't
-            db.session.rollback()
-            logger.warning(e)
-            wp = WebpagesPartnerXpath.query.filter_by(
-                url_hash=ts.url_hash).first()
-            # logger.debug(f'wp {wp}')
-            db_session_update(WebpagesPartnerXpath, dict(url_hash=ts.url_hash), udata)
-            logger.debug('update WebpagesPartnerXpath succesful')
+        ts.webpages_partner_xpath = WebpagesPartnerXpath(**udata)
+        ts.commit()
         wp_data = ts.webpages_partner_xpath.to_inform()
-        try:
-            generator = ts.task_main.generator
-            wp_data['generator'] = generator
-            logger.debug(f'generator {generator}')
-        except Exception as e:
-            # might need more script here!
-            logger.error(e)
-            raise
-
+        wp_data['generator'] = ts.task_main.generator
+        logger.debug(f'wp_data {wp_data}')
         return wp_data
+
     elif partner and not xpath:
         # prepare for ai crawler
         ts.status_ai = 'doing'
-        try:
-            ts.webpages_partner_ai = WebpagesPartnerAi(**udata)
-            db.session.commit()
-            logger.debug('insert succesful')
-        except IntegrityError as e:
-            db.session.rollback()
-            logger.warning(e)
-            wp = WebpagesPartnerAi.query.filter_by(
-                url_hash=ts.url_hash).first()
-            # logger.debug(f'wp {wp}')
-            db_session_update(WebpagesPartnerAi, dict(url_hash=ts.url_hash), udata)
-            logger.debug('update WebpagesPartnerAi succesful')
+        ts.webpages_partner_ai = WebpagesPartnerAi(**udata)
+        ts.commit()
         wp_data = ts.webpages_partner_ai.to_inform()
-        try:
-            generator = ts.task_main.generator
-            wp_data['generator'] = generator
-        except Exception as e:
-            # might need more script here!
-            logger.error(e)
-            raise
-
+        wp_data['generator'] = ts.task_main.generator
+        logger.debug(f'wp_data {wp_data}')
         return wp_data
+
     elif not partner:
         # prepare for ai crawler
         ts.status = 'doing'
-        try:
-            ts.webpages_noservice = WebpagesNoService(**udata)
-            db.session.commit()
-            logger.debug('insert succesful')
-        except IntegrityError as e:
-            db.session.rollback()
-            logger.warning(e)
-            wp = WebpagesPartnerAi.query.filter_by(
-                url_hash=ts.url_hash).first()
-            # logger.debug(f'wp {wp}')
-            db_session_update(WebpagesNoService, dict(url_hash=ts.url_hash), udata)
-            logger.debug('update WebpagesNoService succesful')
+        ts.webpages_noservice = WebpagesNoService(**udata)
+        ts.commit()
         wp_data = ts.webpages_noservice.to_inform()
-        try:
-            generator = ts.task_main.generator
-            wp_data['generator'] = generator
-        except Exception as e:
-            # might need more script here!
-            logger.error(e)
-            raise
-
+        wp_data['generator'] = ts.task_main.generator
+        logger.debug(f'wp_data {wp_data}')
         return wp_data
+
 
 
 def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, multipaged: bool=False) -> (object, object):

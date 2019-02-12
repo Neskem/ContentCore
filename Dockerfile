@@ -8,6 +8,7 @@ COPY requirements.txt /usr/src/app/
 RUN pip install -r requirements.txt
 RUN pip install uwsgi
 
+# maybe not all are necessary
 COPY . /usr/src/app
 
 COPY    entrypoint.sh /

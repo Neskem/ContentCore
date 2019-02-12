@@ -6,6 +6,14 @@ from sqlalchemy import Integer, Boolean, Enum, DateTime, String, Text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import relationship, backref
 
+# from breakcontent import logger
+import logging
+from breakcontent import mylogging
+# failed to make root logger function normally
+logger = logging.getLogger('default')
+
+from sqlalchemy.orm import load_only
+from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
 '''
 ref
 * cascade delete
@@ -15,7 +23,169 @@ https://docs.sqlalchemy.org/en/latest/orm/cascades.html
 '''
 
 
-class TaskMain(db.Model):
+class Model(db.Model):
+    '''
+    some common instance function that will be used by all model
+    '''
+
+    __abstract__ = True
+
+    def upsert(self, query: dict=None, data: dict=None):
+        '''
+        inspired by Eric's save() function in MongoEngine Models
+        '''
+        if not query:
+            query = dict(id=self.id)
+
+        # update self attr by data
+        if data:
+            for k, v in data.items():
+                setattr(self, k, v)
+        else:
+            data = self.to_dict()
+        # else:
+        #     ret_doc = self.select(query)
+        #     # logger.debug(f'ret_doc {ret_doc}')
+        #     if ret_doc:
+        #         self.id = ret_doc.id
+        #     data = self.to_dict()
+
+        # doc = self.__class__(**data)
+
+        doc = self
+
+        retry = 0
+        while 1:
+            try:
+                logger.debug(f'self {self}')
+                logger.debug(f'start inserting {doc} to {self.__tablename__}')
+                db.session.add(doc)
+                db.session.commit()
+                # logger.debug(f'query {query}')
+                ret = self.select(query)
+                self.id = ret.id
+                logger.debug(f'insert {self.__tablename__} successful')
+                break
+            except OperationalError as e:
+                db.session.rollback()
+                retry += 1
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                    raise
+            except IntegrityError as e:
+                logger.error(e)
+                logger.debug(
+                    f'insert failed, start updating {self.__tablename__}')
+                db.session.rollback()
+
+                ret_doc = self.select(query)
+                self.update(query, data)
+                logger.debug('upsert successful')
+                break
+
+    def commit(self, query: dict=None, data: dict=None):
+        try:
+            db.session.commit()
+            if query:
+                self = self.select(query)
+            logger.debug(f'self {self}')
+            logger.debug(f'commit {self.__tablename__} successful')
+        except IntegrityError as e:
+            logger.warning(e)
+            db.session.rollback()
+            self.update(query, data)
+            # don't raise
+
+    def update(self, query: dict=None, data: dict=None):
+
+        # logger.debug(f'Lance test: {dir(self)}')
+        # logger.debug(f'{self.__class__}')
+        # logger.debug(f'{dir(self.__class__)}')
+        if not query:
+            query = dict(id=self.id)
+
+        if not data:
+            data = self.to_dict()
+
+        if 'id' in data:
+            data.pop('id')
+
+        retry = 0
+        while 1:
+            try:
+                logger.debug(f'data {data}')
+                self.__class__.query.filter_by(**query).update(data)
+                db.session.commit()
+                ret = self.select(query)  # update self
+                self.id = ret.id
+                # self = ret
+                logger.debug(f'self {self}')
+                logger.debug(f'update {self.__tablename__} successful')
+                break
+            except OperationalError as e:
+                logger.error(e)
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                    logger.debug('usually this should not happen')
+                    raise
+                    # break
+                retry += 1
+
+    # @classmethod
+    def select(self, query: dict, order_by: 'column name'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
+        '''
+        return a table record object
+        '''
+        retry = 0
+        while 1:
+            try:
+                # logger.debug(f'order_by {order_by}')
+                # logger.debug(f'limit {limit}')
+                if order_by and limit:
+                    if asc:
+                        docs = self.__class__.query.filter_by(
+                            **query).order_by(order_by.asc()).limit(limit).all()
+                    else:
+                        docs = self.__class__.query.filter_by(
+                            **query).order_by(order_by.desc()).limit(limit).all()
+                    logger.debug('query many record successful')
+                    return docs
+                else:
+                    doc = self.__class__.query.filter_by(**query).first()
+                    if doc:
+                        # replace instance with query result
+                        # self = doc
+                        # logger.debug(f'self {self}')
+                        logger.debug('query a record successful')
+                        # logger.debug(f'doc {doc}')
+                        return doc
+                    else:
+                        logger.warning(
+                            f'query {query} on {self.__tablename__} found nothing!')
+                        break
+
+            except OperationalError as e:
+                retry += 1
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}, retry {retry}')
+                    raise
+            except DatabaseError as e:
+                retry += 1
+                db.session.rollback()
+                logger.error(e)
+                if retry > 5:
+                    logger.error(f'{e}, retry {retry}')
+                    raise
+
+    def delete(self):
+        logger.debug('start delete')
+        db.session.delete(self)
+        logger.debug('done delete')
+
+
+class TaskMain(Model):
     __tablename__ = 'task_main'
     id = Column(Integer, primary_key=True)
     task_service = relationship(
@@ -51,8 +221,26 @@ class TaskMain(db.Model):
     def __repr__(self):
         return f'<TaskMain(id={self.id}, url_hash={self.url_hash}, url={self.url}, request_id={self.request_id})>'
 
+    def to_dict(self):
+        # for update use
+        return {
+            'id': self.id,
+            # 'task_service': self.task_service,
+            # 'task_noservice': self.task_noservice,
+            'url_hash': self.url_hash,
+            'url': self.url,
+            'request_id': self.request_id,
+            'partner_id': self.partner_id,
+            'priority': self.priority,
+            'generator': self.generator,
+            'parent_url': self.parent_url,
+            'status': self.status,
+            'doing_time': self.doing_time,
+            'done_time': self.done_time
+        }
 
-class TaskService(db.Model):
+
+class TaskService(Model):
     __tablename__ = 'task_service'
     id = Column(Integer, primary_key=True)
     task_main_id = Column(Integer, ForeignKey(
@@ -109,7 +297,7 @@ class TaskService(db.Model):
         }
 
 
-class TaskNoService(db.Model):
+class TaskNoService(Model):
     __tablename__ = 'task_noservice'
     id = Column(Integer, primary_key=True)
     task_main_id = Column(Integer, ForeignKey(
@@ -149,8 +337,29 @@ class TaskNoService(db.Model):
             'status': self.status
         }
 
+    def update(self, query: dict=None, data: dict=None, *args, **kwargs):
+        if not query:
+            query = dict(id=self.id)
+        retry = 0
+        while 1:
+            try:
+                logger.debug(f'data {data}')
+                TaskNoService.query.filter_by(**query).update(data)
+                db.session.commit()
+                logger.debug('update successful')
+                break
+            except OperationalError as e:
+                logger.error(e)
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                    logger.debug('usually this should not happen')
+                    raise
+                    # break
+                retry += 1
 
-class WebpagesPartnerXpath(db.Model):
+
+class WebpagesPartnerXpath(Model):
     __tablename__ = 'webpages_partner_xpath'
 
     id = Column(Integer, primary_key=True)
@@ -298,8 +507,43 @@ class WebpagesPartnerXpath(db.Model):
             # '_mtime': self._mtime
         }
 
+    def insert(self, *args, **kwargs):
+        retry = 0
+        while 1:
+            try:
+                db.session.add(self)
+                db.session.commit()
+                logger.debug('insert successful')
+                break
+            except OperationalError as e:
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                retry += 1
 
-class WebpagesPartnerAi(db.Model):
+    def update(self, query: dict=None, data: dict=None, *args, **kwargs):
+        if not query:
+            query = dict(id=self.id)
+        retry = 0
+        while 1:
+            try:
+                logger.debug(f'data {data}')
+                WebpagesPartnerXpath.query.filter_by(**query).update(data)
+                db.session.commit()
+                logger.debug('update successful')
+                break
+            except OperationalError as e:
+                logger.error(e)
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                    logger.debug('usually this should not happen')
+                    raise
+                    # break
+                retry += 1
+
+
+class WebpagesPartnerAi(Model):
     __tablename__ = 'webpages_partner_ai'
 
     id = Column(Integer, primary_key=True)
@@ -368,8 +612,43 @@ class WebpagesPartnerAi(db.Model):
             'content_hash': self.content_hash,
         }
 
+    def insert(self, *args, **kwargs):
+        retry = 0
+        while 1:
+            try:
+                db.session.add(self)
+                db.session.commit()
+                logger.debug('insert successful')
+                break
+            except OperationalError as e:
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                retry += 1
 
-class WebpagesNoService(db.Model):
+    def update(self, query: dict=None, data: dict=None, *args, **kwargs):
+        if not query:
+            query = dict(id=self.id)
+        retry = 0
+        while 1:
+            try:
+                logger.debug(f'data {data}')
+                WebpagesPartnerAi.query.filter_by(**query).update(data)
+                db.session.commit()
+                logger.debug('update successful')
+                break
+            except OperationalError as e:
+                logger.error(e)
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                    logger.debug('usually this should not happen')
+                    raise
+                    # break
+                retry += 1
+
+
+class WebpagesNoService(Model):
     __tablename__ = 'webpages_noservice'
 
     id = Column(Integer, primary_key=True)
@@ -398,8 +677,44 @@ class WebpagesNoService(db.Model):
     _mtime = Column(DateTime(
         timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
+    def insert(self, *args, **kwargs):
+        retry = 0
+        while 1:
+            try:
+                db.session.add(self)
+                db.session.commit()
+                logger.debug('insert successful')
+                break
+            except OperationalError as e:
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                retry += 1
 
-class StructureData(db.Model):
+    def update(self, query: dict=None, data: dict=None, *args, **kwargs):
+        if not query:
+            query = dict(id=self.id)
+        retry = 0
+        while 1:
+            try:
+                logger.debug(f'data {data}')
+                WebpagesNoService.query.filter_by(**query).update(data)
+                db.session.commit()
+                logger.debug(f'update {self} successful')
+                break
+            except OperationalError as e:
+                logger.error(e)
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                    logger.debug('usually this should not happen')
+                    raise
+                    # break
+                retry += 1
+
+
+class StructureData(Model):
+    # to do
     __tablename__ = 'structure_data'
 
     id = Column(Integer, primary_key=True)
@@ -421,7 +736,7 @@ class StructureData(db.Model):
     )
 
 
-class UrlToContent(db.Model):
+class UrlToContent(Model):
     '''
     only partner xpath is stored
 
@@ -449,14 +764,29 @@ class UrlToContent(db.Model):
 
     def to_dict(self):
         return {
+            'id': self.id,
             'request_id': self.request_id,
             'url_hash': self.url_hash,
             'url': self.url,
             'content_hash': self.content_hash
         }
 
+    def insert(self, *args, **kwargs):
+        retry = 0
+        while 1:
+            try:
+                db.session.add(self)
+                db.session.commit()
+                logger.debug('insert successful')
+                break
+            except OperationalError as e:
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                retry += 1
 
-class DomainInfo(db.Model):
+
+class DomainInfo(Model):
     __tablename__ = 'domain_info'
 
     id = Column(Integer, primary_key=True)
@@ -487,8 +817,30 @@ class DomainInfo(db.Model):
         Index('idx_domain_info_rules_gin', rules, postgresql_using="gin"),
     )
 
+    def insert(self, *args, **kwargs):
+        retry = 0
+        while 1:
+            try:
+                db.session.add(self)
+                db.session.commit()
+                logger.debug('insert successful')
+                break
+            except OperationalError as e:
+                db.session.rollback()
+                if retry > 5:
+                    logger.error(f'{e}: retry {retry}')
+                retry += 1
 
-class BspInfo(db.Model):
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'domain': self.domain,
+            'partner_id': self.partner_id,
+            'rules': self.rules
+        }
+
+
+class BspInfo(Model):
     __tablename__ = 'bsp_info'
 
     id = Column(Integer, primary_key=True)

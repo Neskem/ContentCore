@@ -571,6 +571,12 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
 
 
 
+def check_r(r: 'response'):
+    if r.status_code == 200:
+        return True
+    else: 
+        return False   
+
 def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, multipaged: bool=False) -> (object, object):
     '''
     note: this is not a celey task function
@@ -625,21 +631,35 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
         iac.zi_defy.add('regex')
 
     html = None
+    # do_job = False
     if multipaged:
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
         headers = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
-        if crawlera_apikey:
+
+        candidate = [
+            'www.top1health.com'
+        ]
+        
+        if crawlera_apikey and domain in candidate:
             proxies = {
                 'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
             }
             r = requests.get(url, allow_redirects=True, headers=headers, proxies=proxies, verify=False)
+
+            if check_r(r):
+                pass
+            else:
+                # don't use crawlera if failed at once
+                r = requests.get(url, allow_redirects=True, headers=headers)
         else:
             r = requests.get(url, allow_redirects=True, headers=headers)
-
     else:
         r = requests.get(url, verify=False, allow_redirects=True)
-    if r.status_code == 200:
+    
+    # do_job = True
+
+    if check_r(r):
         r.encoding = 'utf-8'
         html = r.text  # full html here!
         # generator = None
@@ -1328,8 +1348,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
 
             iac.status = False
             # should I update db in this condition?
-            return a_wpx, iac
-
+            return a_wpx, iac                
 
     else:
         logger.error(f'requesting {url} failed!')

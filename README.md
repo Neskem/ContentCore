@@ -15,9 +15,18 @@ test from win
 ### Prd env & spec
 | Machine | FQDN/IP | CPU | RAM | DISK | Pub_IP |
 |:-------:|:--------:|:---:|:---:|:----:|:-----:|
-| CC Server | 192.168.18.? | 10vCPU | 38G | 100G | Y |
-| CC Redis | 192.168.18.? | 2vCPU | 15G | 60G | N |
-| CC PSQL | 192.168.18.? | 6vCPU | 30G |400G | N |
+| CC Server | 192.168.18.121 | 10vCPU | 38G | 100G | Y |
+| CC Redis | 192.168.18.122 | 2vCPU | 15G | 60G | N |
+| CC PSQL | 192.168.18.123 | 6vCPU | 30G | 400G | N |
+
+ubuntu/1qaz@WSX
+
+* copy pub_key to remote machine for passwordless login, example:
+```
+ssh-copy-id -i ~/.ssh/id_rsa ubuntu@192.168.18.121
+
+ssh ubuntu@192.168.18.121
+```
 
 ### todo list
 1. selenium for infinity page

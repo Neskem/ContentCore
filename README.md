@@ -36,8 +36,15 @@ ssh ubuntu@192.168.18.121
 4. install psql with password
 5. install redis with password
 
-### Installation
-#### IDC dev env
+### Depolyment
+* on prd (only docker image are required)
+```shell
+
+
+
+```
+
+* on dev (source code are required to speed up development)
 ```shell
 git clone blabla
 cd docker/

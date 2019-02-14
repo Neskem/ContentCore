@@ -1,4 +1,5 @@
-docker*/
+docker/
+docker_prd/
 sftp-config*.json
 # *.env
 # docker-compose.yml

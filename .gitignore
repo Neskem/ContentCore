@@ -1,4 +1,5 @@
+docker*/
 sftp-config*.json
-*.env
-docker-compose.yml
+# *.env
+# docker-compose.yml
 refresh.sh

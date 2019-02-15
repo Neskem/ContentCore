@@ -39,10 +39,17 @@ class Model(db.Model):
 
         # update self attr by data
         if data:
+            # 1. edit self
             for k, v in data.items():
                 setattr(self, k, v)
+            # 2. for insert use
+            doc = self.__class__(**data)
         else:
+            # 1. for insert use
+            doc = self
+            # 2. for update use
             data = self.to_dict()
+
         # else:
         #     ret_doc = self.select(query)
         #     # logger.debug(f'ret_doc {ret_doc}')
@@ -52,12 +59,9 @@ class Model(db.Model):
 
         # doc = self.__class__(**data)
 
-        doc = self
-
         retry = 0
         while 1:
             try:
-                logger.debug(f'self {self}')
                 logger.debug(f'start inserting {doc} to {self.__tablename__}')
                 db.session.add(doc)
                 db.session.commit()
@@ -168,6 +172,7 @@ class Model(db.Model):
             except OperationalError as e:
                 retry += 1
                 db.session.rollback()
+                logger.error(e)
                 if retry > 5:
                     logger.error(f'{e}, retry {retry}')
                     raise
@@ -403,6 +408,9 @@ class WebpagesPartnerXpath(Model):
         Index('idx_gin_meta_jdoc', meta_jdoc, postgresql_using="gin"),
     )
 
+    def __repr__(self):
+        return f'<WebpagesPartnerXpath(id={self.id}, url_hash={self.url_hash}, url={self.url}, content_hash={self.content_hash})>'
+
     def to_dict(self):
 
         return {
@@ -506,41 +514,6 @@ class WebpagesPartnerXpath(Model):
             # '_ctime': self._ctime,
             # '_mtime': self._mtime
         }
-
-    def insert(self, *args, **kwargs):
-        retry = 0
-        while 1:
-            try:
-                db.session.add(self)
-                db.session.commit()
-                logger.debug('insert successful')
-                break
-            except OperationalError as e:
-                db.session.rollback()
-                if retry > 5:
-                    logger.error(f'{e}: retry {retry}')
-                retry += 1
-
-    def update(self, query: dict=None, data: dict=None, *args, **kwargs):
-        if not query:
-            query = dict(id=self.id)
-        retry = 0
-        while 1:
-            try:
-                logger.debug(f'data {data}')
-                WebpagesPartnerXpath.query.filter_by(**query).update(data)
-                db.session.commit()
-                logger.debug('update successful')
-                break
-            except OperationalError as e:
-                logger.error(e)
-                db.session.rollback()
-                if retry > 5:
-                    logger.error(f'{e}: retry {retry}')
-                    logger.debug('usually this should not happen')
-                    raise
-                    # break
-                retry += 1
 
 
 class WebpagesPartnerAi(Model):

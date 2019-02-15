@@ -185,15 +185,17 @@ def partner_setting_add_update(partner_id, domain):
     idata = dict(rules=data)
     idata.update(q)
 
-    di = DomainInfo.query.filter_by(**q).first()
+    di = DomainInfo()
+    di.upsert(q, idata)
 
-    if di:
-        # update no matter what
-        db_session_update(db.session, DomainInfo, q, idata)
-    else:
-        # insert
-        doc = DomainInfo(**idata)
-        db_session_insert(db.session, doc)
+    # di = DomainInfo.query.filter_by(**q).first()
+    # if di:
+    #     # update no matter what
+    #     db_session_update(db.session, DomainInfo, q, idata)
+    # else:
+    #     # insert
+    #     doc = DomainInfo(**idata)
+    #     db_session_insert(db.session, doc)
 
     res = {'msg': 'ok', 'status': True}
     return jsonify(res), 200

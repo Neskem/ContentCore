@@ -542,8 +542,11 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
 
     if partner and xpath:
         ts.status_xpath = 'doing'
-        ts.webpages_partner_xpath = WebpagesPartnerXpath(**udata)
         ts.commit()
+        wpx = WebpagesPartnerXpath()
+        udata['task_service_id'] = ts.id
+        wpx.upsert(q, udata)
+        # logger.debug(f'wpx.url {wpx.url}')
         wp_data = ts.webpages_partner_xpath.to_inform()
         wp_data['generator'] = ts.task_main.generator
         logger.debug(f'wp_data {wp_data}')
@@ -617,7 +620,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
 
     iac = InformAC()
     iac.url_hash = wpx['url_hash']
-    iac.url = wpx['url']
+    iac.url = url
     iac.request_id = tsf.request_id
 
     # logger.debug(f'iac {iac.to_dict()}')

@@ -78,7 +78,7 @@ def upsert_main_task(data: dict):
     logger.debug(f'tm.id {tm.id}')
     if data.get('partner_id', None):
         udata = {
-            'task_main_id': tm.id, # for insert use
+            'task_main_id': tm.id,  # for insert use
             'status_ai': 'pending',
             'status_xpath': 'pending',
             # 'retry_ai': 0,
@@ -86,12 +86,12 @@ def upsert_main_task(data: dict):
         }
         task_data.update(udata)
         ts = TaskService(**task_data)
-        ts.upsert(q) # for insert
+        ts.upsert(q)  # for insert
         # logger.debug(f'tm.task_service {tm.task_service}')
         # logger.debug(f'tm {tm}')
     else:
         udata = {
-            'task_main_id': tm.id, # for insert use
+            'task_main_id': tm.id,  # for insert use
             'status': 'pending',
             # 'retry': 0,
         }
@@ -112,8 +112,6 @@ def create_tasks(priority):
 
     q = dict(priority=priority, status='pending')
     tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=10)
-    # tml = db_session_query(TaskMain, q,
-                           # order_by=TaskMain._mtime, asc=True, limit=10)
 
     logger.debug(f'len {len(tml)}')
     if len(tml) == 0:
@@ -122,9 +120,6 @@ def create_tasks(priority):
 
     for tm in tml:
         logger.debug(f'update {tm}...')
-        # tm.status = 'doing'
-        # tm.doing_time = datetime.datetime.utcnow()
-        # tm.commit()
         q = dict(url_hash=tm.url_hash)
         data = {
             'status': 'doing',
@@ -132,7 +127,6 @@ def create_tasks(priority):
         }
         tm.upsert(q, data)
 
-        # return # Lance debug
         if tm.task_service:
             logger.debug(f'update {tm.task_service}...')
             udata = {
@@ -140,13 +134,7 @@ def create_tasks(priority):
                 'status_ai': 'doing',
                 'status_xpath': 'doing',
             }
-            # TaskService.query.filter_by(
-            # id=tm.task_service.id).update(udata)
             q = {'id': tm.task_service.id}
-            # db_session_update(TaskService, q, udata)
-            # tm.task_service = TaskService(**udata)
-            # tm.task_service.status_ai = 'doing'
-            # tm.task_service.status_xpath = 'doing'
             tm.task_service.upsert(q, udata)
             prepare_task.delay(tm.task_service.to_dict())
 
@@ -156,12 +144,7 @@ def create_tasks(priority):
                 'url_hash': tm.url_hash,
                 'status': 'doing'
             }
-            # TaskNoService.query.filter_by(
-            # id=tm.task_noservice.id).update(udata)
             q = {'id': tm.task_noservice.id}
-            # db_session_update(TaskNoService, q, udata)
-            # tm.task_noservice = TaskNoService(**udata)
-            # tm.task_noservice.status = 'doing'
             tm.task_noservice.upsert(q, udata)
             prepare_task.delay(tm.task_noservice.to_dict())
 
@@ -237,7 +220,7 @@ def prepare_task(task: dict):
                         logger.debug(f'resp_data {resp_data}')
                         logger.debug('inform AC successful')
                         # tmf = db_session_query(
-                            # TaskMain, dict(id=tsf.task_main_id))
+                        # TaskMain, dict(id=tsf.task_main_id))
                         q = dict(id=tsf.task_main_id)
                         tmf = TaskMain().select(q)
                         tmf.delete()
@@ -295,26 +278,20 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
     # logger.debug(f'wpx {wpx}')
 
-    a_wpx, inform_ac = xpath_a_crawler(wpx_dict, partner_id, domain, domain_info)
+    a_wpx, inform_ac = xpath_a_crawler(
+        wpx_dict, partner_id, domain, domain_info)
     logger.debug(f'a_wpx from xpath_a_crawler(): {a_wpx}')
     logger.debug(f'inform_ac {inform_ac.to_dict()}')
 
     wpx_data = a_wpx.to_dict()
-    # WebpagesPartnerXpath.query.filter_by(
-    # id=a_wpx.id).update(wpx_data)
     q = dict(id=a_wpx.id)
     a_wpx.update(q, wpx_data)
-    # db_session_update(WebpagesPartnerXpath,
-                      # dict(id=a_wpx.id), wpx_data)
-    # request_id = wpx_data['request_id']
-    # logger.debug(f'request_id {request_id}')
     logger.debug('update successful, crawler completed')
 
     inform_ac.check_content_hash(a_wpx)
-
     inform_ac_data = inform_ac.to_dict()
-    # inform_ac_dict.set('request_id', request_id)
     logger.debug(f'inform_ac_data {inform_ac_data}')
+
     headers = {'Content-Type': "application/json"}
 
     resp_data = retry_request(

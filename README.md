@@ -150,18 +150,18 @@ curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/con
 
 | Parameter | Type | Default/Required | Description | Example |
 |:---------:|:----:|:----------------:|:-----------:|:-------:|
-| ```xpath``` | ```String``` | N |  |  |
-| ```e_xpath``` | ```String``` | N |  |  |
-| ```category``` | ```String``` | N |  |  |
-| ```e_category``` | ```String``` | N |  |  |
-| ```authorList``` | ```String``` | N |  |  |
-| ```e_authorList``` | ```String``` | N |  |  |
-| ```regex``` | ```String``` | N |  |  |
-| ```e_title``` | ```String``` | N |  |  |
-| ```syncDate``` | ```String``` | N |  |  |
-| ```page``` | ```String``` | N |  |  |
-| ```delayday``` | ```String``` | N |  |  |
-| ```sitemap``` | ```String``` | N |  |  |
+| ```xpath``` | `array` | Y |  |  |
+| ```e_xpath``` | `array` | N |  |  |
+| ```category``` | `array` | N |  |  |
+| ```e_category``` | `array` | N |  |  |
+| ```authorList``` | `array` | N |  |  |
+| ```e_authorList``` | `array` | N |  |  |
+| ```regex``` | `array` | Y |  |  |
+| ```e_title``` | `array` | N |  |  |
+| ```syncDate``` | `array` | N |  |  |
+| ```page``` | `array` | N |  |  |
+| ```delayday``` | `array` | N |  |  |
+| ```sitemap``` | `array` | N |  |  |
 
 
 **Example**

@@ -1,11 +1,5 @@
 version: '2'
 services:
-    redis:
-        container_name: redis
-        image: redis:4.0
-        ports:
-            - "6379:6379"
-        restart: always
     nginx:
         container_name: nginx
         image: nginx:1.12
@@ -18,14 +12,12 @@ services:
         restart: always
     web:
         container_name: web
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        # command: uwsgi --ini uwsgi.ini
-        command: python wsgi.py runserver --debug
-        # depends_on:
-        #     - redis
+        #image: cc
+        image: breaktimeinc/breaktime.contentcore
+        command: uwsgi --ini uwsgi.ini
+        #command: python wsgi.py runserver --debug
         volumes:
-           # - ..:/usr/src/app
+                #- ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -34,7 +26,7 @@ services:
             - "8700"
         ports:
             - "8700:8700"
-            - "8100:8100"
+              # - "8100:8100"
         logging:
             driver: "json-file"
             options:
@@ -42,11 +34,11 @@ services:
         restart: always
     worker:
         container_name: worker
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        #image: cc
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=2,1 -n worker.%%h
         volumes:
-           # - ..:/usr/src/app
+                #- ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -58,11 +50,11 @@ services:
         restart: always
     worker-aicrawler:
         container_name: worker-aicrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        #image: cc
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=2,1 -n worker.%%h
         volumes:
-           # - ..:/usr/src/app
+                #- ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -122,11 +114,11 @@ services:
     #     restart: always
     beat:
         container_name: beat
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        #image: cc
+        image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
         volumes:
-           # - ..:/usr/src/app
+            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -159,5 +151,7 @@ services:
 
     #         #volumes:
     #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
+
+
 
 

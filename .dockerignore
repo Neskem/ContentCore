@@ -1,0 +1,10 @@
+.git
+.gitignore
+Dockerfile
+Pipfile*
+celerybeat*
+docker*
+*.md
+sftp-config*.json
+!README.md
+

@@ -15,7 +15,7 @@ test from win
 ### Prd env & spec
 | Machine | FQDN/IP | CPU | RAM | DISK | Pub_IP |
 |:-------:|:--------:|:---:|:---:|:----:|:-----:|
-| CC Server | 192.168.18.121 | 10vCPU | 38G | 100G | Y |
+| CC Server | 192.168.18.121 | 10vCPU | 38G | 100G | 112.121.109.124 |
 | CC Redis | 192.168.18.122 | 2vCPU | 15G | 60G | N |
 | CC PSQL | 192.168.18.123 | 6vCPU | 30G | 400G | N |
 

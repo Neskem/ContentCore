@@ -574,8 +574,8 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
 def check_r(r: 'response'):
     if r.status_code == 200:
         return True
-    else: 
-        return False   
+    else:
+        return False
 
 def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, multipaged: bool=False) -> (object, object):
     '''
@@ -639,7 +639,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
         candidate = [
             'www.top1health.com'
         ]
-        
+
         if crawlera_apikey and domain in candidate:
             proxies = {
                 'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
@@ -656,7 +656,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             r = requests.get(url, allow_redirects=True, headers=headers)
     else:
         r = requests.get(url, verify=False, allow_redirects=True)
-    
+
     # do_job = True
 
     if check_r(r):
@@ -997,15 +997,6 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                     '/html/body/div[1]/div[3]/div/div/div/ul/li[2]/text()')
                 if len(published_dates) > 0:
                     publish_date = dateparser.parse(published_dates[0])
-            if publish_date == None and "thebetteraging.businesstoday.com.tw" in url:
-                published_dates = tree.xpath(
-                    '//span[contains(@class, "date")]/text()')
-                if len(published_dates) > 0:
-                    published_dates[0] = published_dates[0].replace('日期：', '')
-                    groups = re.match(r'(\d+)年(\d+)月(\d+)日',
-                                      published_dates[0].strip())
-                    publish_date = "{}-{:02d}-{:02d}".format(
-                        int(groups[1]), int(groups[2]), int(groups[3]))
 
             # bsp specific logic
             if publish_date == None and generator == "PChoc":
@@ -1348,7 +1339,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
 
             iac.status = False
             # should I update db in this condition?
-            return a_wpx, iac                
+            return a_wpx, iac
 
     else:
         logger.error(f'requesting {url} failed!')

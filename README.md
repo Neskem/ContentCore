@@ -143,7 +143,7 @@ curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/con
 
 ### Update domain specific config in CC
 **Request**
-* Endpoint: ```GET /v1/partner/setting/{partner_id}/{domain}```
+* Endpoint: ```PUT/POST /v1/partner/setting/{partner_id}/{domain}```
 
 * Header:
     - Content-Type: application/json

@@ -14,5 +14,5 @@ docker-compose up -d
 cat breakcontent.env | grep -v '^#' | grep -v '^$' | awk '{print "export "$0}'
 
 # check files in container
-docker exec -it web ls -al
+# docker exec -it web ls -al
 # copy & paste manually

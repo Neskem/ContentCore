@@ -1,5 +1,7 @@
 from breakcontent.factory import create_celery_app
-from breakcontent.utils import Secret, InformAC, DomainSetting, db_session_query, db_session_update, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
+from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
+# from breakcontent.utils import Secret, InformAC, DomainSetting, db_session_query, db_session_update, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
+
 
 from breakcontent.utils import mercuryContent, prepare_crawler, ai_a_crawler
 
@@ -39,6 +41,9 @@ def test_task():
 
 @celery.task()
 def delete_main_task(data: dict):
+    '''
+    for dev use
+    '''
     logger.debug(
         f'run delete_main_task(), down stream records will also be deleted...')
     tmd = TaskMain.query.filter_by(**data).first()
@@ -71,8 +76,8 @@ def upsert_main_task(data: dict):
         'done_time': None
     }
     data.update(udata)
-    tm = TaskMain(**data)
-    tm.upsert(q)
+    tm = TaskMain()
+    tm.upsert(q, data)
 
     # tm = tm.select(q)
     logger.debug(f'tm.id {tm.id}')
@@ -85,10 +90,8 @@ def upsert_main_task(data: dict):
             # 'retry_xpath': 0
         }
         task_data.update(udata)
-        ts = TaskService(**task_data)
-        ts.upsert(q)  # for insert
-        # logger.debug(f'tm.task_service {tm.task_service}')
-        # logger.debug(f'tm {tm}')
+        ts = TaskService()
+        ts.upsert(q, task_data)  # for insert
     else:
         udata = {
             'task_main_id': tm.id,  # for insert use
@@ -96,8 +99,8 @@ def upsert_main_task(data: dict):
             # 'retry': 0,
         }
         task_data.update(udata)
-        tns = TaskNoService(**task_data)
-        tns.upsert(q)
+        tns = TaskNoService()
+        tns.upsert(q, task_data)
 
     logger.debug('upsert successful')
 
@@ -111,7 +114,7 @@ def create_tasks(priority):
     # with db.session.no_autoflush:
 
     q = dict(priority=priority, status='pending')
-    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=10)
+    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=100)
 
     logger.debug(f'len {len(tml)}')
     if len(tml) == 0:
@@ -170,28 +173,22 @@ def prepare_task(task: dict):
         o = urlparse(url)
         domain = o.netloc
 
-        logger.debug(f'domain {domain}')
-        logger.debug(f'partner_id {partner_id}')
+        logger.debug(f'domain {domain}, partner_id {partner_id}')
 
         domain_info = get_domain_info(domain, partner_id)
-        # return # Lance debug
+
         if domain_info:
             logger.debug(f'domain_info {domain_info}')
             if domain_info.get('page', None) and domain_info['page'] != '':
                 # preparing for multipage crawler
                 page_query_param = domain_info['page'][0]
-                # tsf = db_session_query(TaskService, dict(id=task['id']))
                 q = dict(id=task['id'])
                 tsf = TaskService().select(q)
                 udata = {
                     'is_multipage': True,
                     'page_query_param': page_query_param
                 }
-                # tsf.is_multipage = True
-                # tsf.page_query_param = page_query_param
                 tsf.upsert(q, udata)
-                # db.session.commit()
-                # logger.debug('update successful')
 
                 mp_url = url
                 if page_query_param:
@@ -205,27 +202,21 @@ def prepare_task(task: dict):
                 logger.debug(f'mp_url {mp_url}')
 
                 if mp_url != url and ac_content_multipage_api:
-
                     headers = {'Content-Type': "application/json"}
                     data = {
                         'url': url,
                         'url_hash': task['url_hash'],
                         'multipage': mp_url
                     }
-
                     resp_data = retry_request(
                         'post', ac_content_multipage_api, data, headers)
 
                     if resp_data:
                         logger.debug(f'resp_data {resp_data}')
                         logger.debug('inform AC successful')
-                        # tmf = db_session_query(
-                        # TaskMain, dict(id=tsf.task_main_id))
                         q = dict(id=tsf.task_main_id)
                         tmf = TaskMain().select(q)
                         tmf.delete()
-                        # db.session.delete(tmf)
-                        # db.session.commit()
                     else:
                         logger.error(f'inform AC failed')
 
@@ -238,7 +229,6 @@ def prepare_task(task: dict):
 
             else:
                 # preparing for singlepage crawler
-
                 xpath_single_crawler.delay(
                     task['id'], partner_id, domain, domain_info)
 
@@ -251,8 +241,8 @@ def prepare_task(task: dict):
 
     else:
         # not partner goes here
-        # to do
-        pass
+        ai_single_crawler.delay(
+            task['id'])
 
 
 @celery.task()
@@ -329,7 +319,6 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     # logger.debug(f'url {url}')
     logger.debug(f'page_query_param {page_query_param}')
 
-    # return
     page_num = 0
     cat_wpx = WebpagesPartnerXpath()
     cat_wpx_data = cat_wpx.to_dict()
@@ -339,7 +328,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     cat_inform_ac_data = cat_inform_ac.to_dict()
     logger.debug(f'cat_wpx_data {cat_wpx_data}')
     logger.debug(f'cat_inform_ac_dict {cat_inform_ac_data}')
-    # return
+
     multi_page_urls = set()
     while page_num <= 40:
         page_num += 1
@@ -348,15 +337,12 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
         else:
             i_url = f'{url}?{page_query_param}={page_num}'
 
-        # replace url
         wpx_dict['url'] = i_url
         a_wpx, inform_ac = xpath_a_crawler(
             wpx_dict, partner_id, domain, domain_info, multipaged=True)
 
         if not inform_ac.status:
             logger.debug(f'failed to crawl {i_url}')
-            # cat_inform_ac.status = False
-            # ['status'] = False
             break
 
         if not inform_ac.zi_sync:
@@ -364,30 +350,14 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
                 f'{i_url} does not match the sync criteria (regex/author/category/delayday)')
             # don't break, keep crawling
 
-        # wpx_data = a_wpx.to_dict()
-
-        # inform_ac_data = inform_ac.to_dict()
-
         logger.debug(f'a_wpx from xpath_a_crawler(): {a_wpx.to_dict()}')
         logger.debug(
             f'inform_ac from xpath_a_crawler(): {inform_ac.to_dict()}')
 
         if page_num == 1:
-
             cat_wpx = a_wpx
-
-            # cat_wpx.content = cat_wpx.content if cat_wpx.content else ''
-            # cat_wpx.content_h1 = cat_wpx.content_h1 if cat_wpx.content_h1 else ''
-            # cat_wpx.content_h2 = cat_wpx.content_h2 if cat_wpx.content_h2 else ''
-            # cat_wpx.content_p = cat_wpx.content_p if cat_wpx.content_p else ''
-            # cat_wpx.content_image = cat_wpx.content_image if cat_wpx.content_image else ''
-            # cat_wpx.len_p = cat_wpx.len_p if cat_wpx.len_p else 0
-            # cat_wpx.len_img = cat_wpx.len_img if cat_wpx.len_img else 0
-            # cat_wpx.len_char = cat_wpx.len_char if cat_wpx.len_char else 0
-
-            # cat_wpx_data.update(wpx_data)
             cat_inform_ac = inform_ac
-            # cat_inform_ac_data.update(inform_ac_data)
+
             if not inform_ac.status:
                 cat_inform_ac.status = False
         else:
@@ -400,46 +370,21 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
             cat_wpx.len_img += a_wpx.len_img
             cat_wpx.len_char += a_wpx.len_char
 
-            # cat_wpx_data['content'] += wpx_data['content']
-            # cat_wpx_data['content_h1'] += wpx_data['content_h1']
-            # cat_wpx_data['content_h2'] += wpx_data['content_h2']
-            # cat_wpx_data['content_p'] += wpx_data['content_p']
-            # cat_wpx_data['content_image'] += wpx_data['content_image']
-            # cat_wpx_data['len_p'] += wpx_data['len_p']
-            # cat_wpx_data['len_img'] += wpx_data['len_img']
-            # cat_wpx_data['len_char'] += wpx_data['len_char']
-
         multi_page_urls.add(i_url)
 
-    # cat_inform_ac_data['url'] = url
     cat_inform_ac.url = url
     cat_wpx.url = url
     cat_wpx.multi_page_urls = sorted(multi_page_urls)
 
-    # cat_wpx_data['url'] = url
-    # cat_wpx_data['multi_page_urls'] = sorted(multi_page_urls)
-
     if cat_inform_ac.status and cat_wpx.len_img < 2 and cat_wpx.len_char < 100:
-        # cat_inform_ac_data['quality'] = False
         cat_inform_ac.quality = False
 
-    db_session_update(WebpagesPartnerXpath,
-                      dict(id=cat_wpx.id), cat_wpx.to_dict())
-    # logger.debug('update successful')
-
-    # lance to do
     cat_inform_ac.check_content_hash(cat_wpx)
-    # inform_ac_dict = inform_ac.to_dict()
-    # data = json.dumps(cat_inform_ac_data)
     data = cat_inform_ac.to_dict()
     logger.debug(f'payload {data}')
     headers = {'Content-Type': "application/json"}
-
-    # r = requests.put(ac_content_status_api, json=data, headers=headers)
-
     resp_data = retry_request('put', ac_content_status_api, data, headers)
 
-    # if r.status_code == 200:
     if resp_data:
         cat_wpx.task_service.status_xpath = 'done'
         cat_wpx.task_service.task_main.done_time = datetime.datetime.utcnow()
@@ -458,48 +403,72 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
     logger.debug('run ai_single_crawler()...')
 
     if partner_id:
+
         wp_dict = prepare_crawler(tid, partner=True, xpath=False)
         a_wp = ai_a_crawler(wp_dict, partner_id)
-    else:
-        wp_dict = prepare_crawler(tid, partner=False, xpath=False)
-        a_wp = ai_a_crawler(wp_dict)
 
-    wp_data = a_wp.to_dict()
+        q = dict(url_hash=wp_dict['url_hash'])
 
-    if partner_id:
-        db_session_update(WebpagesPartnerAi,
-                          dict(id=wp_data['id']), wp_data)
-        a_wp.task_service.status_ai = 'done'
-        db.session.commit()
+        wpa = WebpagesPartnerAi()
+        ts = TaskService()
+
+        if not a_wp:
+            data = dict(status_ai='failed')
+            ts.update(q, data)
+            logger.debug('ai_single_crawler() failed')
+            return
+
+        wpa.update(q, a_wp.to_dict())
+        data = dict(status_ai='done')
+        ts.update(q, data)
+        logger.debug('ai_single_crawler() successful')
         # do not notify AC here
     else:
         # must inform AC
-        db_session_update(WebpagesNoService,
-                          dict(id=wp_data['id']), wp_data)
-        a_wp.task_noservice.status = 'done'
-        db.session.commit()
+        wp_dict = prepare_crawler(tid, partner=False, xpath=False)
+        a_wp = ai_a_crawler(wp_dict)
 
-        # notify AC
+        q = dict(url_hash=wp_dict['url_hash'])
+
+        wpns = WebpagesNoService()
+        tns = TaskNoService()
+        tm = TaskMain()
+
         iac = InformAC()
         iac_data = iac.to_dict()
-        udata = {
-            'url_hash': wp_data['url_hash'],
-            'url': wp_data['url'],
-            'request_id': a_wp.task_noservice.task_main.request_id,
-            'status': True
-        }
-        iac_data.update(udata)
 
+        if a_wp:
+            udata = {
+                'url_hash': wp_dict['url_hash'],
+                'url': wp_dict['url'],
+                'request_id': a_wp.task_noservice.request_id,
+                # 'status': True # default value
+            }
+            iac_data.update(udata)
+            wpns.update(q, a_wp.to_dict())
+        else:
+            # no need to update if a_wp == None
+            iac_data['status'] = False
+
+        # inform AC
+        headers = {'Content-Type': "application/json"}
         resp_data = retry_request(
             'put', ac_content_status_api, iac_data, headers)
 
         if resp_data:
-            a_wp.task_noservice.task_main.done_time = datetime.datetime.utcnow()
-            a_wp.task_noservice.task_main.status = 'done'
-            db.session.commit()
+            data = dict(status='done')
+            tns.update(q, data)
+
+            data = {
+                'done_time': datetime.datetime.utcnow(),
+                'status': 'done'
+            }
+            tm.update(q, data)
+
             logger.debug('inform AC successful')
         else:
-            a_wp.task_noservice.task_main.status = 'failed'
+            data = dict(status='failed')
+            tm.update(q, data)
             logger.error('inform AC failed')
 
 
@@ -515,10 +484,10 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
     if partner_id:
         wp_dict = prepare_crawler(tid, partner=True, xpath=False)
         cat_wp_data = WebpagesPartnerAi().to_dict()
-        logger.debug(f'cat_wp_dataf {cat_wp_data}')
+        # logger.debug(f'cat_wp_data {cat_wp_data}')
 
     url = wp_dict['url']
-
+    url_hash = wp_dict['url_hash']
     if domain_info['page']:
         page_query_param = domain_info['page'][0]
         logger.debug(f'page_query_param {page_query_param}')
@@ -535,7 +504,9 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
         # replace url
         wp_dict['url'] = i_url
         a_wp = ai_a_crawler(wp_dict, partner_id, multipaged=True)
+        logger.debug(f'a_wp {a_wp}')
         if not a_wp:
+
             break
         wp_data = a_wp.to_dict()
         logger.debug(f'wp_data from xpath_a_crawler(): {wp_data}')
@@ -552,15 +523,22 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
         multi_page_urls.add(i_url)
 
     cat_wp_data['url'] = url
+    cat_wp_data['url_hash'] = url_hash
     cat_wp_data['multi_page_urls'] = sorted(multi_page_urls)
 
-    db_session_update(WebpagesPartnerAi,
-                      dict(id=cat_wp_data['id']), cat_wp_data)
+    logger.debug(f'cat_wp_data {cat_wp_data}')
+    q = dict(url_hash=url_hash)
 
     if partner_id:
-        a_wp.task_service.status_ai = 'done'
+        wpa = WebpagesPartnerAi()
+        wpa.update(q, cat_wp_data)
+        # logger.debug(f'wpa {wpa}')
+        data = dict(status_ai='done')
+        ts = TaskService()
+        ts.update(q, data)
     else:
-        a_wp.task_noservice.status = 'done'
-    db.session.commit()
-
-    # notify AC, not necessary
+        wpns = WebpagesNoService()
+        wpns.update(q, cat_wp_data)
+        data = dict(status='done')
+        tns = TaskNoService()
+        tns.update(q, data)

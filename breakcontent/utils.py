@@ -18,7 +18,8 @@ import re
 import dateparser
 from html import unescape
 from datetime import datetime, timedelta
-import hashlib, base64
+import hashlib
+import base64
 import calendar
 import os
 import json
@@ -31,11 +32,13 @@ logger = logging.getLogger('default')
 
 # from breakcontent import logger
 
+
 def bp_test_logger():
     logger.debug('run bp_test_logger()...')
     logger.info('run bp_test_logger()...')
     logger.error('run bp_test_logger()...')
     logger.critical('run bp_test_logger()...')
+
 
 class Secret():
 
@@ -81,13 +84,13 @@ class InformAC():
 
         data = {
             'url_hash': self.url_hash,
-            'parent_url': self.parent_url, # yet
+            'parent_url': self.parent_url,  # yet
             'url': self.url,
-            'old_url_hash': self.old_url_hash, # todo
-            'content_update': self.content_update, # done
+            'old_url_hash': self.old_url_hash,  # todo
+            'content_update': self.content_update,  # done
             'request_id': self.request_id,
-            'publish_date': str(self.publish_date), # for JSON transfer
-            'url_structure_type': self.url_structure_type, # yet
+            'publish_date': str(self.publish_date),  # for JSON transfer
+            'url_structure_type': self.url_structure_type,  # yet
             'secret': self.secret,
             'has_page_code': self.has_page_code,
             'quality': self.quality,
@@ -149,8 +152,6 @@ class InformAC():
             self.old_url_hash = u2c.url_hash
             db.session.delete(wp.task_service.task_main)
             db.session.commit()
-
-
 
 
 class DomainSetting():
@@ -266,22 +267,13 @@ class DomainSetting():
         '''
         logger.debug(f'publish_date {publish_date}')
         logger.debug(f'type(publish_date) {type(publish_date)}')
-        # if isinstance(publish_date, str):
-        #     publish_date = parser.parse(publish_date)
 
         delaydt = publish_date + timedelta(days=self.delayday)
-
-        # if not isinstance(delaydt, datetime):
-        #     logger.error(f'delaydt {delaydt} is not a datetime object')
-        #     raise
 
         if delaydt < datetime.utcnow():
             return True
         else:
             return False
-
-
-
 
 
 def retry_request(method: str, api: str, json: dict=None, headers: dict=None, retry: int=5):
@@ -301,6 +293,7 @@ def retry_request(method: str, api: str, json: dict=None, headers: dict=None, re
 
     logger.error(f'failed requesting {api} {retry} times')
     return False
+
 
 def parse_domain_info(data: dict) -> dict:
     '''
@@ -403,7 +396,8 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
         return domain_info
     elif not di:
         # 2. get domain info from api
-        ps_domain_api_prefix = os.environ.get('PS_DOMAIN_API') or 'https://partner.breaktime.com.tw/api/config/'
+        ps_domain_api_prefix = os.environ.get(
+            'PS_DOMAIN_API') or 'https://partner.breaktime.com.tw/api/config/'
         ps_domain_api = ps_domain_api_prefix + f'{partner_id}/{domain}/'
         logger.debug(f'ps_domain_api {ps_domain_api}')
         headers = {'Content-Type': "application/json"}
@@ -531,10 +525,6 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     else:
         ts = TaskNoService().select(q)
 
-    # logger.debug(f'ts {ts}')
-    # q = {
-    #     'url_hash': ts.url_hash
-    # }
     udata = {
         'url_hash': ts.url_hash,
         'url': ts.url,  # should url be updated here?
@@ -546,7 +536,6 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
         wpx = WebpagesPartnerXpath()
         udata['task_service_id'] = ts.id
         wpx.upsert(q, udata)
-        # logger.debug(f'wpx.url {wpx.url}')
         wp_data = ts.webpages_partner_xpath.to_inform()
         wp_data['generator'] = ts.task_main.generator
         logger.debug(f'wp_data {wp_data}')
@@ -555,8 +544,10 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     elif partner and not xpath:
         # prepare for ai crawler
         ts.status_ai = 'doing'
-        ts.webpages_partner_ai = WebpagesPartnerAi(**udata)
         ts.commit()
+        wpa = WebpagesPartnerAi()
+        udata['task_service_id'] = ts.id
+        wpa.upsert(q, udata)
         wp_data = ts.webpages_partner_ai.to_inform()
         wp_data['generator'] = ts.task_main.generator
         logger.debug(f'wp_data {wp_data}')
@@ -565,13 +556,14 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     elif not partner:
         # prepare for ai crawler
         ts.status = 'doing'
-        ts.webpages_noservice = WebpagesNoService(**udata)
         ts.commit()
+        wns = WebpagesNoService()
+        udata['task_noservice_id'] = ts.id
+        wns.upsert(q, udata)
         wp_data = ts.webpages_noservice.to_inform()
         wp_data['generator'] = ts.task_main.generator
         logger.debug(f'wp_data {wp_data}')
         return wp_data
-
 
 
 def check_r(r: 'response'):
@@ -580,7 +572,8 @@ def check_r(r: 'response'):
     else:
         return False
 
-def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, multipaged: bool=False) -> (object, object):
+
+def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False) -> (object, object):
     '''
     note: this is not a celey task function
 
@@ -601,29 +594,22 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
     '''
     url = wpx.get('url')
     logger.debug(f'run the basic unit of xpath crawler on {url}')
-    # logger.debug(f'wpx {wpx}')
-    # logger.debug(f'domain_info {domain_info}')
 
     task_service_id = wpx['task_service_id']
     tsf = TaskService.query.filter_by(id=task_service_id).first()
-    # logger.debug(f'tsf {tsf}')
 
     ds = DomainSetting(domain_info)
-    # logger.debug(f'ds {ds.to_dict()}')
 
     # required, some previous data will be brought in for comparison use
     a_wpx = tsf.webpages_partner_xpath
     a_wpx.domain = domain
     a_wpx.task_service_id = task_service_id
-    # logger.debug(f'a_wpx {a_wpx}')
-    # logger.debug(f'type(a_wpx) {type(a_wpx)}')
 
     iac = InformAC()
     iac.url_hash = wpx['url_hash']
     iac.url = url
     iac.request_id = tsf.request_id
 
-    # logger.debug(f'iac {iac.to_dict()}')
     generator = wpx.get('generator', None)
 
     secrt = Secret()
@@ -634,10 +620,10 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
         iac.zi_defy.add('regex')
 
     html = None
-    # do_job = False
     if multipaged:
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
-        headers = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
+        headers = {
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
 
         candidate = [
             'www.top1health.com'
@@ -648,19 +634,20 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                 'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
             }
-            r = requests.get(url, allow_redirects=True, headers=headers, proxies=proxies, verify=False)
+            r = requests.get(url, allow_redirects=True,
+                             headers=headers, proxies=proxies, verify=False)
 
             if check_r(r):
                 pass
+                logger.debug('CRAWLERA reqeust successful')
             else:
+                logger.warning('CRAWLERA request failed, try local')
                 # don't use crawlera if failed at once
                 r = requests.get(url, allow_redirects=True, headers=headers)
         else:
             r = requests.get(url, allow_redirects=True, headers=headers)
     else:
         r = requests.get(url, verify=False, allow_redirects=True)
-
-    # do_job = True
 
     if check_r(r):
         r.encoding = 'utf-8'
@@ -695,7 +682,7 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
 
         for xpath in ds.xpath:
             xpath = unquote(xpath)
-            cd = tree.xpath(xpath) # content directory
+            cd = tree.xpath(xpath)  # content directory
             if len(cd) > 0:
                 logger.debug("match xpath")
                 match_xpath = xpath
@@ -809,7 +796,8 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                 categories.append(x_cat)
             # bsp specific logic: pixnet
             if category == None and generator == "PChoc":
-                g_x_categories = tree.xpath('//ul[@class="refer"]/li[1]/a/text()')
+                g_x_categories = tree.xpath(
+                    '//ul[@class="refer"]/li[1]/a/text()')
 
                 logger.debug(f'g_x_categories {g_x_categories}')
 
@@ -818,15 +806,15 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                 if len(g_x_categories) > 0:
                     category = g_x_categories[0]
                     categories += g_x_categories
-                    x_categories = tree.xpath('//ul[@class="refer"]/li[2]/a/text()')
+                    x_categories = tree.xpath(
+                        '//ul[@class="refer"]/li[2]/a/text()')
                     if len(x_categories) > 0:
                         logger.debug(f'x_categories[0] {x_categories[0]}')
-                        logger.debug(f'type(x_categories[0]) {type(x_categories[0])}')
-                        logger.debug(f'dir(x_categories[0]) {dir(x_categories[0])}')
-                        # category = x_categories[0].get('content')
-                        # for c in x_categories:
-                        #     if c.get('content') not in categories:
-                        #         categories.append(c.get('content'))
+                        logger.debug(
+                            f'type(x_categories[0]) {type(x_categories[0])}')
+                        logger.debug(
+                            f'dir(x_categories[0]) {dir(x_categories[0])}')
+
             # universal logic
             if category == None:
                 x_categories = tree.xpath(
@@ -837,8 +825,6 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                         if c.get('content') not in categories:
                             categories.append(c.get('content'))
 
-            # i_category = domain_info.get('category', None)
-            # e_category = domain_info.get('e_category', None)
             # check if category should sync
             isc = ds.isSyncCategory(categories)
             iac.zi_sync = isc if iac.zi_sync else True
@@ -880,7 +866,8 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             a_wpx.content_p = content_p
             a_wpx.len_p = len_p
             # ----- parsing secret ----
-            password_check_forms = cd[0].xpath("//form[contains(@class, 'post-password-form')]")
+            password_check_forms = cd[0].xpath(
+                "//form[contains(@class, 'post-password-form')]")
             if len(password_check_forms) > 0:
                 logger.debug('this is a secret article w/ password lock')
                 secrt.secret = True
@@ -1104,7 +1091,8 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             # logger.debug(f'before {publish_date}')
             # ignore the time zone str if any
             publish_date = publish_date.split('+')[0]
-            publish_date = dateparser.parse(publish_date, date_formats=['%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
+            publish_date = dateparser.parse(publish_date, date_formats=[
+                                            '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
 
             # logger.debug(publish_date)
             # logger.debug(f'after {publish_date}')
@@ -1236,8 +1224,8 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                     logger.debug("tail: {}".format(script.tail))
                     if script.tail != None and script.tail.strip() != "":
                         logger.debug("drop tag")
-                        #if script.text:
-                            #remove_text.append(remove_html_tags(script.text))
+                        # if script.text:
+                        # remove_text.append(remove_html_tags(script.text))
                         script.drop_tag()
                     else:
                         logger.debug("remove tag")
@@ -1254,7 +1242,8 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
 
             # ----- counting img and char ----
             # reparse the content
-            content = etree.tostring(cd[0], pretty_print=True, method='html').decode("utf-8")
+            content = etree.tostring(
+                cd[0], pretty_print=True, method='html').decode("utf-8")
             content = unquote(content)
 
             # h = HTMLParser()
@@ -1264,13 +1253,15 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             content = unescape(content)
             len_char = len(content)
             a_wpx.len_char = len_char
-            logger.info("chars: {},p count: {}, img count: {}".format(len_char, len_p, len_img))
+            logger.info("chars: {},p count: {}, img count: {}".format(
+                len_char, len_p, len_img))
             if len_img < 2 and len_char < 100:
                 # content of poor quality
                 iac.quality = False
 
             # ----- re-parse content -----
-            content = etree.tostring(cd[0], pretty_print=True, method='html').decode("utf-8")
+            content = etree.tostring(
+                cd[0], pretty_print=True, method='html').decode("utf-8")
             a_wpx.content = content
 
             # ----- constructing content_hash -----
@@ -1323,7 +1314,8 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
             secret = None
             # BSP specific: Pixnet 痞客邦
             if secret == None:
-                metas = tree.xpath("//div[@class='article-content']/form/ul/li[1]/text()")
+                metas = tree.xpath(
+                    "//div[@class='article-content']/form/ul/li[1]/text()")
                 if len(metas) and metas[0] == "這是一篇加密文章，請輸入密碼":
                     secrt.secret = True
                     secrt.bsp = 'pixnet'
@@ -1335,8 +1327,9 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
                     secrt.secret = True
                     secrt.bsp = 'xuite'
 
-            if secrt.secret: # this obj is not yet used
-                logger.debug(f'secrt.bsp {secrt.bsp}, secrt.secret {secrt.secret}')
+            if secrt.secret:  # this obj is not yet used
+                logger.debug(
+                    f'secrt.bsp {secrt.bsp}, secrt.secret {secrt.secret}')
                 logger.debug(f'secrt.to_dict() {secrt.to_dict()}')
                 iac.secret = True
 
@@ -1348,17 +1341,20 @@ def xpath_a_crawler(wpx: dict, partner_id:str, domain: str, domain_info: dict, m
         logger.error(f'requesting {url} failed!')
         # request failed goes here
         # tsf.retry_xpath += 1
-        db.session.commit()
+        # db.session.commit()
         iac.status = False
         return a_wpx, iac
 
+
 def mercuryContent(url):
     if os.environ.get('MERCURY_TOKEN', None):
-        headers = { "x-api-key": os.environ.get('MERCURY_TOKEN') }
+        headers = {"x-api-key": os.environ.get('MERCURY_TOKEN')}
         # logger.debug(f'headers {headers}')
         api = "https://mercury.postlight.com/parser?url=" + url
         logger.debug(f'api {api}')
-        while 1:
+        retry = 5  # retry 5 times at most
+        sleep_sec = 1
+        while retry:
             r = requests.get(api, headers=headers)
             if r.status_code == 200:
                 try:
@@ -1366,14 +1362,20 @@ def mercuryContent(url):
                     # logger.debug(f'res {res}')
                     return res
                 except Exception as e:
+                    retry -= 1
+                    if retry == 0:
+                        break
                     logger.error(e)
-                    time.sleep(1)
+                    sleep_sec = sleep_sec * 2
+                    time.sleep(sleep_sec)
+
             else:
                 logger.error('failed request')
                 return None
     else:
         logger.error('MERCURY_TOKEN env variable not set')
         return None
+
 
 def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> object:
     '''
@@ -1382,12 +1384,12 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
     <return>
 
     '''
-    logger.debug('running the basic unit of ai crawler...')
-    logger.debug(f'wp {wp}')
-    url = wp['url']
-    parseData = mercuryContent(url)
 
-    tid = wp['task_service_id']
+    # logger.debug(f'wp {wp}')
+    url = wp['url']
+    domain = wp['domain']
+    logger.debug(f'run ai_a_crawler() on {url}')
+
     if partner_id:
         tid = wp['task_service_id']
         ts = TaskService.query.filter_by(id=tid).first()
@@ -1399,6 +1401,73 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
 
     logger.debug(f'wp {wp}')
     # logger.debug(f'parseData {parseData}')
+
+    if multipaged:
+        crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
+        headers = {
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
+
+        # slight different w/ that of xpath_a_crawler
+        candidate = [
+            'www.top1health.com'
+        ]
+
+        use_crawlera = False
+        for i in candidate:
+            if i in url:
+                use_crawlera = True
+
+        if crawlera_apikey and use_crawlera:
+            proxies = {
+                'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
+                'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
+            }
+            r = requests.get(url, allow_redirects=False,
+                             headers=headers, proxies=proxies, verify=False)
+
+            if check_r(r):
+                pass
+                logger.debug('CRAWLERA reqeust successful')
+            else:
+                logger.warning('CRAWLERA request failed, try local')
+                # don't use crawlera if failed at once
+                r = requests.get(url, allow_redirects=False, headers=headers)
+        else:
+            r = requests.get(url, allow_redirects=False, headers=headers)
+    else:
+        r = requests.get(url, verify=False, allow_redirects=False)
+
+    # ======== xpath ========
+    if check_r(r):
+        logger.debug(f'r {r}')
+        # replace the tree
+        r.encoding = 'utf-8'
+        html = r.text
+        tree = lxml.html.fromstring(html)
+        metas = tree.xpath('//meta')
+        meta_all = {}
+        for meta in metas:
+            meta_name = None
+            if meta.get('name', None):
+                meta_name = meta.get('name', None)
+            if meta.get('property', None):
+                meta_name = meta.get('property', None)
+            if meta.get('itemprop', None):
+                meta_name = meta.get('itemprop', None)
+
+            if meta_name:
+                meta_name = re.sub('[.$]', '', meta_name)
+                if meta_name not in meta_all:
+                    meta_all[meta_name] = []
+                meta_all[meta_name].append(meta.get('content', None))
+        wp.meta_jdoc = meta_all
+        # logger.debug(f'meta_all {meta_all}')
+    else:
+        logger.error(f'failed to request {url}')
+        return None
+
+    # =========== mercury ===========
+    parseData = mercuryContent(url)
     if parseData:
 
         wp.title = parseData['title']
@@ -1406,43 +1475,8 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         wp.publish_date = parseData['date_published']
 
         tree = etree.HTML(parseData['content'])
-        headers = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
-
-        if multipaged:
-            crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
-            if crawlera_apikey:
-                proxies = {
-                    'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
-                    'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
-                }
-                r = requests.get(url, allow_redirects=True, headers=headers, proxies=proxies, verify=False)
-            else:
-                r = requests.get(url, allow_redirects=True, headers=headers)
-        else:
-            r = requests.get(url, verify=False, allow_redirects=True, headers=headers)
-
-        if r.status_code == 200:
-            # replace the tree
-            r.encoding = 'utf-8'
-            html = r.text
-            tree = lxml.html.fromstring(html)
-            metas = tree.xpath('//meta')
-            meta_all = {}
-            for meta in metas:
-                meta_name = None
-                if meta.get('name', None):
-                    meta_name = meta.get('name', None)
-                if meta.get('property', None):
-                    meta_name = meta.get('property', None)
-                if meta.get('itemprop', None):
-                    meta_name = meta.get('itemprop', None)
-
-                if meta_name:
-                    meta_name = re.sub('[.$]', '', meta_name)
-                    if meta_name not in meta_all:
-                        meta_all[meta_name] = []
-                    meta_all[meta_name].append(meta.get('content', None))
-            wp.meta_jdoc = meta_all
+        headers = {
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
 
         # ----- parsing domain ----
         o = urlparse(url)
@@ -1453,7 +1487,7 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         xh1 = tree.xpath('//h1/text()')
         for h1 in xh1:
             if h1.strip():
-               content_h1 += '<h1>{}</h1>'.format(h1)
+                content_h1 += '<h1>{}</h1>'.format(h1)
         wp.content_h1 = content_h1
         # ----- parsing content_h2 ----
         content_h2 = ''
@@ -1464,7 +1498,7 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         wp.content_h2 = content_h2
         # ----- parsing content_p ----
         content_p = ''
-        xp =  tree.xpath('//p/text()')
+        xp = tree.xpath('//p/text()')
         for p in xp:
             if p.strip():
                 content_p += '<p>{}</p>'.format(p)
@@ -1486,7 +1520,7 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         content_image = ''
         for image in ximage:
             src = image.get('src')
-            if src!=None and src.strip():
+            if src != None and src.strip():
                 alt = image.get('alt')
                 src = urljoin(url, src)
                 image.set('src', src)
@@ -1527,6 +1561,7 @@ def getWpRealLink(url, shortlink):
     else:
         return None
 
+
 def getMediumIframeSource(url):
     r = requests.get(url, verify=False, allow_redirects=True)
     if r.status_code == 200:
@@ -1542,8 +1577,10 @@ def getMediumIframeSource(url):
                 return params['src'][0]
     return None
 
+
 def getPixnetPublishTime(tree):
-    abbr_to_num = {name: str(num).zfill(2) for num, name in enumerate(calendar.month_abbr) if num}
+    abbr_to_num = {name: str(num).zfill(2)
+                   for num, name in enumerate(calendar.month_abbr) if num}
     logger.debug("get pixnet time")
     publish = tree.xpath('//li[@class="publish"]')
     if len(publish) > 0:
@@ -1555,6 +1592,7 @@ def getPixnetPublishTime(tree):
         return '{}/{}/{}T{}:00+08:00'.format(year[0].strip(), month, date[0].strip(), time[0].strip())
         # return datetime.strptime(dt_str, '%Y/%m/%dT%H:%M:%S%z')
     return None
+
 
 def getUdnPublishTime(tree):
     publish_times = tree.xpath('//div[@class="article_datatime"]')
@@ -1568,6 +1606,7 @@ def getUdnPublishTime(tree):
         return '{}/{}/{}T{}:{}:00+08:00'.format(year[0].strip(), month[0].strip(), date[0].strip(), h[0].strip(), i[0].strip())
     return None
 
+
 def getkangaroo5118Time(tree):
     publish_times = tree.xpath('//div[contains(@class, "diary_datetime")]')
     if len(publish_times) > 0:
@@ -1579,9 +1618,9 @@ def getkangaroo5118Time(tree):
         return '{}/{}/{}T{}:00+08:00'.format(year[0].strip(), month[0].strip(), date[0].strip(), time[0].strip())
     return None
 
+
 def remove_html_tags(text):
     """Remove html tags from a string"""
     # import re
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text)
-

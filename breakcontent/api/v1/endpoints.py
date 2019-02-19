@@ -208,6 +208,8 @@ def partner_setting_add_update(partner_id, domain):
 @cross_origin()
 def test():
     '''
+    <purpose> test endpoint triggered logging
+
     curl -v -X POST 'http://localhost:8100/v1/test' -H 'Content-Type: application/json'
 
     '''

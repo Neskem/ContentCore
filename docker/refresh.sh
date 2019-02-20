@@ -10,6 +10,9 @@ docker build -t cc -f ../Dockerfile ../
 
 docker-compose up -d
 
+# manual garbage collection
+docker rmi $(docker images -f "dangling=true" -q)
+
 # for python wsgi.py shell use
 cat breakcontent.env | grep -v '^#' | grep -v '^$' | awk '{print "export "$0}'
 

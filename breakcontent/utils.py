@@ -530,6 +530,8 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
         'url': ts.url,  # should url be updated here?
     }
 
+    q = dict(url_hash=ts.url_hash)
+
     if partner and xpath:
         ts.status_xpath = 'doing'
         ts.commit()

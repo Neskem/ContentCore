@@ -40,11 +40,28 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    beat:
+        container_name: beat
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: single-beat celery beat -A breakcontent.tasks -l info
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=beat
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker:
         container_name: worker
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=2,1 -n worker.%%h
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=25,8 -n worker.%%h -E -P gevent
+        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG -n worker.%%h
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -60,7 +77,7 @@ services:
         container_name: worker-aicrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=2,1 -n worker.%%h
+        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=25,8 -n worker.%%h -E -P gevent
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -72,6 +89,28 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    flower:
+        container_name: flower
+        image: cc
+        command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
+        # command: celery -A breakcontent.tasks flower --port=5555 --auth_provider=flower.views.auth.GithubLoginHandler --auth=.*
+        ports:
+            - "5555:5555"
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=flower
+            # - FLOWER_OAUTH2_KEY=03b470c69baa3a2a67e6
+            # - FLOWER_OAUTH2_SECRET=c75bb1795e31dededcdd1d2e085e0fa970d174a5
+            # - FLOWER_OAUTH2_REDIRECT_URI=http://192.168.18.111:5555/login
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
+
     # worker-xpcrawler:
     #     container_name: worker-xpcrawler
     #     image: cc
@@ -120,22 +159,7 @@ services:
     #         options:
     #             max-size: "50m"
     #     restart: always
-    beat:
-        container_name: beat
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        command: single-beat celery beat -A breakcontent.tasks -l info
-        volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=beat
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
+
 
     # hub:
     #     container_name: hub

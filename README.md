@@ -35,6 +35,7 @@ ssh ubuntu@192.168.18.121
 3. study bs4
 4. install psql with password
 5. install redis with password
+6. [enhance aujs detect](https://docs.google.com/spreadsheets/d/15P93Nn2Yon5jMQpKWmstLkpwHM7p49-t5YCNdcZIGKk/edit#gid=18960491)
 
 ### Depolyment
 * on prd (only docker image are required)
@@ -150,18 +151,18 @@ curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/con
 
 | Parameter | Type | Default/Required | Description | Example |
 |:---------:|:----:|:----------------:|:-----------:|:-------:|
-| ```xpath``` | `array` | Y |  |  |
-| ```e_xpath``` | `array` | N |  |  |
-| ```category``` | `array` | N |  |  |
-| ```e_category``` | `array` | N |  |  |
-| ```authorList``` | `array` | N |  |  |
-| ```e_authorList``` | `array` | N |  |  |
-| ```regex``` | `array` | Y |  |  |
-| ```e_title``` | `array` | N |  |  |
-| ```syncDate``` | `array` | N |  |  |
-| ```page``` | `array` | N |  |  |
-| ```delayday``` | `array` | N |  |  |
-| ```sitemap``` | `array` | N |  |  |
+| `xpath` | `array` | Y |  |  |
+| `e_xpath` | `array` | N |  |  |
+| `category` | `array` | N |  |  |
+| `e_category` | `array` | N |  |  |
+| `authorList` | `array` | N |  |  |
+| `e_authorList` | `array` | N |  |  |
+| `regex` | `array` | Y |  |  |
+| `e_title` | `array` | N |  |  |
+| `syncDate` | `array` | N |  |  |
+| `page` | `array` | N |  |  |
+| `delayday` | `array` | N |  |  |
+| `sitemap` | `array` | N |  |  |
 
 
 **Example**

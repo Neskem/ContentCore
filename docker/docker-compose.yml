@@ -61,6 +61,7 @@ services:
         image: cc
         # image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=25,8 -n worker.%%h -E -P gevent
+        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=25,8 -n worker.%%h -E
         # command: celery worker -A breakcontent.tasks --loglevel=DEBUG -n worker.%%h
         volumes:
            # - ..:/usr/src/app

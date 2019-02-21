@@ -50,7 +50,6 @@ services:
     worker:
         # [ref](https://stackoverflow.com/questions/42948547/which-pool-class-should-i-use-prefork-eventlet-or-gevent-in-celery)
         container_name: worker
-        #image: cc
         image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=30,10 -n worker.%%h -E -P gevent
         volumes:
@@ -64,9 +63,23 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-xpcrawler:
+        container_name: worker-xpcrawler
+        image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=20,10 -n worker.%%h -E -P gevent
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-xpcrawler
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker-aicrawler:
         container_name: worker-aicrawler
-        #image: cc
         image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,10 -n worker.%%h -E -P gevent
         volumes:
@@ -80,22 +93,24 @@ services:
             options:
                 max-size: "50m"
         restart: always
-    # worker-xpcrawler:
-    #     container_name: worker-xpcrawler
-    #     image: cc
-    #     # image: breaktimeinc/breaktime.contentcore
-    #     command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=2,1 -n worker.%%h
-    #     volumes:
-    #        - ..:/usr/src/app
-    #        - /var/log/contentcore:/var/log/contentcore
-    #     env_file: breakcontent.env
-    #     environment:
-    #         - CONTAINER_TAG=worker-xpcrawler
-    #     logging:
-    #         driver: "json-file"
-    #         options:
-    #             max-size: "50m"
-    #     restart: always
+    flower:
+        container_name: flower
+        image: breaktimeinc/breaktime.contentcore
+        command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
+        ports:
+            - "5555:5555"
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=flower
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
+
     # worker-xpmcrawler:
     #     container_name: worker-xpmcrawler
     #     image: cc

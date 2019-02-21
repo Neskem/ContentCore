@@ -16,6 +16,8 @@ docker rmi $(docker images -f "dangling=true" -q)
 # for python wsgi.py shell use
 cat breakcontent.env | grep -v '^#' | grep -v '^$' | awk '{print "export "$0}'
 
+# check status
+docker-compose ps
 # check files in container
 # docker exec -it web ls -al
 # copy & paste manually

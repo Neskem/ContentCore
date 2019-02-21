@@ -13,3 +13,5 @@ docker-compose up -d
 # manual garbage collection
 docker rmi $(docker images -f "dangling=true" -q)
 
+# check status
+docker-compose ps

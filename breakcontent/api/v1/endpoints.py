@@ -2,7 +2,6 @@ from flask import Blueprint, request, g, jsonify, current_app, abort
 from flask_headers import headers
 from flask_cors import cross_origin
 from breakcontent import db
-from breakcontent.helper import api_ok
 import json
 from breakcontent.api import errors
 import datetime

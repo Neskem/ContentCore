@@ -44,9 +44,9 @@ CELERY_ROUTES = {
     'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
     'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},
     # xpcrawler
-    # 'breakcontent.tasks.xpath_single_crawler': {'queue': 'xpcrawler'},
-    # # cpmcrawler
-    # 'breakcontent.tasks.xpath_multi_crawler': {'queue': 'xpmcrawler'},
+    'breakcontent.tasks.xpath_single_crawler': {'queue': 'xpcrawler'},
+    # cpmcrawler
+    'breakcontent.tasks.xpath_multi_crawler': {'queue': 'xpmcrawler'},
     # # others will go to 'default' queue
 
 }

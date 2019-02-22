@@ -348,6 +348,7 @@ class WebpagesPartnerXpath(Model):
     url = Column(String(1000), nullable=False)
     wp_url = Column(String(500), nullable=True)  # only WP bsp has it
     title = Column(Text(), nullable=True)
+    has_page_code = Column(postgresql.ARRAY(Text(), dimensions=1)) # todo
     meta_keywords = Column(String(200), nullable=True)
     meta_description = Column(Text(), nullable=True)
     meta_jdoc = Column(postgresql.JSONB(
@@ -691,18 +692,18 @@ class DomainInfo(Model):
     rules = Column(postgresql.JSONB(
         none_as_null=False, astext_type=None), nullable=True)  # to be checked!
 
-    xpath = Column(postgresql.ARRAY(Text, dimensions=1))
-    e_xpath = Column(postgresql.ARRAY(Text, dimensions=1))
-    category = Column(postgresql.ARRAY(Text, dimensions=1))
-    e_category = Column(postgresql.ARRAY(Text, dimensions=1))
-    authorList = Column(postgresql.ARRAY(Text, dimensions=1))
-    e_authorList = Column(postgresql.ARRAY(Text, dimensions=1))
-    regex = Column(postgresql.ARRAY(Text, dimensions=1))
-    e_title = Column(postgresql.ARRAY(Text, dimensions=1))
-    syncDate = Column(postgresql.ARRAY(Text, dimensions=1))
-    page = Column(postgresql.ARRAY(Text, dimensions=1))
-    delayday = Column(postgresql.ARRAY(Text, dimensions=1))
-    sitemap = Column(postgresql.ARRAY(Text, dimensions=1))
+    # xpath = Column(postgresql.ARRAY(Text, dimensions=1))
+    # e_xpath = Column(postgresql.ARRAY(Text, dimensions=1))
+    # category = Column(postgresql.ARRAY(Text, dimensions=1))
+    # e_category = Column(postgresql.ARRAY(Text, dimensions=1))
+    # authorList = Column(postgresql.ARRAY(Text, dimensions=1))
+    # e_authorList = Column(postgresql.ARRAY(Text, dimensions=1))
+    # regex = Column(postgresql.ARRAY(Text, dimensions=1))
+    # e_title = Column(postgresql.ARRAY(Text, dimensions=1))
+    # syncDate = Column(postgresql.ARRAY(Text, dimensions=1))
+    # page = Column(postgresql.ARRAY(Text, dimensions=1))
+    # delayday = Column(postgresql.ARRAY(Text, dimensions=1))
+    # sitemap = Column(postgresql.ARRAY(Text, dimensions=1))
 
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)

@@ -69,7 +69,7 @@ class InformAC():
         'publish_date': None,
         'url_structure_type': None,  # yet
         'secret': False,
-        'zi_page_code': None,
+        'has_page_code': None,
         'quality': None,
         'zi_sync': True,
         'zi_defy': set(),
@@ -92,7 +92,7 @@ class InformAC():
             'publish_date': str(self.publish_date),  # for JSON transfer
             'url_structure_type': self.url_structure_type,  # yet
             'secret': self.secret,
-            'zi_page_code': self.zi_page_code,
+            'has_page_code': self.has_page_code,
             'quality': self.quality,
             'zi_sync': self.zi_sync,
             'zi_defy': self.zi_defy,
@@ -676,7 +676,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             if aujs:
                 aujs = True
                 logger.debug(f'aujs {aujs}')
-                iac.zi_page_code = True
+                iac.has_page_code = True
             else:
                 pass
         except:

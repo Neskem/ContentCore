@@ -12,7 +12,6 @@ services:
         restart: always
     web:
         container_name: web
-        #image: cc
         image: breaktimeinc/breaktime.contentcore
         command: uwsgi --ini uwsgi.ini
         #command: python wsgi.py runserver --debug
@@ -78,6 +77,22 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-xpmcrawler:
+        container_name: worker-xpmcrawler
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=10,5 -n worker.%%h -E -P gevent
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-xpmcrawler
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker-aicrawler:
         container_name: worker-aicrawler
         image: breaktimeinc/breaktime.contentcore
@@ -110,23 +125,22 @@ services:
             options:
                 max-size: "50m"
         restart: always
-
-    # worker-xpmcrawler:
-    #     container_name: worker-xpmcrawler
-    #     image: cc
-    #     # image: breaktimeinc/breaktime.contentcore
-    #     command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=2,1 -n worker.%%h
-    #     volumes:
-    #        - ..:/usr/src/app
-    #        - /var/log/contentcore:/var/log/contentcore
-    #     env_file: breakcontent.env
-    #     environment:
-    #         - CONTAINER_TAG=worker-xpmcrawler
-    #     logging:
-    #         driver: "json-file"
-    #         options:
-    #             max-size: "50m"
-    #     restart: always
+    worker-xpmcrawler:
+        container_name: worker-xpmcrawler
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=10,5 -n worker.%%h -E -P gevent
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-xpmcrawler
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     # worker-postman:
     #     container_name: worker-postman
     #     image: cc

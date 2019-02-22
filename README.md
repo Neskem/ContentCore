@@ -201,10 +201,24 @@ curl -X GET 'http://35.236.166.182:80/v1/admin/service/sync?service\_name=Zi_C&s
 
 **Example**
 ```shell
-curl -H "Content-Type: application/json; charset=UTF-8" -X PUT "http://35.236.166.182:80/v1/content/status" -d '{"url": "https://www.kocpc.com.tw/archives/693", "url_hash": "13e83fc609e45fc3aea1bedac006629bee505265", "content_update": false, "request_id": "ef114158-b445-4285-bebf-b129d8b7e0df", "publish_date": "2018-12-29 06:22:00.000Z", "parent_url": "http://d0169953.crlab.com.tw/?p=23", "url_structure_type": "content", "secret": false, "has_page_code": true, "status": "True", "quality": true, "old_url_hash": "847844911ffe6af2d9d9fcee69ab10f7cb2db63f"}'
+curl -H "Content-Type: application/json; charset=UTF-8" -X PUT "http://35.236.166.182:80/v1/content/status" -d '{"url": "https://www.kocpc.com.tw/archives/693", "url_hash": "13e83fc609e45fc3aea1bedac006629bee505265", "content_update": false, "request_id": "ef114158-b445-4285-bebf-b129d8b7e0df", "publish_date": "2018-12-29 06:22:00.000Z", "parent_url": "http://d0169953.crlab.com.tw/?p=23", "url_structure_type": "content", "secret": false, "zi_page_code": true, "status": "True", "quality": true, "old_url_hash": "847844911ffe6af2d9d9fcee69ab10f7cb2db63f"}'
 ```
 ```json
 {"data":{}, "message": "OK"}
+```
+
+
+## Partner System Endpoints & purpose
+### Get domain info from PS
+**Request**
+* Endpoint: `GET /api/config/<domain>/<partner_id>`
+
+**Example**
+```shell
+curl -v -X GET 'https://partner.breaktime.com.tw/api/config/YUZ7T18/healthnice.org/'
+```
+```json
+{"status": true, "data": {"regex": [{"type": "NOT_MATCH_REGEX", "value": "fbclid"}, {"type": "NOT_MATCH_REGEX", "value": "category"}, {"type": "NOT_MATCH_REGEX", "value": "tag"}, {"type": "NOT_MATCH_REGEX", "value": "author"}, {"type": "NOT_MATCH_REGEX", "value": "\\?s"}, {"type": "NOT_MATCH_REGEX", "value": "page"}, {"type": "NOT_MATCH_REGEX", "value": "search"}, {"type": "MATCH_REGEX", "value": ".*"}], "xpath": ["//section[@class='post-contents']"]}, "message": "OK", "token": "7fde5828-6ee1-43ce-9d84-b76eda51ec8f"}
 ```
 
 # AC PSQL access info

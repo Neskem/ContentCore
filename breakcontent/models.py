@@ -249,6 +249,7 @@ class TaskService(Model):
     page_query_param = Column(String(50), nullable=True)
     is_multipage = Column(Boolean, default=False)
     secret = Column(Boolean, default=False)
+    status_code = Column(Integer, index=True, nullable=True)
     # retry_xpath = Column(Integer, default=0)
     status_xpath = Column(Enum('pending', 'doing', 'done',
                                'failed', name='status_xpath'), default='pending', index=True)
@@ -256,8 +257,8 @@ class TaskService(Model):
     status_ai = Column(Enum('pending', 'doing', 'done',
                             'failed', name='status_ai'), default='pending', index=True)
     # partner only
-    sent_ac_time = Column(DateTime(timezone=False), nullable=True)
-    sent_ac_ini_time = Column(DateTime(timezone=False), nullable=True)
+    sent_content_time = Column(DateTime(timezone=False), nullable=True)
+    sent_content_ini_time = Column(DateTime(timezone=False), nullable=True)
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)
     _mtime = Column(DateTime(
@@ -279,6 +280,7 @@ class TaskService(Model):
             'is_multipage': self.is_multipage,
             'page_query_param': self.page_query_param,
             'secret': self.secret,
+            'status_code': self.status_code,
             # 'retry_xpath': self.retry_xpath,
             'status_xpath': self.status_xpath,
             # 'retry_ai': self.retry_ai,

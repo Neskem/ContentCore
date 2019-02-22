@@ -40,7 +40,7 @@ def init_task():
 
     '''
 
-    current_app.logger.error(f'use current_app and sentry to log')
+    # current_app.logger.error(f'use current_app and sentry to log')
     res = {'msg': '', 'status': False}
 
     current_app.logger.debug(f'request.json {request.json}')
@@ -159,10 +159,10 @@ def get_content(url_hash):
         'msg': 'ok',
         'status': True
     })
-    # record sent_ac_time/sent_ac_ini_time in TaskMain
-    wpxf.task_service.sent_ac_time = datetime.datetime.utcnow()
-    if not wpxf.task_service.sent_ac_ini_time:
-        wpxf.task_service.sent_ac_ini_time = datetime.datetime.utcnow()
+    # record sent_content_time/sent_content_ini_time in TaskMain
+    wpxf.task_service.sent_content_time = datetime.datetime.utcnow()
+    if not wpxf.task_service.sent_content_ini_time:
+        wpxf.task_service.sent_content_ini_time = datetime.datetime.utcnow()
     db.session.commit()
     return jsonify(res), 200
 

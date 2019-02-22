@@ -69,7 +69,7 @@ class InformAC():
         'publish_date': None,
         'url_structure_type': None,  # yet
         'secret': False,
-        'has_page_code': None,
+        'zi_page_code': None,
         'quality': None,
         'zi_sync': True,
         'zi_defy': set(),
@@ -92,7 +92,7 @@ class InformAC():
             'publish_date': str(self.publish_date),  # for JSON transfer
             'url_structure_type': self.url_structure_type,  # yet
             'secret': self.secret,
-            'has_page_code': self.has_page_code,
+            'zi_page_code': self.zi_page_code,
             'quality': self.quality,
             'zi_sync': self.zi_sync,
             'zi_defy': self.zi_defy,
@@ -167,7 +167,7 @@ class DomainSetting():
         'e_title': None,
         'syncDate': None,
         'page': None,
-        'delayday': 0,
+        'delayday': None,
         'sitemap': None
     }
 
@@ -268,7 +268,8 @@ class DomainSetting():
         logger.debug(f'publish_date {publish_date}')
         logger.debug(f'type(publish_date) {type(publish_date)}')
 
-        delaydt = publish_date + timedelta(days=self.delayday)
+        delayday = self.delayday[0] if self.delayday else 0
+        delaydt = publish_date + timedelta(days=delayday)
 
         if delaydt < datetime.utcnow():
             return True
@@ -410,8 +411,8 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
             # if not exist in DomainInfo insert
             idata = dict(domain=domain, partner_id=partner_id,
                          rules=domain_info)
-            doc = DomainInfo(**idata)
-            doc.upsert(q)
+            doc = DomainInfo()
+            doc.upsert(q, idata)
             # db_session_insert(doc)
             logger.debug('done inserting DomainInfo db')
             return domain_info
@@ -568,10 +569,14 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
         return wp_data
 
 
-def check_r(r: 'response'):
+def check_r(r: 'response', ts: object=None):
+    if ts:
+        ts.status_code = r.status_code
+        db.session.commit()
     if r.status_code == 200:
         return True
     else:
+        logger.warning(f'status_code {r.status_code}')
         return False
 
 
@@ -651,7 +656,8 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     else:
         r = requests.get(url, verify=False, allow_redirects=True)
 
-    if check_r(r):
+    ts = tsf if not multipaged else None
+    if check_r(r, ts):
         r.encoding = 'utf-8'
         html = r.text  # full html here!
         # generator = None
@@ -670,7 +676,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             if aujs:
                 aujs = True
                 logger.debug(f'aujs {aujs}')
-                iac.has_page_code = True
+                iac.zi_page_code = True
             else:
                 pass
         except:
@@ -897,7 +903,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                     alt = iframe.get('alt')
                     src = urljoin(url, src)
                     # domain spefic logic
-                    if tc.partner.domain == "medium.com":
+                    if domain == "medium.com":
                         src = getMediumIframeSource(src)
                     iframe.set('src', src)
 

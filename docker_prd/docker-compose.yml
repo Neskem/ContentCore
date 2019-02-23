@@ -12,7 +12,8 @@ services:
         restart: always
     web:
         container_name: web
-        image: breaktimeinc/breaktime.contentcore
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
         command: uwsgi --ini uwsgi.ini
         #command: python wsgi.py runserver --debug
         volumes:
@@ -32,8 +33,8 @@ services:
         restart: always
     beat:
         container_name: beat
-        #image: cc
-        image: breaktimeinc/breaktime.contentcore
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
         volumes:
             # - ..:/usr/src/app
@@ -49,8 +50,9 @@ services:
     worker:
         # [ref](https://stackoverflow.com/questions/42948547/which-pool-class-should-i-use-prefork-eventlet-or-gevent-in-celery)
         container_name: worker
-        image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=30,10 -n worker.%%h -E -P gevent
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=300,10 -n worker.%%h -E -P gevent
         volumes:
                 #- ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -64,8 +66,9 @@ services:
         restart: always
     worker-xpcrawler:
         container_name: worker-xpcrawler
-        image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=20,10 -n worker.%%h -E -P gevent
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=100,10 -n worker.%%h -E -P gevent
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -79,8 +82,8 @@ services:
         restart: always
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
-        # image: cc
-        image: breaktimeinc/breaktime.contentcore
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=10,5 -n worker.%%h -E -P gevent
         volumes:
            # - ..:/usr/src/app
@@ -95,7 +98,8 @@ services:
         restart: always
     worker-aicrawler:
         container_name: worker-aicrawler
-        image: breaktimeinc/breaktime.contentcore
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,10 -n worker.%%h -E -P gevent
         volumes:
                 #- ..:/usr/src/app
@@ -110,6 +114,7 @@ services:
         restart: always
     flower:
         container_name: flower
+        image: cc
         image: breaktimeinc/breaktime.contentcore
         command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
         ports:
@@ -127,8 +132,8 @@ services:
         restart: always
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
-        # image: cc
-        image: breaktimeinc/breaktime.contentcore
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=10,5 -n worker.%%h -E -P gevent
         volumes:
            # - ..:/usr/src/app

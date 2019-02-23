@@ -79,7 +79,7 @@ CELERYBEAT_SCHEDULE = {
     },
     'create_tasks_5': {
         'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*/30'),
+        'schedule': crontab(minute='*/15'),
         'args': ([5]),
         # 'options': {'queue': 'postman'}
     },

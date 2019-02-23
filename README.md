@@ -277,7 +277,7 @@ CREATE DATABASE break_content;
 ```
 
 # move docker image btw machine
-
+```shell
 # @ dev 192.168.18.111
 docker save -o /home/lance/playground/cc.tar cc
 
@@ -285,3 +285,4 @@ docker save -o /home/lance/playground/cc.tar cc
 scp root@192.168.18.111:/home/lance/playground/cc.tar /usr/app/docker/
 
 docker load -i /usr/app/docker/cc.tar
+```

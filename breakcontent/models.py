@@ -185,7 +185,7 @@ class TaskMain(Model):
         "TaskNoService", back_populates="task_main", uselist=False, foreign_keys='TaskNoService.task_main_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     url = Column(String(1000), nullable=False)
-    # request_id = Column(String(256), index=True, nullable=True)
+    domain = Column(String(500), index=True, nullable=True)
     request_id = Column(String(256), nullable=True)
     partner_id = Column(String(64), nullable=True)
     priority = Column(Integer, nullable=True)
@@ -244,6 +244,7 @@ class TaskService(Model):
                                        foreign_keys='WebpagesPartnerAi.task_service_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), unique=True, nullable=False)
     url = Column(String(1000))
+    domain = Column(String(500), index=True, nullable=True)
     partner_id = Column(String(64), nullable=True)
     request_id = Column(String(256), index=True, nullable=True)
     page_query_param = Column(String(50), nullable=True)
@@ -303,6 +304,7 @@ class TaskNoService(Model):
     url_hash = Column(String(64), ForeignKey(
         'task_main.url_hash'), nullable=False, unique=True)
     url = Column(String(1000))
+    domain = Column(String(500), index=True, nullable=True)
     request_id = Column(String(256), index=True, nullable=True)
     # secret = Column(Boolean, nullable=True)  # not required
     # retry = Column(Integer, default=0)

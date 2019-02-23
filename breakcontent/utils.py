@@ -95,7 +95,7 @@ class InformAC():
             'has_page_code': self.has_page_code,
             'quality': self.quality,
             'zi_sync': self.zi_sync,
-            'zi_defy': self.zi_defy,
+            'zi_defy': list(self.zi_defy) if self.zi_defy else [],
             'status': self.status
         }
 
@@ -269,9 +269,23 @@ class DomainSetting():
         logger.debug(f'type(publish_date) {type(publish_date)}')
 
         delayday = self.delayday[0] if self.delayday else 0
+        logger.debug(f'delayday {delayday}')
         delaydt = publish_date + timedelta(days=delayday)
+        ddt = delaydt.replace(tzinfo=None)
+        '''
+        # TypeError: can't compare offset-naive and offset-aware datetimes
 
-        if delaydt < datetime.utcnow():
+        https://stackoverflow.com/questions/796008/cant-subtract-offset-naive-and-offset-aware-datetimes
+        https://docs.python.org/3/library/datetime.html#datetime.datetime.utcnow
+
+        delaydt 2019-02-03 21:28:00+00:00
+        datetime.utcnow() 2019-02-23 08:12:37.602162
+        '''
+        now = datetime.utcnow().replace(microsecond=0)
+        logger.debug(f'ddt {ddt}')
+        logger.debug(f'now {now}')
+
+        if ddt < now:
             return True
         else:
             return False
@@ -280,18 +294,24 @@ class DomainSetting():
 def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
 
     while retry:
-        if method == 'put':
-            r = requests.put(api, json=data, headers=headers)
-        elif method == 'post':
-            r = requests.post(api, json=data, headers=headers)
-        elif method == 'get':
-            r = requests.get(api, json=data, headers=headers)
+        try:
+            if method == 'put':
+                r = requests.put(api, json=data, headers=headers)
+            elif method == 'post':
+                r = requests.post(api, json=data, headers=headers)
+            elif method == 'get':
+                r = requests.get(api, json=data, headers=headers)
+        except ValueError as e:
+            logger.error(f"url_hash {data['url_hash']} {e}")
+            retry -= 1
+            continue
 
         if r.status_code == 200:
             return r.json()
         else:
             logger.error(f"url_hash {data['url_hash']} request status code {r.status_code}")
             retry -= 1
+            continue
 
     logger.error(f'failed requesting {api} {retry} times')
     return False
@@ -608,6 +628,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
     task_service_id = wpx['task_service_id']
     tsf = TaskService.query.filter_by(id=task_service_id).first()
+    priority = tsf.task_main.priority
 
     ds = DomainSetting(domain_info)
 
@@ -631,7 +652,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         iac.zi_defy.add('regex')
 
     html = None
-    if multipaged:
+    if multipaged or priority == 5:
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
@@ -640,7 +661,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             'www.top1health.com'
         ]
 
-        if crawlera_apikey and domain in candidate:
+        if crawlera_apikey and domain in candidate or priority == 5:
             proxies = {
                 'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"

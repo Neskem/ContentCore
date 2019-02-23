@@ -1,6 +1,5 @@
 from breakcontent.factory import create_celery_app
 from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
-# from breakcontent.utils import Secret, InformAC, DomainSetting, db_session_query, db_session_update, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
 
 
 from breakcontent.utils import mercuryContent, prepare_crawler, ai_a_crawler
@@ -117,7 +116,7 @@ def create_tasks(priority):
     # with db.session.no_autoflush:
 
     q = dict(priority=priority, status='pending')
-    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=100)
+    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=500)
 
     logger.debug(f'len {len(tml)}')
     if len(tml) == 0:
@@ -169,13 +168,16 @@ def prepare_task(task: dict):
     logger.debug('run prepare_task()...')
     logger.debug(f'task {task}')
     url = task['url']
+    o = urlparse(url)
+    domain = o.netloc
+    q = dict(url_hash=task['url_hash'])
+    data = dict(domain=domain)
+    tm = TaskMain()
+    tm.update(q, data)
 
     if task.get('partner_id', None):
 
         partner_id = task['partner_id']
-        o = urlparse(url)
-        domain = o.netloc
-
         logger.debug(f'domain {domain}, partner_id {partner_id}')
 
         domain_info = get_domain_info(domain, partner_id)
@@ -190,7 +192,8 @@ def prepare_task(task: dict):
 
                 udata = {
                     'is_multipage': True,
-                    'page_query_param': page_query_param
+                    'page_query_param': page_query_param,
+                    'domain': domain
                 }
                 ts.upsert(q, udata)
 
@@ -210,7 +213,8 @@ def prepare_task(task: dict):
                     data = {
                         'url': url,
                         'url_hash': task['url_hash'],
-                        'multipage': mp_url
+                        'multipage': mp_url,
+                        'domain': domain
                     }
                     resp_data = retry_request(
                         'post', ac_content_multipage_api, data, headers)

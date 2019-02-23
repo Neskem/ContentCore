@@ -111,6 +111,8 @@ curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/js
 **Example**
 ```shell
 curl -v -X GET 'http://localhost:8100/v1/create_tasks/1'
+# do cmd every {5} sec
+watch -n5 curl -v -X GET 'http://192.168.18.121:80/v1/create_tasks/1'
 ```
 ```json
 {
@@ -118,6 +120,8 @@ curl -v -X GET 'http://localhost:8100/v1/create_tasks/1'
   "status": true
 }
 ```
+
+
 
 ### Get content from CC
 **Request**
@@ -225,3 +229,59 @@ curl -v -X GET 'https://partner.breaktime.com.tw/api/config/YUZ7T18/healthnice.o
 * How to enter postgresql:
 * psql -p5432 -Upostgres -h 35.194.207.202 / password: admin
 * db: break_article
+
+--
+# prd operation
+
+# howto add a column w/o restarting db
+* do it with sql client gui (handy)
+```sql
+ALTER TABLE task_service ADD status_code SMALLINT;
+```
+
+# backup sql db to another machine
+* @ prd psql machine(192.168.18.123)
+```sh
+#!/bin/bash
+today=`date +%Y-%m-%d-%H:%M`
+backupdir="/etc/break_backup/"
+PGPASSWORD=ArticleBreak_psql1qaz pg_dump -d break_article -U postgres -h 10.140.0.122 -f "$backupdir"break_article_"$today".sql
+find $backupdir -name "break_article*" -mtime +2 -type f -exec rm -rf {} \;
+```
+
+# recreate db in psql
+* @ prd psql machine(192.168.18.123)
+```shell
+ssh ubuntu@192.168.18.123
+sudo su
+psql -U postgres -h localhost
+#pw: ContentBreak_psql1qaz
+
+```
+```sql
+SELECT pg_terminate_backend(pg_stat_activity.pid)
+    FROM pg_stat_activity
+    WHERE pg_stat_activity.datname = 'break_content'
+      AND pid <> pg_backend_pid();
+
+DROP DATABASE break_content;
+CREATE DATABASE break_content;
+\q
+
+
+```
+* db operation
+```sql
+\c break_content
+\d+ <table name>
+```
+
+# move docker image btw machine
+
+# @ dev 192.168.18.111
+docker save -o /home/lance/playground/cc.tar cc
+
+# @ prd 192.168.18.121
+scp root@192.168.18.111:/home/lance/playground/cc.tar /usr/app/docker/
+
+docker load -i /usr/app/docker/cc.tar

@@ -251,7 +251,7 @@ class TaskService(Model):
     secret = Column(Boolean, default=False)
     status_code = Column(Integer, index=True, nullable=True)
     # retry_xpath = Column(Integer, default=0)
-    status_xpath = Column(Enum('pending', 'doing', 'done',
+    status_xpath = Column(Enum('pending', 'doing', 'ready', 'done',
                                'failed', name='status_xpath'), default='pending', index=True)
     # retry_ai = Column(Integer, default=0)
     status_ai = Column(Enum('pending', 'doing', 'done',
@@ -348,7 +348,7 @@ class WebpagesPartnerXpath(Model):
     url = Column(String(1000), nullable=False)
     wp_url = Column(String(500), nullable=True)  # only WP bsp has it
     title = Column(Text(), nullable=True)
-    has_page_code = Column(postgresql.ARRAY(Text(), dimensions=1)) # todo
+    has_page_code = Column(postgresql.ARRAY(Text(), dimensions=1), nullable=True) # todo
     meta_keywords = Column(String(200), nullable=True)
     meta_description = Column(Text(), nullable=True)
     meta_jdoc = Column(postgresql.JSONB(
@@ -742,5 +742,9 @@ ref:
 https://docs.sqlalchemy.org/en/latest/orm/extensions/declarative/table_config.html
 # Session
 https://docs.sqlalchemy.org/en/latest/orm/session.html
+
+# howto add a column w/o restarting db
+# e.g.
+ALTER TABLE task_service ADD status_code SMALLINT;
 
 '''

@@ -277,19 +277,20 @@ class DomainSetting():
             return False
 
 
-def retry_request(method: str, api: str, json: dict=None, headers: dict=None, retry: int=5):
+def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
 
     while retry:
         if method == 'put':
-            r = requests.put(api, json=json, headers=headers)
+            r = requests.put(api, json=data, headers=headers)
         elif method == 'post':
-            r = requests.post(api, json=json, headers=headers)
+            r = requests.post(api, json=data, headers=headers)
         elif method == 'get':
-            r = requests.get(api, json=json, headers=headers)
+            r = requests.get(api, json=data, headers=headers)
 
         if r.status_code == 200:
             return r.json()
         else:
+            logger.error(f"url_hash {data['url_hash']} request status code {r.status_code}")
             retry -= 1
 
     logger.error(f'failed requesting {api} {retry} times')
@@ -526,6 +527,9 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     else:
         ts = TaskNoService().select(q)
 
+    if not ts:
+        return
+
     udata = {
         'url_hash': ts.url_hash,
         'url': ts.url,  # should url be updated here?
@@ -685,7 +689,13 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         tEnd = time.time()
         logger.debug(f"scanning aujs cost {tEnd - tStart} sec")
 
-        tree = lxml.html.fromstring(html)
+        try:
+            tree = lxml.html.fromstring(html)
+        except ValueError as e:
+            logger.error(e)
+            iac.status= False
+            return a_wpx, iac
+
         match_xpath = None
 
         for xpath in ds.xpath:

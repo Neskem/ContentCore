@@ -317,8 +317,11 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     inform_ac_data = inform_ac.to_dict()
     logger.debug(f'inform_ac_data {inform_ac_data}')
 
-    headers = {'Content-Type': "application/json"}
+    a_wpx.task_service.status_xpath = 'ready'
+    db.session.commit()
+    logger.debug(f'url_hash {a_wpx.url_hash} status {a_wpx.task_service.status_xpath}')
 
+    headers = {'Content-Type': "application/json"}
     resp_data = retry_request(
         'put', ac_content_status_api, inform_ac_data, headers)
 

@@ -114,13 +114,13 @@ def create_tasks(priority):
     '''
     update status (pending > doing) and generate tasks
     '''
-    logger.debug(f"run create_tasks()...")
+    logger.debug(f"run create_tasks() on priority {priority}")
     # with db.session.no_autoflush:
 
     q = dict(priority=priority, status='pending')
     tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=500)
 
-    logger.debug(f'len {len(tml)}')
+    logger.debug(f'priority {priority}, len {len(tml)}')
     if len(tml) == 0:
         logger.debug(f'no result, quit')
         return

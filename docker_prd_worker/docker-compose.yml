@@ -1,15 +1,34 @@
 version: '2'
 services:
+    redis:
+        container_name: redis
+        image: redis:4.0
+        ports:
+            - "6379:6379"
+        restart: always
+    beat:
+        container_name: beat
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: single-beat celery beat -A breakcontent.tasks -l info
+        # depends_on:
+        #     - redis
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=beat
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker:
         container_name: worker
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=300,30 -n worker.%%h -E -P gevent
-        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=300,30 -n worker -E
-        # depends_on:
-        #     - redis
-        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=25,8 -n worker -E
-        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG -n worker.%%h
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E -P gevent
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -21,11 +40,63 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-xpcrawler:
+        container_name: worker-xpcrawler
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E -P gevent
+        depends_on:
+            - redis
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-xpcrawler
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
+    worker-xpmcrawler:
+        container_name: worker-xpmcrawler
+        image: cc
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E -P gevent
+        depends_on:
+            - redis
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-xpmcrawler
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
+    worker-aicrawler:
+        container_name: worker-aicrawler
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E -P gevent
+        depends_on:
+            - redis
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-aicrawler
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     flower:
         container_name: flower
         image: cc
         command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
-        # command: celery -A breakcontent.tasks flower --port=5555 --auth_provider=flower.views.auth.GithubLoginHandler --auth=.*
         ports:
             - "5555:5555"
         volumes:
@@ -34,9 +105,6 @@ services:
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=flower
-            # - FLOWER_OAUTH2_KEY=03b470c69baa3a2a67e6
-            # - FLOWER_OAUTH2_SECRET=c75bb1795e31dededcdd1d2e085e0fa970d174a5
-            # - FLOWER_OAUTH2_REDIRECT_URI=http://192.168.18.111:5555/login
         logging:
             driver: "json-file"
             options:

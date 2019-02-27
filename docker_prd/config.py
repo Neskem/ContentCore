@@ -59,37 +59,37 @@ CELERYBEAT_SCHEDULE = {
         'args': ([1]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_2': { # Au.js trigger url of partner
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([2]),
-        # 'options': {'queue': 'postman'}
-    },
-    'create_tasks_3': { # Au.js trigger url but was not partner
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([3]),
-        # 'options': {'queue': 'postman'}
-    },
-    'create_tasks_4': { # Scan index page (ex: conn.tw, medium.com)
-    # todo: selenium
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([4]),
-        # 'options': {'queue': 'postman'}
-    },
-    'create_tasks_5': { # Sitemap
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([5]),
-        # 'options': {'queue': 'postman'}
-    },
-    'create_tasks_6': { # Update task (including daily and monthly)
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),  # trigger at midnight
-        'args': ([6]),
-        # 'options': {'queue': 'postman'}
-    },
+    # 'create_tasks_2': { # Au.js trigger url of partner
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([2]),
+    #     # 'options': {'queue': 'postman'}
+    # },
+    # 'create_tasks_3': { # Au.js trigger url but was not partner
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([3]),
+    #     # 'options': {'queue': 'postman'}
+    # },
+    # 'create_tasks_4': { # Scan index page (ex: conn.tw, medium.com)
+    # # todo: selenium
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([4]),
+    #     # 'options': {'queue': 'postman'}
+    # },
+    # 'create_tasks_5': { # Sitemap
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([5]),
+    #     # 'options': {'queue': 'postman'}
+    # },
+    # 'create_tasks_6': { # Update task (including daily and monthly)
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),  # trigger at midnight
+    #     'args': ([6]),
+    #     # 'options': {'queue': 'postman'}
+    # },
 }
 
 

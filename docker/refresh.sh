@@ -5,9 +5,9 @@
 
 docker-compose down -v
 
-#PGPASSWORD=admin psql -U postgres -h 35.194.207.202 < postgresql/init.sql
+PGPASSWORD=admin psql -U postgres -h 35.194.207.202 < postgresql/init.sql
 
-# docker rmi $(docker images nginx -q)
+docker rmi $(docker images nginx -q)
 
 docker build -t cc -f ../Dockerfile ../
 

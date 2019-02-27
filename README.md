@@ -264,6 +264,30 @@ find $backupdir -name "break_content*" -mtime +2 -type f -exec rm -rf {} \;
 PGPASSWORD=admin psql -h localhost -U postgres -e break_content < break_content_2019-02-27-03\:44.sql
 ```
 
+* backup psql from redis machine (192.168.18.122)
+```shell
+sudo su
+
+cd
+
+mkdir -p /etc/break_backup/
+
+vi psql_backup.sh
+
+#!/bin/bash
+today=`date +%Y-%m-%d-%H:%M`
+backupdir="/etc/break_backup/"
+PGPASSWORD=ContentBreak_psql1qaz pg_dump -d break_content -U postgres -h 192.168.18.123 -f "$backupdir"break_content_"$today".sql
+find $backupdir -name "break_content*" -mtime +2 -type f -exec rm -rf {} \;
+
+chmod +x psql_backup.sh
+
+crontab -e 
+
+0 */2 * * * /root/psql_backup.sh
+
+```
+
 
 # recreate db in psql
 * First make sure the container is not running
@@ -329,3 +353,19 @@ docker load -i /usr/app/docker/cc.tar
 ssh-keygen
 ssh-copy-id user@remote_ip
 
+
+# [HOWTO] monitor psql
+* Run this SQL to see postgresql max connections allowed:
+
+```sh
+show max_connections;
+```
+
+* Take a look at exactly who/what/when/where is holding open your connections:
+```shell
+SELECT * FROM pg_stat_activity;
+```
+* The number of connections currently used is
+```shell
+SELECT COUNT(*) from pg_stat_activity;
+```

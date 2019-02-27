@@ -9,7 +9,7 @@ test from win
 ### Stg env
 * AC IP: 35.236.166.182
 * AC/CC PSQL GCP IP: 35.194.207.202
-* CC GCP IP: 35.234.56.85
+* CC GCP IP: 104.155.194.18 (10.140.0.17)
 * CC IDC IP: 112.121.109.120 (192.168.250.140) (ubuntu/1qaz@WSX)
 
 ### Prd env & spec
@@ -250,10 +250,13 @@ find $backupdir -name "break_article*" -mtime +2 -type f -exec rm -rf {} \;
 ```
 
 # recreate db in psql
+* First make sure the container is not running
+```shell
+docker-compose down -v
+```
 * @ prd psql machine(192.168.18.123)
 ```shell
 ssh ubuntu@192.168.18.123
-sudo su
 psql -U postgres -h localhost
 #pw: ContentBreak_psql1qaz
 
@@ -266,17 +269,20 @@ SELECT pg_terminate_backend(pg_stat_activity.pid)
 
 DROP DATABASE break_content;
 CREATE DATABASE break_content;
-\q
 
+# \q
 
 ```
 * db operation
 ```sql
 \c break_content
-\d+ <table name>
+#\d+ <table name>
+\d+ task_service
 ```
 
+
 # move docker image btw machine
+* from local to prd
 ```shell
 # @ dev 192.168.18.111
 docker save -o /home/lance/playground/cc.tar cc
@@ -285,4 +291,15 @@ docker save -o /home/lance/playground/cc.tar cc
 scp root@192.168.18.111:/home/lance/playground/cc.tar /usr/app/docker/
 
 docker load -i /usr/app/docker/cc.tar
+```
+* from local to remote (add local's pub key into remote machine)
+```shell
+# @ dev 192.168.18.111
+docker save -o /home/lance/playground/cc.tar cc
+
+scp /home/lance/playground/cc.tar root@104.155.194.18:/usr/app/docker/
+
+# @ stg 35.234.56.85 
+docker load -i /usr/app/docker/cc.tar
+
 ```

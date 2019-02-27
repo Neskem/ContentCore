@@ -40,52 +40,54 @@ ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
 # defines how tasks are sent into broker, which task to which queue
 CELERY_ROUTES = {
-    # aicrawler
-    'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
-    'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},
-    # xpcrawler
-    'breakcontent.tasks.xpath_single_crawler': {'queue': 'xpcrawler'},
-    # cpmcrawler
-    'breakcontent.tasks.xpath_multi_crawler': {'queue': 'xpmcrawler'},
+    # # aicrawler
+    # 'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
+    # 'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},
+    # # xpcrawler
+    # 'breakcontent.tasks.xpath_single_crawler': {'queue': 'xpcrawler'},
+    # # cpmcrawler
+    # 'breakcontent.tasks.xpath_multi_crawler': {'queue': 'xpmcrawler'},
     # # others will go to 'default' queue
 
 }
 
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
+# task quantity: 1 = 3  > 6 > 2 > 5
 CELERYBEAT_SCHEDULE = {
-    'create_tasks_1': {
+    'create_tasks_1': { # Partner system to sync/remove task
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
         'args': ([1]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_2': {
+    'create_tasks_2': { # Au.js trigger url of partner
         'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*/3'),
+        'schedule': crontab(hour='*/3'),
         'args': ([2]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_3': {
+    'create_tasks_3': { # Au.js trigger url but was not partner
         'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(minute='*'),
         'args': ([3]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_4': {
+    'create_tasks_4': { # Scan index page (ex: conn.tw, medium.com)
+    # todo: selenium
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*/10'),
         'args': ([4]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_5': {
+    'create_tasks_5': { # Sitemap
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*/15'),
         'args': ([5]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_6': {
+    'create_tasks_6': { # Update task (including daily and monthly)
         'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(hour='0'),  # trigger at midnight
+        'schedule': crontab(minute='*/2'),  # trigger at midnight
         'args': ([6]),
         # 'options': {'queue': 'postman'}
     },
@@ -104,6 +106,8 @@ PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)
 # AI crawler
 MERCURY_TOKEN = os.environ.get(
     'MERCURY_TOKEN', "sJ4GrxyzEik4wKfwATu4zszm8azpZV0tusuO4B2m")
+PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in ['false', 'False', 0, False] else True
+
 
 # Article Center
 AC_CONTENT_STATUS_API = os.environ.get('AC_CONTENT_STATUS_API', None)

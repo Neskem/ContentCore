@@ -113,7 +113,8 @@ class Model(db.Model):
                 logger.debug(f'data {data}')
                 self.__class__.query.filter_by(**query).update(data)
                 db.session.commit()
-                ret = self.select(query)  # update self
+                # ret = self.select(query)  # update self
+                ret = self.__class__.query.filter_by(**query).first()
                 self.id = ret.id
                 logger.debug(f'update {self.__tablename__} successful')
                 break
@@ -194,7 +195,7 @@ class TaskMain(Model):
     parent_url = Column(String(1000), nullable=True)
 
     # notify ac after crawler done, no matter partner or non-partner
-    status = Column(Enum('pending', 'doing', 'done',
+    status = Column(Enum('pending', 'doing', 'done', 'failed',
                          name='status_tm'), default='pending', index=True)
     doing_time = Column(DateTime(timezone=False), nullable=True)
     # notify_ac_time
@@ -251,7 +252,7 @@ class TaskService(Model):
     is_multipage = Column(Boolean, default=False)
     secret = Column(Boolean, default=False)
     status_code = Column(Integer, index=True, nullable=True)
-    # retry_xpath = Column(Integer, default=0)
+    retry_xpath = Column(Integer, default=0)
     status_xpath = Column(Enum('pending', 'doing', 'ready', 'done',
                                'failed', name='status_xpath'), default='pending', index=True)
     # retry_ai = Column(Integer, default=0)
@@ -350,7 +351,8 @@ class WebpagesPartnerXpath(Model):
     url = Column(String(1000), nullable=False)
     wp_url = Column(String(500), nullable=True)  # only WP bsp has it
     title = Column(Text(), nullable=True)
-    has_page_code = Column(postgresql.ARRAY(Text(), dimensions=1), nullable=True) # todo
+    has_page_code = Column(postgresql.ARRAY(
+        Text(), dimensions=1), nullable=True)  # todo
     meta_keywords = Column(String(200), nullable=True)
     meta_description = Column(Text(), nullable=True)
     meta_jdoc = Column(postgresql.JSONB(

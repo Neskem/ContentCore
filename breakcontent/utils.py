@@ -597,10 +597,11 @@ def check_r(r: 'response', ts: object=None):
     if ts:
         ts.status_code = r.status_code
         db.session.commit()
+        logger.debug(f'url_hash {ts.url_hash} status_code {r.status_code}')
     if r.status_code == 200:
         return True
     else:
-        logger.warning(f'status_code {r.status_code}')
+        # logger.warning(f'url_hash {ts.url_hash} status_code {r.status_code}')
         return False
 
 
@@ -661,7 +662,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             'www.top1health.com'
         ]
 
-        if crawlera_apikey and domain in candidate or priority == 5:
+        if crawlera_apikey and (domain in candidate or priority == 5):
             proxies = {
                 'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
@@ -677,6 +678,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 # don't use crawlera if failed at once
                 r = requests.get(url, allow_redirects=True, headers=headers)
         else:
+            logger.debug('use LOCAL to request')
             r = requests.get(url, allow_redirects=True, headers=headers)
     else:
         r = requests.get(url, verify=False, allow_redirects=True)
@@ -693,20 +695,14 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         wp_url = None
 
         tStart = time.time()
-        try:
-            aujs = (
-                re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
-            logger.debug(f'aujs {aujs}')
+        aujs = (
+            re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+        logger.debug(f'aujs {aujs}')
 
-            if aujs:
-                aujs = True
-                logger.debug(f'aujs {aujs}')
-                iac.has_page_code = True
-            else:
-                pass
-        except:
-            aujs = None
-            logger.debug(f'aujs {aujs}')
+        if aujs:
+            iac.has_page_code = True
+        else:
+            pass
         tEnd = time.time()
         logger.debug(f"scanning aujs cost {tEnd - tStart} sec")
 
@@ -1380,7 +1376,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         logger.error(f'requesting {url} failed!')
         # request failed goes here
         # tsf.retry_xpath += 1
-        # db.session.commit()
+        # tsf.commit()
         iac.status = False
         return a_wpx, iac
 

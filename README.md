@@ -8,18 +8,21 @@ test from win
 
 ### Stg env
 * AC IP: 35.236.166.182
-* AC/CC PSQL GCP IP: 35.194.207.202
-* CC GCP IP: 104.155.194.18 (10.140.0.17)
+* AC/CC PSQL GCP IP: 35.194.207.202 # backup .sql 
+* CC GCP IP: 35.221.227.168 (10.140.0.17)
 * CC IDC IP: 112.121.109.120 (192.168.250.140) (ubuntu/1qaz@WSX)
+
 
 ### Prd env & spec
 | Machine | FQDN/IP | CPU | RAM | DISK | Pub_IP |
 |:-------:|:--------:|:---:|:---:|:----:|:-----:|
 | CC Server | 192.168.18.121 | 10vCPU | 38G | 100G | 112.121.109.124 |
+| CC Worker | 192.168.18.124 | 10vCPU | 38G | 100G | N |
+| CC Worker2 | 192.168.18.125 | 10vCPU | 10G | 100G | N |
+| CC Worker3 | 192.168.18.126 | 10vCPU | 10G | 100G | N |
 | CC Redis | 192.168.18.122 | 2vCPU | 15G | 60G | N |
 | CC PSQL | 192.168.18.123 | 6vCPU | 30G | 400G | N |
 
-ubuntu/1qaz@WSX
 
 * copy pub_key to remote machine for passwordless login, example:
 ```
@@ -241,13 +244,26 @@ ALTER TABLE task_service ADD status_code SMALLINT;
 
 # backup sql db to another machine
 * @ prd psql machine(192.168.18.123)
+* dump from local machine
+
 ```sh
+sudo su
+mkdir -p /etc/break_backup/
+
+vi psql_backup.sh
+
 #!/bin/bash
 today=`date +%Y-%m-%d-%H:%M`
 backupdir="/etc/break_backup/"
-PGPASSWORD=ArticleBreak_psql1qaz pg_dump -d break_article -U postgres -h 10.140.0.122 -f "$backupdir"break_article_"$today".sql
-find $backupdir -name "break_article*" -mtime +2 -type f -exec rm -rf {} \;
+PGPASSWORD=ContentBreak_psql1qaz pg_dump -d break_content -U postgres -h localhost -f "$backupdir"break_content_"$today".sql
+find $backupdir -name "break_content*" -mtime +2 -type f -exec rm -rf {} \;
 ```
+* insert syntex
+```shell
+# example
+PGPASSWORD=admin psql -h localhost -U postgres -e break_content < break_content_2019-02-27-03\:44.sql
+```
+
 
 # recreate db in psql
 * First make sure the container is not running
@@ -282,7 +298,7 @@ CREATE DATABASE break_content;
 
 
 # move docker image btw machine
-* from local to prd
+* from dev to prd (local > remote)
 ```shell
 # @ dev 192.168.18.111
 docker save -o /home/lance/playground/cc.tar cc
@@ -292,14 +308,24 @@ scp root@192.168.18.111:/home/lance/playground/cc.tar /usr/app/docker/
 
 docker load -i /usr/app/docker/cc.tar
 ```
-* from local to remote (add local's pub key into remote machine)
+
+* from dev to stg (local > remote)
+* (add local's pub key into remote machine)
 ```shell
 # @ dev 192.168.18.111
 docker save -o /home/lance/playground/cc.tar cc
 
 scp /home/lance/playground/cc.tar root@104.155.194.18:/usr/app/docker/
 
-# @ stg 35.234.56.85 
+# @ stg 104.155.194.18
 docker load -i /usr/app/docker/cc.tar
 
 ```
+
+
+
+# [HOWTO] sshkey gen & pass
+```sh
+ssh-keygen
+ssh-copy-id user@remote_ip
+

@@ -309,7 +309,8 @@ def retry_request(method: str, api: str, data: dict=None, headers: dict=None, re
         if r.status_code == 200:
             return r.json()
         else:
-            logger.error(f"url_hash {data['url_hash']} request status code {r.status_code}")
+            logger.error(
+                f"url_hash {data['url_hash']} request status code {r.status_code}")
             retry -= 1
             continue
 
@@ -695,8 +696,14 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         wp_url = None
 
         tStart = time.time()
-        aujs = (
-            re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+        try:
+            aujs = (
+                re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+        except AttributeError as e:
+            # AttributeError: 'NoneType' object has no attribute 'span'
+            logger.warning(e)
+            aujs = False
+
         logger.debug(f'aujs {aujs}')
 
         if aujs:
@@ -710,7 +717,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             tree = lxml.html.fromstring(html)
         except ValueError as e:
             logger.error(e)
-            iac.status= False
+            iac.status = False
             return a_wpx, iac
 
         match_xpath = None
@@ -1125,10 +1132,12 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
             # logger.debug(f'before {publish_date}')
             # ignore the time zone str if any
-            publish_date = publish_date.split('+')[0]
-            publish_date = dateparser.parse(publish_date, date_formats=[
-                                            '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
-
+            if publish_date:
+                publish_date = publish_date.split('+')[0]
+                publish_date = dateparser.parse(publish_date, date_formats=[
+                                                '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
+            else:
+                publish_date = datetime.utcnow()
             # logger.debug(publish_date)
             # logger.debug(f'after {publish_date}')
             # logger.debug(f'publish_date type {type(publish_date)}')

@@ -62,7 +62,7 @@ CELERYBEAT_SCHEDULE = {
     },
     'create_tasks_2': { # Au.js trigger url of partner
         'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(hour='*/3'),
+        'schedule': crontab(minute='*/3'),
         'args': ([2]),
         # 'options': {'queue': 'postman'}
     },

@@ -11,6 +11,10 @@ services:
         image: nginx:1.12
         depends_on:
             - web
+            - worker
+            # - worker-xpcrawler
+            # - worker-xpmcrawler
+            # - worker-aicrawler
         ports:
             - "80:80"
             # - "443:443"
@@ -23,9 +27,11 @@ services:
         image: cc
         # image: breaktimeinc/breaktime.contentcore
         command: uwsgi --ini uwsgi.ini
-        #command: python wsgi.py runserver --debug
+        # command: python wsgi.py runserver --debug
+        # depends_on:
+        #     - redis
         volumes:
-                #- ..:/usr/src/app
+           # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -33,36 +39,43 @@ services:
         expose:
             - "8700"
         # ports:
+        #     - "8100:8100"
         #     - "8700:8700"
         logging:
             driver: "json-file"
             options:
                 max-size: "50m"
         restart: always
-    beat:
-        container_name: beat
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        command: single-beat celery beat -A breakcontent.tasks -l info
-        volumes:
-            # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=beat
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
+    # beat:
+    #     container_name: beat
+    #     image: cc
+    #     # image: breaktimeinc/breaktime.contentcore
+    #     command: single-beat celery beat -A breakcontent.tasks -l info
+    #     # depends_on:
+    #     #     - redis
+    #     volumes:
+    #        # - ..:/usr/src/app
+    #        - /var/log/contentcore:/var/log/contentcore
+    #     env_file: breakcontent.env
+    #     environment:
+    #         - CONTAINER_TAG=beat
+    #     logging:
+    #         driver: "json-file"
+    #         options:
+    #             max-size: "50m"
+    #     restart: always
     worker:
-        # [ref](https://stackoverflow.com/questions/42948547/which-pool-class-should-i-use-prefork-eventlet-or-gevent-in-celery)
         container_name: worker
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=300,10 -n worker.%%h -E -P gevent
+        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=300,10 -n worker -E -P gevent
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=300,4 -n worker -E
+        # depends_on:
+        #     - redis
+        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=25,8 -n worker -E
+        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG -n worker.%%h
         volumes:
-                #- ..:/usr/src/app
+           # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -72,59 +85,64 @@ services:
             options:
                 max-size: "50m"
         restart: always
-    worker-xpcrawler:
-        container_name: worker-xpcrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=100,10 -n worker.%%h -E -P gevent
-        volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=worker-xpcrawler
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
-    worker-xpmcrawler:
-        container_name: worker-xpmcrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=10,5 -n worker.%%h -E -P gevent
-        volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=worker-xpmcrawler
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
-    worker-aicrawler:
-        container_name: worker-aicrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,1 -n worker.%%h -E -P gevent
-        volumes:
-                #- ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=worker-aicrawler
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
+    # worker-xpcrawler:
+    #     container_name: worker-xpcrawler
+    #     image: cc
+    #     # image: breaktimeinc/breaktime.contentcore
+    #     command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=100,4 -n worker.xpcrawler -E -P gevent
+    #     depends_on:
+    #         - redis
+    #     volumes:
+    #        # - ..:/usr/src/app
+    #        - /var/log/contentcore:/var/log/contentcore
+    #     env_file: breakcontent.env
+    #     environment:
+    #         - CONTAINER_TAG=worker-xpcrawler
+    #     logging:
+    #         driver: "json-file"
+    #         options:
+    #             max-size: "50m"
+    #     restart: always
+    # worker-xpmcrawler:
+    #     container_name: worker-xpmcrawler
+    #     image: cc
+    #     command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=100,4 -n worker.xpmcrawler -E -P gevent
+    #     depends_on:
+    #         - redis
+    #     volumes:
+    #        # - ..:/usr/src/app
+    #        - /var/log/contentcore:/var/log/contentcore
+    #     env_file: breakcontent.env
+    #     environment:
+    #         - CONTAINER_TAG=worker-xpmcrawler
+    #     logging:
+    #         driver: "json-file"
+    #         options:
+    #             max-size: "50m"
+    #     restart: always
+    # worker-aicrawler:
+    #     container_name: worker-aicrawler
+    #     image: cc
+    #     # image: breaktimeinc/breaktime.contentcore
+    #     command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,2 -n worker.aicrawler -E -P gevent
+    #     depends_on:
+    #         - redis
+    #     volumes:
+    #        # - ..:/usr/src/app
+    #        - /var/log/contentcore:/var/log/contentcore
+    #     env_file: breakcontent.env
+    #     environment:
+    #         - CONTAINER_TAG=worker-aicrawler
+    #     logging:
+    #         driver: "json-file"
+    #         options:
+    #             max-size: "50m"
+    #     restart: always
     flower:
         container_name: flower
         image: cc
-        # image: breaktimeinc/breaktime.contentcore
         command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
+        # command: celery -A breakcontent.tasks flower --port=5555 --auth_provider=flower.views.auth.GithubLoginHandler --auth=.*
         ports:
             - "5555:5555"
         volumes:
@@ -133,27 +151,16 @@ services:
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=flower
+            # - FLOWER_OAUTH2_KEY=03b470c69baa3a2a67e6
+            # - FLOWER_OAUTH2_SECRET=c75bb1795e31dededcdd1d2e085e0fa970d174a5
+            # - FLOWER_OAUTH2_REDIRECT_URI=http://192.168.18.111:5555/login
         logging:
             driver: "json-file"
             options:
                 max-size: "50m"
         restart: always
-    worker-xpmcrawler:
-        container_name: worker-xpmcrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=10,5 -n worker.%%h -E -P gevent
-        volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=worker-xpmcrawler
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
+
+
     # worker-postman:
     #     container_name: worker-postman
     #     image: cc
@@ -172,8 +179,27 @@ services:
     #     restart: always
 
 
+    # hub:
+    #     container_name: hub
+    #     image: selenium/hub:3.13.0-argon
+    #     environment:
+    #         - GRID_MAX_SESSION=20
+    #         - GRID_BROWSER_TIMEOUT=100000
+    #         - GRID_TIMEOUT=90000
+    #         - GRID_NEW_SESSION_WAIT_TIMEOUT=300000
+    #     ports:
+    #         - "4444:4444"
+    # chrome:
+    #     container_name: chrome
+    #     image: selenium/node-chrome:3.13.0-argon
+    #     volumes:
+    #         - /dev/shm:/dev/shm
+    #     depends_on:
+    #         - hub
+    #     environment:
+    #         HUB_HOST: hub
 
-
-
+    #         #volumes:
+    #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
 
 

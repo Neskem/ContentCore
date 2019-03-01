@@ -53,18 +53,18 @@ CELERY_ROUTES = {
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
 # task quantity: 1 = 3  > 6 > 2 > 5
 CELERYBEAT_SCHEDULE = {
-    'create_tasks_1': { # Partner system to sync/remove task
+    'create_tasks_1': {  # Partner system to sync/remove task
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
         'args': ([1]),
         # 'options': {'queue': 'postman'}
     },
-    # 'create_tasks_2': { # Au.js trigger url of partner
-    #     'task': 'breakcontent.tasks.create_tasks',
-    #     'schedule': crontab(minute='*'),
-    #     'args': ([2]),
-    #     # 'options': {'queue': 'postman'}
-    # },
+    'create_tasks_2': {  # Au.js trigger url of partner
+        'task': 'breakcontent.tasks.create_tasks',
+        'schedule': crontab(minute='*'),
+        'args': ([2]),
+        # 'options': {'queue': 'postman'}
+    },
     # 'create_tasks_3': { # Au.js trigger url but was not partner
     #     'task': 'breakcontent.tasks.create_tasks',
     #     'schedule': crontab(minute='*'),
@@ -105,7 +105,8 @@ PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)
 # AI crawler
 MERCURY_TOKEN = os.environ.get(
     'MERCURY_TOKEN', "sJ4GrxyzEik4wKfwATu4zszm8azpZV0tusuO4B2m")
-PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in ['false', 'False', 0, False] else True
+PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in [
+    'false', 'False', 0, False] else True
 
 
 # Article Center

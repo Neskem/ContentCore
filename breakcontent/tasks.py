@@ -365,12 +365,18 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
         'put', ac_content_status_api, inform_ac_data, headers)
 
     if resp_data:
+        if inform_ac.old_url_hash:
+            db.session.delete(a_wpx.task_service.task_main)
+            db.session.commit()
+            return
+
         logger.debug(f'resp_data {resp_data}')
         a_wpx.task_service.status_xpath = 'done'
         a_wpx.task_service.task_main.status = 'done'
         a_wpx.task_service.task_main.done_time = datetime.datetime.utcnow()
         db.session.commit()
         logger.debug(f'url_hash {url_hash}, inform AC successful')
+
     else:
         logger.error(f'url_hash {url_hash}, inform AC failed')
         a_wpx.task_service.status_xpath = 'failed'

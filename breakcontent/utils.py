@@ -150,8 +150,8 @@ class InformAC():
             logger.debug(f'inform ac with this url_hash {u2c.url_hash}')
             u2c.replaced = True
             self.old_url_hash = u2c.url_hash
-            db.session.delete(wp.task_service.task_main)
-            db.session.commit()
+            # db.session.delete(wp.task_service.task_main)
+            # db.session.commit()
 
 
 class DomainSetting():
@@ -268,7 +268,7 @@ class DomainSetting():
         logger.debug(f'publish_date {publish_date}')
         logger.debug(f'type(publish_date) {type(publish_date)}')
 
-        delayday = self.delayday[0] if self.delayday else 0
+        delayday = int(self.delayday[0]) if self.delayday else 0
         logger.debug(f'delayday {delayday}')
         delaydt = publish_date + timedelta(days=delayday)
         ddt = delaydt.replace(tzinfo=None)
@@ -638,9 +638,10 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     a_wpx = tsf.webpages_partner_xpath
     a_wpx.domain = domain
     a_wpx.task_service_id = task_service_id
+    url_hash = wpx['url_hash']
 
     iac = InformAC()
-    iac.url_hash = wpx['url_hash']
+    iac.url_hash = url_hash
     iac.url = url
     iac.request_id = tsf.request_id
 
@@ -966,7 +967,13 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                         data = json.dumps(data_block)
                         data = json.loads(data)
                         if "datePublished" in data:
-                            publish_date = data.get("datePublished")
+                            try:
+                                publish_date = data.get("datePublished")
+                            except AttributeError as e:
+                                logger.error(e)
+                                logger.debug(
+                                    f'url_hash {url_hash}, data {data}')
+                                publish_date = None
                             break
 
             # domain specific logic
@@ -1136,19 +1143,18 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 publish_date = publish_date.split('+')[0]
                 publish_date = dateparser.parse(publish_date, date_formats=[
                                                 '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
+
+                a_wpx.publish_date = publish_date
+                iac.publish_date = publish_date
+
+                isd = ds.isSyncDay(publish_date)
+                iac.zi_sync = isd if iac.zi_sync else True
+                if not isd:
+                    iac.zi_defy.add('delayday')
             else:
-                publish_date = datetime.utcnow()
-            # logger.debug(publish_date)
-            # logger.debug(f'after {publish_date}')
-            # logger.debug(f'publish_date type {type(publish_date)}')
+                # publish_date = datetime.utcnow()
+                publish_date = None
 
-            a_wpx.publish_date = publish_date
-            iac.publish_date = publish_date
-
-            isd = ds.isSyncDay(publish_date)
-            iac.zi_sync = isd if iac.zi_sync else True
-            if not isd:
-                iac.zi_defy.add('delayday')
             # ----- parsing title ----
             title = None
             x_title = tree.xpath('/html/head/title/text()')
@@ -1329,7 +1335,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                         content_hash += title
 
             # concat publish_date
-            if publish_date != None:
+            if publish_date:
                 if isinstance(publish_date, datetime):
                     content_hash += publish_date.isoformat()
                 else:
@@ -1344,6 +1350,11 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             if a_wpx.content_hash and a_wpx.content_hash != content_hash:
                 iac.content_update = True
             a_wpx.content_hash = content_hash
+
+            if not publish_date:
+                logger.debug(
+                    f'url_hash {url_hash}, use utcnow() if failed to parse publish_date')
+                a_wpx.publish_date = datetime.utcnow()
             # ----- check if publish_date changed -----
             # todo
 

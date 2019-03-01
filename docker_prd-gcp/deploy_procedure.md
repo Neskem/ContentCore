@@ -52,13 +52,6 @@ listen_addresses = '*'
 #ssl = on
 ssl = off
 
-# each worker should have 100
-max_connections=400
-
-# restart
-service postgresql restart
-systemctl status postgresql
-
 ```
 
 * procedure
@@ -78,12 +71,9 @@ ContentBreak_psql1qaz
 
 # create db
 CREATE DATABASE break_content;
-\q
 
-# restart as root
-sudo service postgresql restart
-
-systemctl status postgresql
+# restart
+service postgresql restart
 
 ```
 

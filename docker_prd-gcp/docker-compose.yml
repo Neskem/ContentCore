@@ -1,11 +1,5 @@
 version: '2'
 services:
-    redis:
-        container_name: redis
-        image: redis:4.0
-        ports:
-            - "6379:6379"
-        restart: always
     nginx:
         container_name: nginx
         image: nginx:1.12
@@ -54,7 +48,7 @@ services:
         # depends_on:
         #     - redis
         volumes:
-           - ./config.py:/usr/src/app/breakcontent/config.py
+           # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -68,8 +62,8 @@ services:
         container_name: worker
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=200,5 -n worker.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=200,5 -n worker.%%h -E
+        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E -P gevent
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -85,7 +79,8 @@ services:
         container_name: worker-xpcrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=20,5 -n worker-xpcrawler.%%h -E -P gevent
+        # command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E -P gevent
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E
         depends_on:
             - redis
         volumes:
@@ -102,7 +97,8 @@ services:
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
         image: cc
-        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=10,4 -n worker-xpmcrawler.%%h -E -P gevent
+        # command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E -P gevent
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E
         depends_on:
             - redis
         volumes:
@@ -120,7 +116,8 @@ services:
         container_name: worker-aicrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=5,1 -n worker-aicrawler.%%h -E -P gevent
+        # command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E -P gevent
+        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E
         depends_on:
             - redis
         volumes:
@@ -151,48 +148,3 @@ services:
             options:
                 max-size: "50m"
         restart: always
-
-
-
-    # worker-postman:
-    #     container_name: worker-postman
-    #     image: cc
-    #     # image: breaktimeinc/breaktime.contentcore
-    #     command: celery worker -A breakcontent.tasks -Q postman --autoscale=2,1 -n worker.%%h
-    #     volumes:
-    #        - ..:/usr/src/app
-    #        - /var/log/contentcore:/var/log/contentcore
-    #     env_file: breakcontent.env
-    #     environment:
-    #         - CONTAINER_TAG=worker-postman
-    #     logging:
-    #         driver: "json-file"
-    #         options:
-    #             max-size: "50m"
-    #     restart: always
-
-
-    # hub:
-    #     container_name: hub
-    #     image: selenium/hub:3.13.0-argon
-    #     environment:
-    #         - GRID_MAX_SESSION=20
-    #         - GRID_BROWSER_TIMEOUT=100000
-    #         - GRID_TIMEOUT=90000
-    #         - GRID_NEW_SESSION_WAIT_TIMEOUT=300000
-    #     ports:
-    #         - "4444:4444"
-    # chrome:
-    #     container_name: chrome
-    #     image: selenium/node-chrome:3.13.0-argon
-    #     volumes:
-    #         - /dev/shm:/dev/shm
-    #     depends_on:
-    #         - hub
-    #     environment:
-    #         HUB_HOST: hub
-
-    #         #volumes:
-    #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
-
-

@@ -346,6 +346,11 @@ docker load -i /usr/app/docker/cc.tar
 
 ```
 
+# restart container regularly
+```
+crontab -e 
+0 * * * * docker-compose -f /usr/app/docker/docker-compose.yml restart worker-xpcrawler
+```
 
 
 # [HOWTO] sshkey gen & pass

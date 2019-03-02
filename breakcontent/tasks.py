@@ -477,7 +477,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
 
     cat_inform_ac.check_content_hash(cat_wpx)
     data = cat_inform_ac.to_dict()
-    logger.debug(f'payload {data}')
+    logger.debug(f'url_hash {url_hash}, payload {data}')
     headers = {'Content-Type': "application/json"}
     resp_data = retry_request('put', ac_content_status_api, data, headers)
 
@@ -503,7 +503,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
         cat_wpx.task_service.task_main.done_time = datetime.datetime.utcnow()
         db.session.commit()
 
-        logger.debug('inform AC successful')
+        logger.debug(f'url_hash {url_hash}, inform AC successful')
     else:
         cat_wpx.task_service.status_xpath = 'failed'
         logger.error('inform AC failed')

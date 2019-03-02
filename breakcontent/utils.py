@@ -135,21 +135,25 @@ class InformAC():
         else:
             logger.debug('do insert')
             # insert
-            doc = UrlToContent(**idata)
+            doc = UrlToContent()
             # db_session_insert(u2c)
-            doc.upsert(q)
+            doc.upsert(q, idata)
 
         q = {
             'content_hash': wp.content_hash
         }
 
+        # search out the old one
         u2c = UrlToContent.query.options(load_only('url_hash', 'replaced')).filter_by(**q).filter(
             UrlToContent.url_hash != self.url_hash).order_by(UrlToContent._mtime.desc()).first()
+
         if u2c and not u2c.replaced:
             logger.debug(f'u2c {u2c}')
             logger.debug(f'inform ac with this url_hash {u2c.url_hash}')
-            u2c.replaced = True
+            # u2c.replaced = True
             self.old_url_hash = u2c.url_hash
+            # big bug here! only the old url_hash record should be removed, not the new one.
+
             # db.session.delete(wp.task_service.task_main)
             # db.session.commit()
 

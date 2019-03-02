@@ -45,8 +45,6 @@ services:
         image: cc
         # image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
-        # depends_on:
-        #     - redis
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -81,8 +79,6 @@ services:
         # image: breaktimeinc/breaktime.contentcore
         # command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E -P gevent
         command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E
-        depends_on:
-            - redis
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -99,8 +95,6 @@ services:
         image: cc
         # command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E -P gevent
         command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E
-        depends_on:
-            - redis
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -118,8 +112,6 @@ services:
         # image: breaktimeinc/breaktime.contentcore
         # command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E -P gevent
         command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E
-        depends_on:
-            - redis
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore

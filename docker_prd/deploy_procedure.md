@@ -99,7 +99,9 @@ sudo apt-get update
 sudo apt-get install redis-server
 sudo vi /etc/redis/redis.conf
 
+
 # bind 127.0.0.1 ::1
+
 #protected-mode yes
 protected-mode no
 # requirepass foobared

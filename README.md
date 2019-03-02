@@ -339,7 +339,7 @@ docker load -i /usr/app/docker/cc.tar
 # @ dev 192.168.18.111
 docker save -o /home/lance/playground/cc.tar cc
 
-scp /home/lance/playground/cc.tar root@104.155.194.18:/usr/app/docker/
+scp /home/lance/playground/cc.tar root@35.221.227.168:/usr/app/docker/
 
 # @ stg 104.155.194.18
 docker load -i /usr/app/docker/cc.tar

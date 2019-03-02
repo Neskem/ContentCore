@@ -365,10 +365,22 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
         'put', ac_content_status_api, inform_ac_data, headers)
 
     if resp_data:
-        if inform_ac.old_url_hash:
-            db.session.delete(a_wpx.task_service.task_main)
+        if cat_inform_ac.old_url_hash:
+            q = {
+                'url_hash': cat_inform_ac.old_url_hash,
+                'content_hash': cat_wpx.content_hash
+            }
+            u2c = UrlToContent().select(q)
+            u2c.replaced = True
             db.session.commit()
-            return
+            logger.debug(
+                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in UrlToContent() has been modified')
+
+            q = {'url_hash': cat_inform_ac.old_url_hash}
+            tm = TaskMain().select(q)
+            tm.delete()
+            logger.debug(
+                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in TaskMain() has been deleted')
 
         logger.debug(f'resp_data {resp_data}')
         a_wpx.task_service.status_xpath = 'done'
@@ -397,6 +409,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
 
     wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
     url = wpx_dict['url']
+    url_hash = wpx_dict['url_hash']
     page_query_param = domain_info['page'][0]
 
     # logger.debug(f'url {url}')
@@ -469,9 +482,27 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     resp_data = retry_request('put', ac_content_status_api, data, headers)
 
     if resp_data:
+        if cat_inform_ac.old_url_hash:
+            q = {
+                'url_hash': cat_inform_ac.old_url_hash,
+                'content_hash': cat_wpx.content_hash
+            }
+            u2c = UrlToContent().select(q)
+            u2c.replaced = True
+            db.session.commit()
+            logger.debug(
+                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in UrlToContent() has been modified')
+
+            q = {'url_hash': cat_inform_ac.old_url_hash}
+            tm = TaskMain().select(q)
+            tm.delete()
+            logger.debug(
+                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in TaskMain() has been deleted')
+
         cat_wpx.task_service.status_xpath = 'done'
         cat_wpx.task_service.task_main.done_time = datetime.datetime.utcnow()
         db.session.commit()
+
         logger.debug('inform AC successful')
     else:
         cat_wpx.task_service.status_xpath = 'failed'

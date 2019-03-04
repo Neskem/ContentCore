@@ -5,9 +5,9 @@
 
 docker-compose down -v
 
-PGPASSWORD=admin psql -U postgres -h 35.194.207.202 < postgresql/init.sql
+# PGPASSWORD=admin psql -U postgres -h 35.194.207.202 < postgresql/init.sql
 
-docker rmi $(docker images nginx -q)
+# docker rmi $(docker images nginx -q)
 
 docker build -t cc -f ../Dockerfile ../
 
@@ -17,7 +17,7 @@ docker-compose up -d
 docker rmi $(docker images -f "dangling=true" -q)
 
 # for python wsgi.py shell use
-cat breakcontent.env | grep -v '^#' | grep -v '^$' | awk '{print "export "$0}'
+# cat breakcontent.env | grep -v '^#' | grep -v '^$' | awk '{print "export "$0}'
 
 docker-compose restart nginx
 

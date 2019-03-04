@@ -53,46 +53,53 @@ CELERY_ROUTES = {
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
 # task quantity: 1 = 3  > 6 > 2 > 5
 CELERYBEAT_SCHEDULE = {
-    'create_tasks_1': { # Partner system to sync/remove task
+    'create_tasks_1': {  # Partner system to sync/remove task
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
         'args': ([1]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_2': { # Au.js trigger url of partner
+    'create_tasks_2': {  # Au.js trigger url of partner
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
         'args': ([2]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_3': { # Au.js trigger url but was not partner
+    'create_tasks_3': {  # Au.js trigger url but was not partner
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
         'args': ([3]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_4': { # Scan index page (ex: conn.tw, medium.com)
-    # todo: selenium
+    'create_tasks_4': {  # Scan index page (ex: conn.tw, medium.com)
+        # todo: selenium
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
         'args': ([4]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_5': { # Sitemap
+    'create_tasks_5': {  # Sitemap
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
         'args': ([5]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_6': { # Update task (including daily and monthly)
+    'create_tasks_6': {  # Update task (including daily and monthly)
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),  # trigger at midnight
         'args': ([6]),
         # 'options': {'queue': 'postman'}
     },
+    'reset_doing_task': {  # Update task (including daily and monthly)
+        'task': 'breakcontent.tasks.reset_doing_tasks',
+        'schedule': crontab(hour='*'),  # trigger at midnight
+        'args': ([1]),
+    },
+
 }
 
-
+# CC
+TASK_NUMBER_PER_BEAT = os.environ.get('TASK_NUMBER_PER_BEAT', 500)
 PARTNER_SYSTEM_API = os.environ.get('PARTNER_SYSTEM_API')
 ADD_DEFAULT_SCHEDULE = os.environ.get('ADD_DEFAULT_SCHEDULE')
 UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
@@ -105,7 +112,8 @@ PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)
 # AI crawler
 MERCURY_TOKEN = os.environ.get(
     'MERCURY_TOKEN', "sJ4GrxyzEik4wKfwATu4zszm8azpZV0tusuO4B2m")
-PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in ['false', 'False', 0, False] else True
+PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in [
+    'false', 'False', 0, False] else True
 
 
 # Article Center

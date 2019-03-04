@@ -693,6 +693,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     if check_r(r, ts):
         r.encoding = 'utf-8'
         html = r.text  # full html here!
+        logger.debug(f'html {html}')
         # generator = None
         content = None
         cd = None

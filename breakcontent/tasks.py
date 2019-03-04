@@ -13,15 +13,15 @@ from flask import current_app
 from celery.utils.log import get_task_logger
 
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
-
+from sqlalchemy.orm import load_only
 
 from breakcontent import db
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 from breakcontent import mylogging
 from urllib.parse import urlencode, quote_plus, unquote, quote, unquote_plus, parse_qs
 from urllib.parse import urlparse, urljoin
-import datetime
-from datetime import timedelta
+# import datetime
+from datetime import timedelta, datetime
 
 celery = create_celery_app()
 logger = get_task_logger('default')
@@ -118,7 +118,8 @@ def create_tasks(priority):
     # with db.session.no_autoflush:
 
     q = dict(priority=priority, status='pending')
-    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True, limit=500)
+    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True,
+                            limit=celery.conf['TASK_NUMBER_PER_BEAT'])
 
     logger.debug(f'priority {priority}, len {len(tml)}')
     if len(tml) == 0:
@@ -127,36 +128,18 @@ def create_tasks(priority):
 
     for tm in tml:
         url_hash = tm.url_hash
-        logger.debug(f'update {tm}...')
-        q = dict(url_hash=url_hash)
-        data = {
-            'status': 'doing',
-            'doing_time': datetime.datetime.utcnow()
-        }
-        tm.update(q, data)
+        logger.debug(f'sent task for url_hash {url_hash}')
 
         if tm.task_service:
-            logger.debug(f'update {tm.task_service}...')
-            udata = {
-                'url_hash': url_hash,
-                'status_ai': 'doing',
-                'status_xpath': 'doing',
-            }
-            q = {'id': tm.task_service.id}
-            tm.task_service.upsert(q, udata)
+            logger.debug(f'sent task for tm.task_service {tm.task_service}')
             prepare_task.delay(tm.task_service.to_dict())
 
         if tm.task_noservice:
-            logger.debug(f'update {tm.task_noservice}...')
-            udata = {
-                'url_hash': url_hash,
-                'status': 'doing'
-            }
-            q = {'id': tm.task_noservice.id}
-            tm.task_noservice.upsert(q, udata)
+            logger.debug(
+                f'sent task for tm.task_noservice {tm.task_noservice}')
             prepare_task.delay(tm.task_noservice.to_dict())
 
-    logger.debug('done sending a batch of tasks to broker')
+    logger.debug(f'done sending {len(tml)} tasks to broker')
 
 
 @celery.task()
@@ -175,7 +158,12 @@ def prepare_task(task: dict):
     o = urlparse(url)
     domain = o.netloc
     q = dict(url_hash=task['url_hash'])
-    data = dict(domain=domain)
+    data = {
+        'status': 'doing',
+        'doing_time': datetime.utcnow(),
+        'domain': domain
+    }
+    # dict(domain=domain)
     tm = TaskMain()
     tm.update(q, data)
 
@@ -187,8 +175,8 @@ def prepare_task(task: dict):
 
         domain_info = get_domain_info(domain, partner_id)
         q = dict(id=task['id'])
-        ts = TaskService().select(q)
-        ts.upsert(q, data)
+        ts = TaskService()
+        # ts.upsert(q, data)
 
         if domain_info:
             logger.debug(f'url_hash {url_hash}, domain_info {domain_info}')
@@ -199,7 +187,9 @@ def prepare_task(task: dict):
                 udata = {
                     'is_multipage': True,
                     'page_query_param': page_query_param,
-                    # 'domain': domain
+                    'status_ai': 'doing',
+                    'status_xpath': 'doing',
+                    'domain': domain
                 }
                 ts.upsert(q, udata)
 
@@ -245,6 +235,13 @@ def prepare_task(task: dict):
 
             else:
                 # preparing for singlepage crawler
+                udata = {
+                    'status_ai': 'doing',
+                    'status_xpath': 'doing',
+                    'domain': domain
+                }
+                ts.upsert(q, udata)
+
                 xpath_single_crawler.delay(
                     task['id'], partner_id, domain, domain_info)
                 if celery.conf['PARTNER_AI_CRAWLER']:
@@ -271,7 +268,7 @@ def prepare_task(task: dict):
                 logger.debug(f'resp_data {resp_data}')
                 ts.status_xpath = 'done'
                 ts.task_main.status = 'done'
-                ts.task_main.done_time = datetime.datetime.utcnow()
+                ts.task_main.done_time = datetime.utcnow()
                 db.session.commit()
                 logger.debug(f'url_hash {url_hash}, inform AC successful')
             else:
@@ -286,7 +283,11 @@ def prepare_task(task: dict):
     else:
 
         q = dict(id=task['id'])
-        tns = TaskNoService().select(q)
+        data = {
+            'status': 'doing',
+            'domain': domain
+        }
+        tns = TaskNoService()
         tns.upsert(q, data)
 
         # not partner goes here
@@ -365,27 +366,27 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
         'put', ac_content_status_api, inform_ac_data, headers)
 
     if resp_data:
-        if cat_inform_ac.old_url_hash:
+        if inform_ac.old_url_hash:
             q = {
-                'url_hash': cat_inform_ac.old_url_hash,
+                'url_hash': inform_ac.old_url_hash,
                 'content_hash': cat_wpx.content_hash
             }
             u2c = UrlToContent().select(q)
             u2c.replaced = True
             db.session.commit()
             logger.debug(
-                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in UrlToContent() has been modified')
+                f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in UrlToContent() has been modified')
 
-            q = {'url_hash': cat_inform_ac.old_url_hash}
+            q = {'url_hash': inform_ac.old_url_hash}
             tm = TaskMain().select(q)
             tm.delete()
             logger.debug(
-                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in TaskMain() has been deleted')
+                f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in TaskMain() has been deleted')
 
         logger.debug(f'resp_data {resp_data}')
         a_wpx.task_service.status_xpath = 'done'
         a_wpx.task_service.task_main.status = 'done'
-        a_wpx.task_service.task_main.done_time = datetime.datetime.utcnow()
+        a_wpx.task_service.task_main.done_time = datetime.utcnow()
         db.session.commit()
         logger.debug(f'url_hash {url_hash}, inform AC successful')
 
@@ -500,7 +501,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
                 f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in TaskMain() has been deleted')
 
         cat_wpx.task_service.status_xpath = 'done'
-        cat_wpx.task_service.task_main.done_time = datetime.datetime.utcnow()
+        cat_wpx.task_service.task_main.done_time = datetime.utcnow()
         db.session.commit()
 
         logger.debug(f'url_hash {url_hash}, inform AC successful')
@@ -574,7 +575,7 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
             tns.update(q, data)
 
             data = {
-                'done_time': datetime.datetime.utcnow(),
+                'done_time': datetime.utcnow(),
                 'status': 'done'
             }
             tm.update(q, data)
@@ -656,3 +657,33 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
         data = dict(status='done')
         tns = TaskNoService()
         tns.update(q, data)
+
+
+# ==== tool tasks ====
+
+@celery.task()
+def reset_doing_tasks(hour: int=1, limit: int=10000):
+    '''
+    query the hanging task (status = doing) from TaskMain() with _mtime at least a hour before now
+
+    status = doing
+    _mtime < now - 1 hour
+    '''
+    q = {
+        'status': 'doing',
+    }
+    hours_before_now = datetime.utcnow() - timedelta(hours=hour)
+    logger.debug(f'hours_before_now {hours_before_now}')
+    tml = TaskMain.query.options(load_only('url_hash')).filter_by(
+        **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime)).order_by(TaskMain._mtime.asc()).limit(limit).all()
+
+    logger.debug(f'type(tml) {type(tml)}')
+    logger.debug(f'len {len(tml)}')
+    if not len(tml):
+        logger.debug(f'too good to be true, no doing tasks left')
+        return
+
+    for tm in tml:
+        data = dict(url_hash=tm.url_hash)
+        upsert_main_task.delay(data)
+        logger.debug(f'url_hash {tm.url_hash}, upsert_main_task.delay() sent')

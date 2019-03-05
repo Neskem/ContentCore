@@ -193,6 +193,8 @@ def prepare_task(task: dict):
                 }
                 ts.upsert(q, udata)
 
+                logger.debug(f'ts.url_hash {ts.url_hash}')  # Lance debug
+
                 mp_url = url
                 if page_query_param:
                     if page_query_param == "d+":
@@ -217,9 +219,10 @@ def prepare_task(task: dict):
 
                     if resp_data:
                         logger.debug(f'resp_data {resp_data}')
-                        q = dict(id=ts.task_main_id)
-                        tmf = TaskMain().select(q)
-                        tmf.delete()
+                        q = dict(url_hash=url_hash)
+                        tm = TaskMain()
+                        doc = tm.select(q)
+                        tm.delete(doc)
                         logger.debug(
                             f'url_hash {url_hash}, inform AC successful')
                     else:
@@ -227,6 +230,7 @@ def prepare_task(task: dict):
 
                 else:
                     logger.info('mp_url = url')
+                    logger.debug(task['id'], partner_id, domain, domain_info)
                     xpath_multi_crawler.delay(
                         task['id'], partner_id, domain, domain_info)
                     if celery.conf['PARTNER_AI_CRAWLER']:
@@ -244,6 +248,8 @@ def prepare_task(task: dict):
 
                 xpath_single_crawler.delay(
                     task['id'], partner_id, domain, domain_info)
+                logger.debug(
+                    f"celery.conf['PARTNER_AI_CRAWLER'] {celery.conf['PARTNER_AI_CRAWLER']}")
                 if celery.conf['PARTNER_AI_CRAWLER']:
                     ai_single_crawler.delay(
                         task['id'], partner_id, domain, domain_info)
@@ -369,7 +375,7 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
         if inform_ac.old_url_hash:
             q = {
                 'url_hash': inform_ac.old_url_hash,
-                'content_hash': cat_wpx.content_hash
+                'content_hash': a_wpx.content_hash
             }
             u2c = UrlToContent().select(q)
             u2c.replaced = True
@@ -378,8 +384,9 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
                 f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in UrlToContent() has been modified')
 
             q = {'url_hash': inform_ac.old_url_hash}
-            tm = TaskMain().select(q)
-            tm.delete()
+            tm = TaskMain()
+            doc = tm.select(q)
+            tm.delete(doc)
             logger.debug(
                 f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in TaskMain() has been deleted')
 
@@ -440,6 +447,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
 
         if not inform_ac.status:
             logger.debug(f'failed to crawl {i_url}')
+            cat_inform_ac.status = False
             break
 
         if not inform_ac.zi_sync:
@@ -473,6 +481,9 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     cat_wpx.url = url
     cat_wpx.multi_page_urls = sorted(multi_page_urls)
 
+    # logger.debug(f'cat_inform_ac.status {cat_inform_ac.status}')
+    # logger.debug(f'cat_wpx.len_img {cat_wpx.len_img}')
+    # logger.debug(f'cat_wpx.len_char {cat_wpx.len_char}')
     if cat_inform_ac.status and cat_wpx.len_img < 2 and cat_wpx.len_char < 100:
         cat_inform_ac.quality = False
 
@@ -481,7 +492,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     logger.debug(f'url_hash {url_hash}, payload {data}')
     headers = {'Content-Type': "application/json"}
     resp_data = retry_request('put', ac_content_status_api, data, headers)
-
+    logger.debug(f'resp_data {resp_data}')
     if resp_data:
         if cat_inform_ac.old_url_hash:
             q = {
@@ -495,14 +506,27 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
                 f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in UrlToContent() has been modified')
 
             q = {'url_hash': cat_inform_ac.old_url_hash}
-            tm = TaskMain().select(q)
-            tm.delete()
+            tm = TaskMain()
+            doc = tm.select(q)
+            tm.delete(doc)
             logger.debug(
                 f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in TaskMain() has been deleted')
 
-        cat_wpx.task_service.status_xpath = 'done'
-        cat_wpx.task_service.task_main.done_time = datetime.utcnow()
-        db.session.commit()
+        logger.debug(f'url_hash {url_hash}, before updating TaskService()')
+        q = {'url_hash': url_hash}
+        data = {
+            'status_xpath': 'done',
+        }
+        ts = TaskService()
+        ts.update(q, data)
+        data = {
+            'done_time': datetime.utcnow()
+        }
+        tm = TaskMain()
+        tm.update(q, data)
+        # cat_wpx.task_service.status_xpath = 'done'
+        # cat_wpx.task_service.task_main.done_time = datetime.utcnow()
+        # db.session.commit()
 
         logger.debug(f'url_hash {url_hash}, inform AC successful')
     else:
@@ -677,7 +701,7 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
     tml = TaskMain.query.options(load_only('url_hash')).filter_by(
         **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime)).order_by(TaskMain._mtime.asc()).limit(limit).all()
 
-    logger.debug(f'type(tml) {type(tml)}')
+    # logger.debug(f'type(tml) {type(tml)}')
     logger.debug(f'len {len(tml)}')
     if not len(tml):
         logger.debug(f'too good to be true, no doing tasks left')

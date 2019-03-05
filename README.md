@@ -11,6 +11,7 @@
 
 ### Prd-GCP env & spec 
 * Compute Engine
+
 | Machine | private IP | CPU | RAM | DISK | Pub_IP | Desc |
 |:-------:|:--------:|:---:|:---:|:----:|:-----:|:----:|
 | prd-cc-psql | 10.140.0.127 | 16vCPU | 15G | 250G | N | postgres/ContentBreak_psql1qaz |
@@ -19,6 +20,7 @@
 | prd-cc-worker | dynamic | 2vCPU | 4.5G | 20G | N | for deployment use only |
 
 * prd-cc-worker-group spec
+
 | CPU | RAM | DISK | MIN | MAX |
 |:---:|:---:|:----:|:---:|:---:|
 | 8 | 15G | 20G | 1 | 3 | 
@@ -278,17 +280,8 @@ CREATE DATABASE break_content;
 ```shell
 # @ dev 192.168.18.111
 docker save -o /home/lance/playground/cc.tar cc
+scp /home/lance/playground/cc.tar root@192.168.18.121:/usr/app/docker/
 # @ prd 192.168.18.121
-scp root@192.168.18.111:/home/lance/playground/cc.tar /usr/app/docker/
-docker load -i /usr/app/docker/cc.tar
-```
-* from dev to stg (local > remote)
-* (add local's pub key into remote machine)
-```shell
-# @ dev 192.168.18.111
-docker save -o /home/lance/playground/cc.tar cc
-scp /home/lance/playground/cc.tar root@35.234.56.85:/usr/app/docker/
-# @ stg 104.155.194.18
 docker load -i /usr/app/docker/cc.tar
 ```
 

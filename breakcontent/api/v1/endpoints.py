@@ -25,10 +25,10 @@ def init_task():
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "aaaa2aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
 
     # insert multipage partner
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932?page=1", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
+    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932?page=1", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
     # insert multipage parent page
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "eeee619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932", "url_hash": "eeeef49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
+    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "eeee619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932", "url_hash": "eeeef49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
     # insert not partner
     curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "ffff619f-576c-4473-add2-e53d08b74ac7", "url": "https://news.sina.com.tw/article/20190215/30068464.html?fbclid=IwAR25e4TpKc9rTsKN2tUt-4PQZoYJCmoBgfj7xmWr22j2bBGuTkQyQ5oQVEo", "url_hash": "f19535b1374ef771502d8fe488fbc57e77d2c96d", "priority": 3, "generator": ""}'
@@ -117,7 +117,7 @@ def delete_task():
 def create_tasks(priority):
     '''
     # delete partner from maintask
-    curl -v -X GET 'http://localhost:8100/v1/create_tasks/1'
+    curl -v -X GET 'http://localhost:80/v1/create_tasks/1'
     '''
 
     res = {'msg': '', 'status': False}

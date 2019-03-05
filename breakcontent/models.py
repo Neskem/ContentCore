@@ -65,8 +65,15 @@ class Model(db.Model):
                 db.session.commit()
                 # logger.debug(f'query {query}')
                 ret = self.select(query)
-                self.id = ret.id
+                # self.id = ret.id
+
+                if ret and getattr(ret, 'to_dict', None):
+                    for k, v in ret.to_dict().items():
+                        # logger.debug(f'{k}: {v}')
+                        setattr(self, k, v)
+
                 logger.debug(f'insert {self.__tablename__} successful')
+                # logger.debug(f'self {self}')
                 break
             except OperationalError as e:
                 db.session.rollback()
@@ -115,8 +122,16 @@ class Model(db.Model):
                 db.session.commit()
                 # ret = self.select(query)  # update self
                 ret = self.__class__.query.filter_by(**query).first()
-                self.id = ret.id
-                logger.debug(f'update {self.__tablename__} successful')
+
+                if ret and getattr(ret, 'to_dict', None):
+                    for k, v in ret.to_dict().items():
+                        # logger.debug(f'{k}: {v}')
+                        setattr(self, k, v)
+                    # self.id = ret.id
+                    logger.debug(f'update {self.__tablename__} successful')
+                    # logger.debug(f'updated self {self}')
+                else:
+                    logger.debug(f'update {self.__tablename__} failed')
                 break
             except OperationalError as e:
                 logger.error(e)
@@ -148,7 +163,7 @@ class Model(db.Model):
                 else:
                     doc = self.__class__.query.filter_by(**query).first()
                     if doc:
-                        # replace instance with query result
+                        logger.debug(f'doc {doc}')
                         logger.debug('query a record successful')
                         return doc
                     else:
@@ -171,9 +186,14 @@ class Model(db.Model):
                     logger.error(f'{e}, retry {retry}')
                     raise
 
-    def delete(self):
+    def delete(self, doc: 'query object'=None):
         logger.debug('start delete')
-        db.session.delete(self)
+        if doc:
+            logger.debug(f'start deleting {doc}')
+            db.session.delete(doc)
+        else:
+            db.session.delete(self)
+        db.session.commit()
         logger.debug('done delete')
 
 

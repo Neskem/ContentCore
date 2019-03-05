@@ -693,7 +693,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     if check_r(r, ts):
         r.encoding = 'utf-8'
         html = r.text  # full html here!
-        logger.debug(f'html {html}')
+        # logger.debug(f'html {html}')
         # generator = None
         content = None
         cd = None
@@ -1145,8 +1145,10 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             # logger.debug(f'before {publish_date}')
             # ignore the time zone str if any
             if publish_date:
-                publish_date = publish_date.split('+')[0]
-                publish_date = dateparser.parse(publish_date, date_formats=[
+                if isinstance(publish_date, str):
+                    logger.debug(f'publish_date str type {publish_date}')
+                    publish_date = publish_date.split('+')[0]
+                    publish_date = dateparser.parse(publish_date, date_formats=[
                                                 '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
 
                 a_wpx.publish_date = publish_date

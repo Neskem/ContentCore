@@ -555,13 +555,13 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     if not ts:
         return
 
+
+
+    q = dict(url_hash=ts.url_hash)
     udata = {
         'url_hash': ts.url_hash,
         'url': ts.url,  # should url be updated here?
     }
-
-    q = dict(url_hash=ts.url_hash)
-
     if partner and xpath:
         ts.status_xpath = 'doing'
         ts.commit()
@@ -592,7 +592,7 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
         wns = WebpagesNoService()
         udata['task_noservice_id'] = ts.id
         wns.upsert(q, udata)
-        wp_data = ts.webpages_noservice.to_inform()
+        wp_data = ts.webpages_noservice.to_inform() # if the tm-ts relation was bound to another one this will fail
         wp_data['generator'] = ts.task_main.generator
         logger.debug(f'wp_data {wp_data}')
         return wp_data

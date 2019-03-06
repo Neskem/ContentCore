@@ -130,11 +130,11 @@ def create_tasks(priority):
         url_hash = tm.url_hash
         logger.debug(f'sent task for url_hash {url_hash}')
 
-        if tm.task_service:
+        if tm.task_service and tm.partner_id:
             logger.debug(f'sent task for tm.task_service {tm.task_service}')
             prepare_task.delay(tm.task_service.to_dict())
 
-        if tm.task_noservice:
+        if tm.task_noservice and not tm.partner_id:
             logger.debug(
                 f'sent task for tm.task_noservice {tm.task_noservice}')
             prepare_task.delay(tm.task_noservice.to_dict())
@@ -423,8 +423,9 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     # logger.debug(f'url {url}')
     logger.debug(f'page_query_param {page_query_param}')
 
+    q = dict(url_hash=url_hash)
     page_num = 0
-    cat_wpx = WebpagesPartnerXpath()
+    cat_wpx = WebpagesPartnerXpath().select(q)
     cat_wpx_data = cat_wpx.to_dict()
     # object
     cat_inform_ac = InformAC()
@@ -460,7 +461,8 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
             f'inform_ac from xpath_a_crawler(): {inform_ac.to_dict()}')
 
         if page_num == 1:
-            cat_wpx = a_wpx
+            # if successed, replace
+            cat_wpx = a_wpx # reference replacement
             cat_inform_ac = inform_ac
 
             if not inform_ac.status:
@@ -491,6 +493,10 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     data = cat_inform_ac.to_dict()
     logger.debug(f'url_hash {url_hash}, payload {data}')
     headers = {'Content-Type': "application/json"}
+
+    cat_wpx.task_service.status_xpath = 'ready'
+    db.session.commit()
+
     resp_data = retry_request('put', ac_content_status_api, data, headers)
     logger.debug(f'resp_data {resp_data}')
     if resp_data:
@@ -699,15 +705,16 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
     hours_before_now = datetime.utcnow() - timedelta(hours=hour)
     logger.debug(f'hours_before_now {hours_before_now}')
     tml = TaskMain.query.options(load_only('url_hash')).filter_by(
-        **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime)).order_by(TaskMain._mtime.asc()).limit(limit).all()
+        **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), TaskMain.partner_id is not None).order_by(TaskMain._mtime.asc()).limit(limit).all()
 
     # logger.debug(f'type(tml) {type(tml)}')
     logger.debug(f'len {len(tml)}')
     if not len(tml):
-        logger.debug(f'too good to be true, no doing tasks left')
+        logger.debug(f'too good to be true, no doing tasks left before an hour')
         return
 
     for tm in tml:
-        data = dict(url_hash=tm.url_hash)
+        # only partner need to be redo
+        data = dict(url_hash=tm.url_hash, partner_id=tm.partner_id)
         upsert_main_task.delay(data)
         logger.debug(f'url_hash {tm.url_hash}, upsert_main_task.delay() sent')

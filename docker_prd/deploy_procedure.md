@@ -104,6 +104,8 @@ sudo vi /etc/redis/redis.conf
 
 #protected-mode yes
 protected-mode no
+
+stop-writes-on-bgsave-error no
 # requirepass foobared
 requirepass ContentBreak_1qaz
 

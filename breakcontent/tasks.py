@@ -462,7 +462,7 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
 
         if page_num == 1:
             # if successed, replace
-            cat_wpx = a_wpx # reference replacement
+            cat_wpx = a_wpx  # reference replacement
             cat_inform_ac = inform_ac
 
             if not inform_ac.status:
@@ -521,11 +521,12 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
         logger.debug(f'url_hash {url_hash}, before updating TaskService()')
         q = {'url_hash': url_hash}
         data = {
-            'status_xpath': 'done',
+            'status_xpath': 'done'
         }
         ts = TaskService()
         ts.update(q, data)
         data = {
+            'status': 'done',
             'done_time': datetime.utcnow()
         }
         tm = TaskMain()
@@ -710,7 +711,8 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
     # logger.debug(f'type(tml) {type(tml)}')
     logger.debug(f'len {len(tml)}')
     if not len(tml):
-        logger.debug(f'too good to be true, no doing tasks left before an hour')
+        logger.debug(
+            f'too good to be true, no doing tasks left before an hour')
         return
 
     for tm in tml:

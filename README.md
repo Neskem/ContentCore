@@ -204,6 +204,10 @@ curl -v -X GET 'https://partner.breaktime.com.tw/api/config/YUZ7T18/healthnice.o
 
 ## Deployment
 
+* always turn off beat before deployment
+* reset redis if necessary
+* you can deploy only the code-affected component
+
 ### HOWTO add a column w/o restarting db
 * do it with sql client gui (handy)
 ```sql

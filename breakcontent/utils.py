@@ -629,8 +629,9 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
 
     '''
-    url = wpx.get('url')
-    logger.debug(f'run the basic unit of xpath crawler on {url}')
+    url = wpx['url']
+    url_hash = wpx['url_hash']
+    logger.debug(f'url_hash {url_hash}, run the basic unit of xpath crawler on {url}')
 
     task_service_id = wpx['task_service_id']
     tsf = TaskService.query.filter_by(id=task_service_id).first()
@@ -1176,7 +1177,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 title = x_title[0]
 
             # domain specific: title exclude words
-            if getattr(ds, 'e_title', None):
+            if title and isinstance(title, str) and getattr(ds, 'e_title', None):
                 title = title.replace(ds.e_title[0], "")
 
             # BSP specific logic: pixnet

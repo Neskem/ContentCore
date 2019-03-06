@@ -246,6 +246,10 @@ PGPASSWORD=admin psql -h localhost -U postgres -e break_content < break_content_
 crontab -e 
 5 */3 * * * docker-compose -f /usr/app/docker/docker-compose.yml restart worker-xpcrawler
 ```
+
+### HOWTO deploy on to GCP K8S
+* link github repo under gcp project
+
 ---
 
 

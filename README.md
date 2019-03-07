@@ -32,7 +32,7 @@
 | CC Worker | 192.168.18.124 | 10vCPU | 38G | 100G | N |
 | CC Worker2 | 192.168.18.125 | 10vCPU | 10G | 100G | N |
 | CC Worker3 | 192.168.18.126 | 10vCPU | 10G | 100G | N |
-| CC Redis | 192.168.18.122 | 2vCPU | 15G | 60G | N |
+| CC Redis | 192.168.18.122 | 2vCPU | 30G | 60G | N |
 | CC PSQL | 192.168.18.123 | 6vCPU | 30G | 400G | N |
 
 * copy pub_key to remote machine for passwordless login, example:

@@ -102,6 +102,7 @@ def upsert_main_task(task, data: dict):
             'status': 'pending',
             # 'retry': 0,
         }
+        task_data.pop('partner_id')
         task_data.update(udata)
         tns = TaskNoService()
         tns.upsert(q, task_data)

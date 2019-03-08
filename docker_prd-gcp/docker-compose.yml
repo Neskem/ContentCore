@@ -60,8 +60,8 @@ services:
         container_name: worker
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E
+        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E -P gevent --purge
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -77,8 +77,8 @@ services:
         container_name: worker-xpcrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E
+        # command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E -P gevent --purge
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -93,8 +93,8 @@ services:
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
         image: cc
-        # command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E
+        # command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E -P gevent --purge
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -110,8 +110,8 @@ services:
         container_name: worker-aicrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E
+        # command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E -P gevent --purge
+        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore

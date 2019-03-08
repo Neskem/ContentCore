@@ -19,10 +19,10 @@ bp = Blueprint('endpoints', __name__)
 def init_task():
     '''
     # insert singlepage partner
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
+    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
 
     # only url_hash changed
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "aaaa2aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
+    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "aaaa2aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
 
     # insert multipage partner
     curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932?page=1", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
@@ -31,7 +31,7 @@ def init_task():
     curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "eeee619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932", "url_hash": "eeeef49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
     # insert not partner
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "ffff619f-576c-4473-add2-e53d08b74ac7", "url": "https://news.sina.com.tw/article/20190215/30068464.html?fbclid=IwAR25e4TpKc9rTsKN2tUt-4PQZoYJCmoBgfj7xmWr22j2bBGuTkQyQ5oQVEo", "url_hash": "f19535b1374ef771502d8fe488fbc57e77d2c96d", "priority": 3, "generator": ""}'
+    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "ffff619f-576c-4473-add2-e53d08b74ac7", "url": "https://news.sina.com.tw/article/20190215/30068464.html?fbclid=IwAR25e4TpKc9rTsKN2tUt-4PQZoYJCmoBgfj7xmWr22j2bBGuTkQyQ5oQVEo", "url_hash": "f19535b1374ef771502d8fe488fbc57e77d2c96d", "priority": 3, "generator": ""}'
 
     if {"500": "blablabla"} exists return 500
 
@@ -93,10 +93,10 @@ def init_task():
 def delete_task():
     '''
     # delete partner from maintask
-    curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa"}'
+    curl -v -X DELETE 'http://localhost:80/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa"}'
 
     # delete nopartner from maintask
-    curl -v -X DELETE 'http://localhost:8100/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "test2"}'
+    curl -v -X DELETE 'http://localhost:80/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "test2"}'
     '''
 
     res = {'msg': '', 'status': False}
@@ -142,9 +142,9 @@ def get_content(url_hash):
     this is a sync function
 
     <example>
-    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/content/a6d62aaef4856b23d7d8016e4e77409001d999fa'
+    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:80/v1/content/a6d62aaef4856b23d7d8016e4e77409001d999fa'
 
-    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/content/2151238f566088dd8f5b56857938f28dced4d899'
+    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:80/v1/content/2151238f566088dd8f5b56857938f28dced4d899'
 
     '''
 
@@ -172,7 +172,7 @@ def get_content(url_hash):
 @cross_origin()
 def partner_setting_add_update(partner_id, domain):
     '''
-    curl -v -X PUT -H 'Content-Type: application/json' 'http://localhost:8100/v1/partner/setting/3WYST18/www.kocpc.com.tw' -d '{"xpath": "blablabla"}'
+    curl -v -X PUT -H 'Content-Type: application/json' 'http://localhost:80/v1/partner/setting/3WYST18/www.kocpc.com.tw' -d '{"xpath": "blablabla"}'
 
     this is a sync func
     '''
@@ -209,7 +209,7 @@ def test():
     '''
     <purpose> test endpoint triggered logging
 
-    curl -v -X POST 'http://localhost:8100/v1/test' -H 'Content-Type: application/json'
+    curl -v -X POST 'http://localhost:80/v1/test' -H 'Content-Type: application/json'
 
     '''
     res = {'msg': '', 'status': False}
@@ -232,7 +232,7 @@ def test():
 @cross_origin()
 def error_handler(etype):
     '''
-    curl -v -X GET 'http://localhost:8100/v1/error/2'
+    curl -v -X GET 'http://localhost:80/v1/error/2'
     '''
     res = {'msg': '', 'status': False}
 

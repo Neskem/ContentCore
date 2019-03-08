@@ -82,6 +82,24 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-p1:
+        container_name: worker-p1
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=20,2 -n worker-p1.%%h -E -P gevent --purge
+        depends_on:
+            - redis
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-p1
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker-xpcrawler:
         container_name: worker-xpcrawler
         image: cc

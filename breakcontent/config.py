@@ -47,6 +47,8 @@ CELERY_ROUTES = {
     'breakcontent.tasks.xpath_single_crawler': {'queue': 'xpcrawler'},
     # cpmcrawler
     'breakcontent.tasks.xpath_multi_crawler': {'queue': 'xpmcrawler'},
+    # p1 task
+    'breakcontent.tasks.high_speed_p1': {'queue': 'priority_1'}
     # # others will go to 'default' queue
 }
 
@@ -95,7 +97,6 @@ CELERYBEAT_SCHEDULE = {
         'schedule': crontab(hour='*'),  # trigger at midnight
         'args': ([1]),
     },
-
 }
 
 # CC

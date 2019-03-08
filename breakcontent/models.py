@@ -215,7 +215,7 @@ class TaskMain(Model):
     parent_url = Column(String(1000), nullable=True)
 
     # notify ac after crawler done, no matter partner or non-partner
-    status = Column(Enum('pending', 'doing', 'done', 'failed',
+    status = Column(Enum('pending', 'preparing', 'doing', 'done', 'failed',
                          name='status_tm'), default='pending', index=True)
     doing_time = Column(DateTime(timezone=False), nullable=True)
     # notify_ac_time
@@ -273,10 +273,10 @@ class TaskService(Model):
     secret = Column(Boolean, default=False)
     status_code = Column(Integer, index=True, nullable=True)
     retry_xpath = Column(Integer, default=0)
-    status_xpath = Column(Enum('pending', 'doing', 'ready', 'done',
+    status_xpath = Column(Enum('pending', 'preparing', 'doing', 'ready', 'done',
                                'failed', name='status_xpath'), default='pending', index=True)
     # retry_ai = Column(Integer, default=0)
-    status_ai = Column(Enum('pending', 'doing', 'done',
+    status_ai = Column(Enum('pending', 'preparing', 'doing', 'done',
                             'failed', name='status_ai'), default='pending', index=True)
     # partner only
     sent_content_time = Column(DateTime(timezone=False), nullable=True)
@@ -329,7 +329,7 @@ class TaskNoService(Model):
     request_id = Column(String(256), index=True, nullable=True)
     # secret = Column(Boolean, nullable=True)  # not required
     # retry = Column(Integer, default=0)
-    status = Column(Enum('pending', 'doing', 'done',
+    status = Column(Enum('pending', 'preparing', 'doing', 'done',
                          'failed', name='task_noservice_status'), default='pending')
     # webpages_id = Column(Integer, nullable=True)
     # start datetime

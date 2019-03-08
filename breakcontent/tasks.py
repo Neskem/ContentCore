@@ -111,7 +111,7 @@ def upsert_main_task(task, data: dict):
 
 
 @celery.task()
-def create_tasks(priority):
+def create_tasks(priority: str):
     '''
     update status (pending > doing) and generate tasks
     '''
@@ -132,8 +132,17 @@ def create_tasks(priority):
         logger.debug(f'sent task for url_hash {url_hash}')
 
         if tm.task_service and tm.partner_id:
-            logger.debug(f'sent task for tm.task_service {tm.task_service}')
-            prepare_task.delay(tm.task_service.to_dict())
+            logger.debug(
+                f'sent task for tm.task_service {tm.task_service} with priority {priority}')
+            if int(priority) == 1:
+                logger.debug(
+                    f'url_hash {url_hash} sent to high_speed_p1.delay()')
+                data = tm.task_service.to_dict()
+                data['priority'] = int(priority)
+                high_speed_p1.delay(data)
+                # return
+            else:
+                prepare_task.delay(tm.task_service.to_dict())
 
         if tm.task_noservice and not tm.partner_id:
             logger.debug(
@@ -141,6 +150,16 @@ def create_tasks(priority):
             prepare_task.delay(tm.task_noservice.to_dict())
 
     logger.debug(f'done sending {len(tml)} tasks to broker')
+
+
+@celery.task()
+def high_speed_p1(task: dict):
+    '''
+    1 task, 1 queue, 1 worker exclusively for priority=1 tasks
+
+    that's it, this function will do all the rest
+    '''
+    prepare_task(task)
 
 
 @celery.task()
@@ -153,14 +172,16 @@ def prepare_task(task: dict):
 
     '''
     # logger.debug(f'task {task}')
+    priority = task['priority'] if task.get('priority', None) else None
     url_hash = task['url_hash']
-    logger.debug(f'url_hash {url_hash}, run prepare_task()...')
+    logger.debug(
+        f'url_hash {url_hash}, run prepare_task() with priority {priority}')
     url = task['url']
     o = urlparse(url)
     domain = o.netloc
     q = dict(url_hash=task['url_hash'])
     data = {
-        'status': 'doing',
+        'status': 'preparing',
         'doing_time': datetime.utcnow(),
         'domain': domain
     }
@@ -189,7 +210,7 @@ def prepare_task(task: dict):
                     'is_multipage': True,
                     'page_query_param': page_query_param,
                     'status_ai': 'doing',
-                    'status_xpath': 'doing',
+                    'status_xpath': 'preparing',
                     'domain': domain
                 }
                 ts.upsert(q, udata)
@@ -232,8 +253,12 @@ def prepare_task(task: dict):
                 else:
                     logger.info('mp_url = url')
                     logger.debug(task['id'], partner_id, domain, domain_info)
-                    xpath_multi_crawler.delay(
-                        task['id'], partner_id, domain, domain_info)
+                    if priority and int(priority) == 1:
+                        xpath_multi_crawler(
+                            task['id'], partner_id, domain, domain_info)
+                    else:
+                        xpath_multi_crawler.delay(
+                            task['id'], partner_id, domain, domain_info)
                     if celery.conf['PARTNER_AI_CRAWLER']:
                         ai_multi_crawler.delay(
                             task['id'], partner_id, domain, domain_info)
@@ -242,13 +267,19 @@ def prepare_task(task: dict):
                 # preparing for singlepage crawler
                 udata = {
                     'status_ai': 'doing',
-                    'status_xpath': 'doing',
+                    'status_xpath': 'preparing',
                     'domain': domain
                 }
                 ts.upsert(q, udata)
 
-                xpath_single_crawler.delay(
-                    task['id'], partner_id, domain, domain_info)
+                if priority and int(priority) == 1:
+                    logger.debug(
+                        f'url_hash {url_hash} sent task to xpath_single_crawler()')
+                    xpath_single_crawler(
+                        task['id'], partner_id, domain, domain_info)
+                else:
+                    xpath_single_crawler.delay(
+                        task['id'], partner_id, domain, domain_info)
                 logger.debug(
                     f"celery.conf['PARTNER_AI_CRAWLER'] {celery.conf['PARTNER_AI_CRAWLER']}")
                 if celery.conf['PARTNER_AI_CRAWLER']:
@@ -326,7 +357,12 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     # iac = InformAC()
     wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
     url_hash = wpx_dict['url_hash']
-    # logger.debug(f'wpx {wpx}')
+    q = dict(url_hash=url_hash)
+    data = {
+        'status_xpath': 'doing'
+    }
+    ts = TaskService()
+    ts.update(q, data)
 
     a_wpx, inform_ac = xpath_a_crawler(
         wpx_dict, partner_id, domain, domain_info)
@@ -425,6 +461,10 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     logger.debug(f'page_query_param {page_query_param}')
 
     q = dict(url_hash=url_hash)
+    data = dict(status_xpath='doing')
+    ts = TaskService()
+    ts.update(q, data)
+
     page_num = 0
     cat_wpx = WebpagesPartnerXpath().select(q)
     cat_wpx_data = cat_wpx.to_dict()

@@ -26,8 +26,8 @@ services:
         container_name: web
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: uwsgi --ini uwsgi.ini
-        # command: python wsgi.py runserver --debug
+        # command: uwsgi --ini uwsgi.ini
+        command: python wsgi.py runserver --debug
         depends_on:
             - redis
         volumes:
@@ -38,9 +38,9 @@ services:
             - CONTAINER_TAG=web
         expose:
             - "8700"
-        # ports:
-        #     - "8100:8100"
-        #     - "8700:8700"
+        ports:
+            - "8100:8100"
+            - "8700:8700"
         logging:
             driver: "json-file"
             options:

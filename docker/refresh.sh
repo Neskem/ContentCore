@@ -25,7 +25,7 @@ docker-compose restart nginx
 docker-compose ps
 
 # check server return status code
-curl -v -X GET 'http://localhost:80/v1/create_tasks/1'
+curl -v -X GET 'http://localhost:8100/v1/create_tasks/1'
 # check files in container
 # docker exec -it web ls -al
 # copy & paste manually

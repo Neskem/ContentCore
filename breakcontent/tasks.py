@@ -366,12 +366,12 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     # iac = InformAC()
     wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
     url_hash = wpx_dict['url_hash']
-    q = dict(url_hash=url_hash)
-    data = {
-        'status_xpath': 'doing'
-    }
-    ts = TaskService()
-    ts.update(q, data)
+    # q = dict(url_hash=url_hash)
+    # data = {
+    #     'status_xpath': 'doing'
+    # }
+    # ts = TaskService()
+    # ts.update(q, data)
 
     a_wpx, inform_ac = xpath_a_crawler(
         wpx_dict, partner_id, domain, domain_info)
@@ -470,9 +470,9 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     logger.debug(f'page_query_param {page_query_param}')
 
     q = dict(url_hash=url_hash)
-    data = dict(status_xpath='doing')
-    ts = TaskService()
-    ts.update(q, data)
+    # data = dict(status_xpath='doing')
+    # ts = TaskService()
+    # ts.update(q, data)
 
     page_num = 0
     cat_wpx = WebpagesPartnerXpath().select(q)
@@ -756,7 +756,8 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
     hours_before_now = datetime.utcnow() - timedelta(hours=hour)
     logger.debug(f'hours_before_now {hours_before_now}')
     tml = TaskMain.query.options(load_only('url_hash')).filter_by(
-        **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), TaskMain.partner_id is not None).order_by(TaskMain._mtime.asc()).limit(limit).all()
+        **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime)).order_by(TaskMain._mtime.asc()).limit(limit).all()
+    # TaskMain.partner_id is not None
 
     # logger.debug(f'type(tml) {type(tml)}')
     logger.debug(f'len {len(tml)}')
@@ -767,7 +768,10 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
 
     for tm in tml:
         # only partner need to be redo
-        data = dict(url_hash=tm.url_hash,
-                    partner_id=tm.partner_id, domain=tm.domain)
+
+
+        data = dict(url_hash=tm.url_hash, domain=tm.domain)
+        if tm.partner_id:
+            data['partner_id'] = tm.partner_id
         upsert_main_task.delay(data)
         logger.debug(f'url_hash {tm.url_hash}, upsert_main_task.delay() sent')

@@ -326,7 +326,9 @@ sudo service stackdriver-agent restart
 
 ### HOWTO reset Redis
 * 清空production redis broker:
-    * ssh GCP redis VM
-    * redis-cli -a ContentBreak_1qaz -n 4
-    * DBSIZE
-    * flushall
+```shell
+redis-cli -a ContentBreak_1qaz -n 4
+# select <db_index>
+DBSIZE
+flushall
+```

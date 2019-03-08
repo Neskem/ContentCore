@@ -31,7 +31,7 @@ def init_task():
     curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "eeee619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932", "url_hash": "eeeef49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
 
     # insert not partner
-    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "ffff619f-576c-4473-add2-e53d08b74ac7", "url": "https://news.sina.com.tw/article/20190215/30068464.html?fbclid=IwAR25e4TpKc9rTsKN2tUt-4PQZoYJCmoBgfj7xmWr22j2bBGuTkQyQ5oQVEo", "url_hash": "f19535b1374ef771502d8fe488fbc57e77d2c96d", "priority": 3, "generator": ""}'
+    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "ffff619f-576c-4473-add2-e53d08b74ac7", "url": "https://news.sina.com.tw/article/20190215/30068464.html?fbclid=IwAR25e4TpKc9rTsKN2tUt-4PQZoYJCmoBgfj7xmWr22j2bBGuTkQyQ5oQVEo", "url_hash": "f19535b1374ef771502d8fe488fbc57e77d2c96d", "priority": 3, "domain": "news.sina.com.tw", "generator": ""}'
 
     if {"500": "blablabla"} exists return 500
 
@@ -52,7 +52,8 @@ def init_task():
     required = [
         'url',
         'url_hash',
-        'priority'
+        'priority',
+        'domain'
     ]
 
     optional = [

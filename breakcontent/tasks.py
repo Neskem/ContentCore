@@ -68,6 +68,7 @@ def upsert_main_task(task, data: dict):
         'url',
         'request_id',
         'partner_id',
+        'domain'
     ]
     task_data = {k: v for (k, v) in data.items() if k in task_required}
 
@@ -102,7 +103,8 @@ def upsert_main_task(task, data: dict):
             'status': 'pending',
             # 'retry': 0,
         }
-        task_data.pop('partner_id')
+        if task_data.get('partner_id', None):
+            task_data.pop('partner_id')
         task_data.update(udata)
         tns = TaskNoService()
         tns.upsert(q, task_data)
@@ -134,19 +136,21 @@ def create_tasks(priority: str):
         if tm.task_service and tm.partner_id:
             logger.debug(
                 f'sent task for tm.task_service {tm.task_service} with priority {priority}')
+            data = tm.task_service.to_dict()
+            data['priority'] = int(priority)
             if int(priority) == 1:
                 logger.debug(
                     f'url_hash {url_hash} sent to high_speed_p1.delay()')
-                data = tm.task_service.to_dict()
-                data['priority'] = int(priority)
                 high_speed_p1.delay(data)
                 # return
             else:
-                prepare_task.delay(tm.task_service.to_dict())
+                prepare_task.delay(data)
 
         if tm.task_noservice and not tm.partner_id:
             logger.debug(
                 f'sent task for tm.task_noservice {tm.task_noservice}')
+            data = tm.task_noservice.to_dict()
+            data['priority'] = int(priority)
             prepare_task.delay(tm.task_noservice.to_dict())
 
     logger.debug(f'done sending {len(tml)} tasks to broker')
@@ -159,6 +163,7 @@ def high_speed_p1(task: dict):
 
     that's it, this function will do all the rest
     '''
+    logger.debug(f'task {task} in high_speed_p1()')
     prepare_task(task)
 
 
@@ -172,13 +177,17 @@ def prepare_task(task: dict):
 
     '''
     # logger.debug(f'task {task}')
+    logger.debug(f'task {task} in prepare_task()')
     priority = task['priority'] if task.get('priority', None) else None
     url_hash = task['url_hash']
     logger.debug(
         f'url_hash {url_hash}, run prepare_task() with priority {priority}')
     url = task['url']
-    o = urlparse(url)
-    domain = o.netloc
+    domain = task['domain']
+    # o = urlparse(url)
+    # domain = o.netloc
+    # if domain == '\\x':
+    #     logger.error(f'failed to parse domain for url_hash {url_hash}')
     q = dict(url_hash=task['url_hash'])
     data = {
         'status': 'preparing',
@@ -758,6 +767,7 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
 
     for tm in tml:
         # only partner need to be redo
-        data = dict(url_hash=tm.url_hash, partner_id=tm.partner_id)
+        data = dict(url_hash=tm.url_hash,
+                    partner_id=tm.partner_id, domain=tm.domain)
         upsert_main_task.delay(data)
         logger.debug(f'url_hash {tm.url_hash}, upsert_main_task.delay() sent')

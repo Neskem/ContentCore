@@ -241,6 +241,7 @@ class TaskMain(Model):
             # 'task_noservice': self.task_noservice,
             'url_hash': self.url_hash,
             'url': self.url,
+            'domain': self.domain,
             'request_id': self.request_id,
             'partner_id': self.partner_id,
             'priority': self.priority,
@@ -297,6 +298,7 @@ class TaskService(Model):
             # 'webpages_partner_ai': self.webpages_partner_ai,
             'url_hash': self.url_hash,
             'url': self.url,
+            'domain': self.domain,
             'partner_id': self.partner_id,
             'request_id': self.request_id,
             'is_multipage': self.is_multipage,
@@ -348,6 +350,7 @@ class TaskNoService(Model):
             'task_main_id': self.task_main_id,
             'url_hash': self.url_hash,
             'url': self.url,
+            'domain': self.domain,
             # 'request_id': self.request_id,
             # 'retry': self.retry,
             'status': self.status

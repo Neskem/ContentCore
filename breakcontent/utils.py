@@ -1149,9 +1149,10 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 if isinstance(publish_date, str):
                     logger.debug(f'publish_date str type {publish_date}')
                     publish_date = publish_date.split('+')[0]
+                    # publish_date = dateparser.parse(publish_date, date_formats=[
+                    #                             '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
                     publish_date = dateparser.parse(publish_date, date_formats=[
-                                                '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
-
+                                                '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
                 a_wpx.publish_date = publish_date
                 iac.publish_date = publish_date
 

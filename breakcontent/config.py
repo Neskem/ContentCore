@@ -96,6 +96,7 @@ CELERYBEAT_SCHEDULE = {
         'task': 'breakcontent.tasks.reset_doing_tasks',
         'schedule': crontab(hour='*'),  # trigger at midnight
         'args': ([1]),
+        # 'args': ([1,20000]),
     },
 }
 

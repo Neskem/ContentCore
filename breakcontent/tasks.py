@@ -72,6 +72,12 @@ def upsert_main_task(task, data: dict):
     ]
     task_data = {k: v for (k, v) in data.items() if k in task_required}
 
+    url = data['url']
+    if not data.get('domain', None):
+        o = urlparse(url)
+        domain = o.netloc
+        data['domain'] = domain
+
     q = {
         'url_hash': data['url_hash']
     }
@@ -768,7 +774,6 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
 
     for tm in tml:
         # only partner need to be redo
-
 
         data = dict(url_hash=tm.url_hash, domain=tm.domain)
         if tm.partner_id:

@@ -98,7 +98,8 @@ def upsert_main_task(task, data: dict):
             'status_ai': 'pending',
             'status_xpath': 'pending',
             # 'retry_ai': 0,
-            'retry_xpath': 0
+            'retry_xpath': 0,
+            'domain': domain
         }
         task_data.update(udata)
         ts = TaskService()
@@ -108,6 +109,7 @@ def upsert_main_task(task, data: dict):
             'task_main_id': tm.id,  # for insert use
             'status': 'pending',
             # 'retry': 0,
+            'domain': domain
         }
         if task_data.get('partner_id', None):
             task_data.pop('partner_id')

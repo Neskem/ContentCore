@@ -53,13 +53,14 @@ def init_task():
         'url',
         'url_hash',
         'priority',
-        'domain'
+        # 'domain'
     ]
 
     optional = [
         'request_id',
         'partner_id',
-        'generator'
+        'generator',
+        'domain'
     ]
 
     odata = {}

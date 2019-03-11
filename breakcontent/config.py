@@ -113,7 +113,7 @@ PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)
 
 # AI crawler
 MERCURY_TOKEN = os.environ.get(
-    'MERCURY_TOKEN', "sJ4GrxyzEik4wKfwATu4zszm8azpZV0tusuO4B2m")
+    'MERCURY_TOKEN', None)
 PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in [
     'false', 'False', 0, False] else True
 

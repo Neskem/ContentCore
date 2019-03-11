@@ -208,14 +208,14 @@ class TaskMain(Model):
     url = Column(String(1000), nullable=False)
     domain = Column(String(500), index=True, nullable=True)
     request_id = Column(String(256), nullable=True)
-    partner_id = Column(String(64), nullable=True)
-    priority = Column(Integer, nullable=True)
+    partner_id = Column(String(64), nullable=True, index=True)
+    priority = Column(Integer, nullable=True, index=True)
     generator = Column(String(100), nullable=True)
     # generate many from one
     parent_url = Column(String(1000), nullable=True)
 
     # notify ac after crawler done, no matter partner or non-partner
-    status = Column(Enum('pending', 'preparing', 'doing', 'done', 'failed',
+    status = Column(Enum('pending', 'preparing', 'doing', 'ready', 'done', 'failed',
                          name='status_tm'), default='pending', index=True)
     doing_time = Column(DateTime(timezone=False), nullable=True)
     # notify_ac_time

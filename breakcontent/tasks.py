@@ -73,7 +73,9 @@ def upsert_main_task(task, data: dict):
     task_data = {k: v for (k, v) in data.items() if k in task_required}
 
     url = data['url']
-    if not data.get('domain', None):
+    if data.get('domain', None):
+        domain = data['domain']
+    else:
         o = urlparse(url)
         domain = o.netloc
         data['domain'] = domain
@@ -138,6 +140,7 @@ def create_tasks(priority: str):
         return
 
     for tm in tml:
+        request_id = tm.request_id
         url_hash = tm.url_hash
         logger.debug(f'sent task for url_hash {url_hash}')
 
@@ -146,6 +149,7 @@ def create_tasks(priority: str):
                 f'sent task for tm.task_service {tm.task_service} with priority {priority}')
             data = tm.task_service.to_dict()
             data['priority'] = int(priority)
+            data['request_id'] = request_id
             if int(priority) == 1:
                 logger.debug(
                     f'url_hash {url_hash} sent to high_speed_p1.delay()')
@@ -154,12 +158,18 @@ def create_tasks(priority: str):
             else:
                 prepare_task.delay(data)
 
-        if tm.task_noservice and not tm.partner_id:
+        elif tm.task_noservice and not tm.partner_id:
             logger.debug(
                 f'sent task for tm.task_noservice {tm.task_noservice}')
             data = tm.task_noservice.to_dict()
             data['priority'] = int(priority)
-            prepare_task.delay(tm.task_noservice.to_dict())
+            data['request_id'] = request_id
+            prepare_task.delay(data)
+
+        else:
+            q = dict(url_hash=url_hash)
+            data = dict(status='done')
+            tm.update(q, data)
 
     logger.debug(f'done sending {len(tml)} tasks to broker')
 
@@ -187,6 +197,7 @@ def prepare_task(task: dict):
     # logger.debug(f'task {task}')
     logger.debug(f'task {task} in prepare_task()')
     priority = task['priority'] if task.get('priority', None) else None
+    request_id = task['request_id']
     url_hash = task['url_hash']
     logger.debug(
         f'url_hash {url_hash}, run prepare_task() with priority {priority}')
@@ -269,7 +280,8 @@ def prepare_task(task: dict):
 
                 else:
                     logger.info('mp_url = url')
-                    logger.debug(task['id'], partner_id, domain, domain_info)
+                    logger.debug(
+                        f"task['id'] {task['id']}, partner_id {partner_id}, domain {domain}, domain_info {domain_info}")
                     if priority and int(priority) == 1:
                         xpath_multi_crawler(
                             task['id'], partner_id, domain, domain_info)
@@ -279,6 +291,9 @@ def prepare_task(task: dict):
                     if celery.conf['PARTNER_AI_CRAWLER']:
                         ai_multi_crawler.delay(
                             task['id'], partner_id, domain, domain_info)
+                    else:
+                        data = dict(status='done')  # to prevent redo
+                        tm.update(q, data)
 
             else:
                 # preparing for singlepage crawler
@@ -302,6 +317,9 @@ def prepare_task(task: dict):
                 if celery.conf['PARTNER_AI_CRAWLER']:
                     ai_single_crawler.delay(
                         task['id'], partner_id, domain, domain_info)
+                else:
+                    data = dict(status='done')  # to prevent redo
+                    tm.update(q, data)
                 logger.debug(f'url_hash {url_hash} task sent')
         else:
             logger.error(
@@ -336,7 +354,7 @@ def prepare_task(task: dict):
             # request_id': 'ee7fbaa2-6433-4232-8666-8b96923f8447', 'is_multipage': False, 'page_query_param': None, 'secret': False, 'status_xpath': 'doing', 'status_ai': 'doing'}
 
     else:
-
+        # not partner goes here
         q = dict(id=task['id'])
         data = {
             'status': 'doing',
@@ -345,11 +363,42 @@ def prepare_task(task: dict):
         tns = TaskNoService()
         tns.upsert(q, data)
 
-        # not partner goes here
-        ai_single_crawler.delay(
-            task['id'])
+        if celery.conf['MERCURY_TOKEN']:
+            ai_single_crawler.delay(
+                task['id'])
+            logger.debug(
+                f'url_hash {url_hash}, sent task to ai_single_crawler()')
+        else:
+            tm = TaskMain()
+            q = dict(url_hash=url_hash)
 
-        logger.debug(f'url_hash {url_hash}, sent task to ai_single_crawler()')
+            logger.debug(
+                f'url_hash {url_hash}, MERCURY_TOKEN env variable not set')
+            inform_ac = InformAC()
+            inform_ac.status = False
+            inform_ac.url = url
+            inform_ac.url_hash = url_hash
+            inform_ac.request_id = request_id
+
+            inform_ac_data = inform_ac.to_dict()
+
+            logger.debug(
+                f'url_hash {url_hash} ready to inform AC, inform_ac_data {inform_ac_data}')
+            data = dict(status='ready')  # to prevent redo
+            tm.update(q, data)
+
+            headers = {'Content-Type': "application/json"}
+            resp_data = retry_request(
+                'put', ac_content_status_api, inform_ac_data, headers)
+
+            if resp_data:
+                data = dict(status='done')
+                tm.update(q, data)
+                logger.debug(f'url_hash {url_hash} inform AC successful')
+            else:
+                data = dict(status='failed')
+                tm.update(q, data)
+                logger.debug(f'url_hash {url_hash} inform AC failed')
 
 
 @celery.task()
@@ -609,6 +658,7 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
     if partner_id:
 
         wp_dict = prepare_crawler(tid, partner=True, xpath=False)
+        url_hash = wp_dict['url_hash']
         a_wp = ai_a_crawler(wp_dict, partner_id)
 
         q = dict(url_hash=wp_dict['url_hash'])
@@ -630,6 +680,7 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
     else:
         # must inform AC
         wp_dict = prepare_crawler(tid, partner=False, xpath=False)
+        url_hash = wp_dict['url_hash']
         a_wp = ai_a_crawler(wp_dict)
 
         q = dict(url_hash=wp_dict['url_hash'])
@@ -655,11 +706,13 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
             iac_data['status'] = False
 
         # inform AC
+        logger.debug(f'url_hash {url_hash} ready to inform AC')
         headers = {'Content-Type': "application/json"}
         resp_data = retry_request(
             'put', ac_content_status_api, iac_data, headers)
 
         if resp_data:
+            logger.debug(f'url_hash {url_hash} inform AC successful')
             data = dict(status='done')
             tns.update(q, data)
 
@@ -777,7 +830,7 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
     for tm in tml:
         # only partner need to be redo
 
-        data = dict(url_hash=tm.url_hash, domain=tm.domain)
+        data = dict(url_hash=tm.url_hash, domain=tm.domain, url=tm.url)
         if tm.partner_id:
             data['partner_id'] = tm.partner_id
         upsert_main_task.delay(data)

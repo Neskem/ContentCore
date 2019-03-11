@@ -262,7 +262,7 @@ docker-compose down -v
 * @ prd psql machine(192.168.18.123)
 ```shell
 ssh ubuntu@192.168.18.123
-psql -U postgres -h localhost
+PASSWORD=ContentBreak_psql1qaz psql -U postgres -h localhost
 #pw: ContentBreak_psql1qaz
 
 ```

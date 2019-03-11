@@ -60,20 +60,29 @@ class Model(db.Model):
         retry = 0
         while 1:
             try:
+
                 logger.debug(f'start inserting {doc} to {self.__tablename__}')
-                db.session.add(doc)
-                db.session.commit()
-                # logger.debug(f'query {query}')
-                ret = self.select(query)
-                # self.id = ret.id
 
-                if ret and getattr(ret, 'to_dict', None):
-                    for k, v in ret.to_dict().items():
-                        # logger.debug(f'{k}: {v}')
-                        setattr(self, k, v)
-
-                logger.debug(f'insert {self.__tablename__} successful')
-                # logger.debug(f'self {self}')
+                if 1: # beta version
+                    ret = self.select(query)
+                    if not ret:
+                        db.session.add(doc)
+                        db.session.commit()
+                        ret = self.select(query)
+                        if ret and getattr(ret, 'to_dict', None):
+                            for k, v in ret.to_dict().items():
+                                setattr(self, k, v)
+                        logger.debug(f'insert {self.__tablename__} successful')
+                    else:
+                        self.update(query, data)
+                if 0: # deprecated
+                    db.session.add(doc)
+                    db.session.commit()
+                    ret = self.select(query)
+                    if ret and getattr(ret, 'to_dict', None):
+                        for k, v in ret.to_dict().items():
+                            setattr(self, k, v)
+                    logger.debug(f'insert {self.__tablename__} successful')
                 break
             except OperationalError as e:
                 db.session.rollback()
@@ -83,11 +92,11 @@ class Model(db.Model):
                     raise
             except IntegrityError as e:
                 logger.error(e)
-                logger.debug(
-                    f'insert failed, start updating {self.__tablename__}')
+                # logger.debug(
+                    # f'insert failed, start updating {self.__tablename__}')
                 db.session.rollback()
-                self.update(query, data)
-                logger.debug('upsert successful')
+                # self.update(query, data)
+                # logger.debug('upsert successful')
                 break
 
     def commit(self, query: dict=None, data: dict=None):

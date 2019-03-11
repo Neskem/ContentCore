@@ -229,7 +229,7 @@ def prepare_task(task: dict):
         # ts.upsert(q, data)
 
         if domain_info:
-            logger.debug(f'url_hash {url_hash}, domain_info {domain_info}')
+            # logger.debug(f'url_hash {url_hash}, domain_info {domain_info}')
             if domain_info.get('page', None) and domain_info['page'] != '':
                 # preparing for multipage crawler
                 page_query_param = domain_info['page'][0]
@@ -292,6 +292,8 @@ def prepare_task(task: dict):
                         ai_multi_crawler.delay(
                             task['id'], partner_id, domain, domain_info)
                     else:
+                        tm = TaskMain()
+                        q = dict(url_hash=url_hash)
                         data = dict(status='done')  # to prevent redo
                         tm.update(q, data)
 
@@ -318,6 +320,8 @@ def prepare_task(task: dict):
                     ai_single_crawler.delay(
                         task['id'], partner_id, domain, domain_info)
                 else:
+                    tm = TaskMain()
+                    q = dict(url_hash=url_hash)
                     data = dict(status='done')  # to prevent redo
                     tm.update(q, data)
                 logger.debug(f'url_hash {url_hash} task sent')

@@ -1603,6 +1603,10 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         logger.error('failed to parse with Mercury')
         return None
 
+
+def request_ac(api: str, header: dict, payload: dict):
+    pass
+
 # ===== below are def from PartnerSync =====
 
 

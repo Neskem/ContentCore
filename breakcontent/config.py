@@ -94,7 +94,7 @@ CELERYBEAT_SCHEDULE = {
     },
     'reset_doing_task': {  # Update task (including daily and monthly)
         'task': 'breakcontent.tasks.reset_doing_tasks',
-        'schedule': crontab(hour='*'),  # trigger at midnight
+        'schedule': crontab(minute=0, hour='*'),  # trigger at midnight
         'args': ([1]),
         # 'args': ([1,20000]),
     },

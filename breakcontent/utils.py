@@ -688,7 +688,14 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             logger.debug('use LOCAL to request')
             r = requests.get(url, allow_redirects=True, headers=headers)
     else:
-        r = requests.get(url, verify=False, allow_redirects=True)
+        try:
+            r = requests.get(url, verify=False, allow_redirects=True)
+            # raise requests.exceptions.ConnectionError # Lance debug
+        except requests.exceptions.ConnectionError as e:
+            logger.error(e)
+            iac.status = False
+            return a_wpx, iac
+
 
     ts = tsf if not multipaged else None
     if check_r(r, ts):

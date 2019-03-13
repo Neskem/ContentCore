@@ -40,6 +40,8 @@ ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
 # defines how tasks are sent into broker, which task to which queue
 CELERY_ROUTES = {
+    # upsert_tm
+    'breakcontent.tasks.upsert_main_task': {'queue': 'upsert_tm'},
     # # aicrawler
     'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
     'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},

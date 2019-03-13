@@ -312,6 +312,8 @@ def prepare_task(task: dict):
                     xpath_single_crawler(
                         task['id'], partner_id, domain, domain_info)
                 else:
+                    logger.debug(
+                        f'url_hash {url_hash} sent task to xpath_single_crawler.delay()')
                     xpath_single_crawler.delay(
                         task['id'], partner_id, domain, domain_info)
                 logger.debug(
@@ -443,13 +445,17 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     # retry stretagy: seny task into broker again
     retry = a_wpx.task_service.retry_xpath
     status_code = a_wpx.task_service.status_code
+    priority = a_wpx.task_service.task_main.priority
     candidate = [406, 426]
     if retry < 5 and (status_code in candidate or status_code != 200):
         logger.warning(
             f'url_hash {url_hash}, status_code {status_code}, retry {retry} times')
         a_wpx.task_service.retry_xpath += 1
         time.sleep(0.5)
-        xpath_single_crawler.delay(tid, partner_id, domain, domain_info)
+        if int(priority) == 1:
+            xpath_single_crawler(tid, partner_id, domain, domain_info)
+        else:
+            xpath_single_crawler.delay(tid, partner_id, domain, domain_info)
         db.session.commit()
         return
     elif retry >= 5:

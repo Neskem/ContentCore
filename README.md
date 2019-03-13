@@ -226,13 +226,13 @@ vi psql_backup.sh
 #!/bin/bash
 today=`date +%Y-%m-%d-%H:%M`
 backupdir="/etc/break_backup/"
-PGPASSWORD=ContentBreak_psql1qaz pg_dump -d break_content -U postgres -h 192.168.18.123 -f "$backupdir"break_content_"$today".sql
+PGPASSWORD=ContentBreak_psql1qaz pg_dump -d break_content -U postgres -h 10.140.0.127 -f "$backupdir"break_content_"$today".sql
 find $backupdir -name "break_content*" -mtime +2 -type f -exec rm -rf {} \;
 
 chmod +x psql_backup.sh
 
 crontab -e 
-0 */2 * * * /root/psql_backup.sh
+5 */3 * * * /root/psql_backup.sh
 ```
 * import *.sql into psql
 ```shell

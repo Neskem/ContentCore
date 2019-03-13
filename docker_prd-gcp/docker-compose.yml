@@ -60,8 +60,7 @@ services:
         container_name: worker
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E -P gevent --purge
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E --purge
+        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=100,5 -n worker.%%h -P gevent --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -73,12 +72,59 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-upsert:
+        container_name: worker-upsert
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q upsert_tm --loglevel=DEBUG --autoscale=100,2 -n worker-upsert.%%h
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-upsert
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
+    worker-bypass:
+        container_name: worker-bypass
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker-bypass.%%h
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-bypass
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
+    worker-p1:
+        container_name: worker-p1
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=50,2 -n worker-p1.%%h -P gevent --purge
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-p1
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker-xpcrawler:
         container_name: worker-xpcrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E -P gevent --purge
-        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E --purge
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --loglevel=DEBUG --autoscale=200,10 -n worker-xpcrawler.%%h -P gevent --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -93,8 +139,7 @@ services:
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
         image: cc
-        # command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E -P gevent --purge
-        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E --purge
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --loglevel=DEBUG --autoscale=50,4 -n worker-xpmcrawler.%%h -P gevent --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -110,8 +155,7 @@ services:
         container_name: worker-aicrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E -P gevent --purge
-        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E --purge
+        command: celery worker -A breakcontent.tasks -Q aicrawler --loglevel=DEBUG --autoscale=100,5 -n worker-aicrawler.%%h -P gevent --purge
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore

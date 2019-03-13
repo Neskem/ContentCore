@@ -258,7 +258,7 @@ crontab -e
 vi /etc/postgresql/10/main/postgresql.conf
 
 shared_buffers=10GB #10 ~ 25% suggested
-work_mem=300MB # 2~4%
+work_mem=500MB # 2~4%
 max_connections=200
 effective_cache_size=13G
 maintence_work_mem=512M

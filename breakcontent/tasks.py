@@ -298,7 +298,8 @@ def prepare_task(task: dict):
                         ai_multi_crawler.delay(
                             task['id'], partner_id, domain, domain_info)
                     else:
-                        bypass_crawler.delay(url_hash)
+                        pass
+                        # bypass_crawler.delay(url_hash)
                         # tm = TaskMain()
                         # q = dict(url_hash=url_hash)
                         # data = dict(status='done')  # to prevent redo
@@ -326,11 +327,13 @@ def prepare_task(task: dict):
                 logger.debug(
                     f"celery.conf['PARTNER_AI_CRAWLER'] {celery.conf['PARTNER_AI_CRAWLER']}")
                 if celery.conf['PARTNER_AI_CRAWLER']:
+                    # even p1's aicrawler task will be sent to delay
                     ai_single_crawler.delay(
                         task['id'], partner_id, domain, domain_info)
                     logger.debug(f'url_hash {url_hash} task sent')
                 else:
-                    bypass_crawler.delay(url_hash)
+                    pass
+                    # bypass_crawler.delay(url_hash)
                     # tm = TaskMain()
                     # q = dict(url_hash=url_hash)
                     # # to prevent redo
@@ -390,7 +393,6 @@ def prepare_task(task: dict):
                 f'url_hash {url_hash}, MERCURY_TOKEN env variable not set')
             bypass_crawler.delay(url_hash)
 
-
             # tm = TaskMain()
             # q = dict(url_hash=url_hash)
             # inform_ac = InformAC()
@@ -441,6 +443,9 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     # logger.debug(f'tid type {type(tid)}')
     # iac = InformAC()
     wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
+    if not wpx_dict:
+        logger.error(f'this should not happen!')
+        return
     url_hash = wpx_dict['url_hash']
     # q = dict(url_hash=url_hash)
     # data = {
@@ -544,6 +549,9 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
     logger.debug(f'start to crawl multipaged url on tid {tid}')
 
     wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
+    if not wpx_dict:
+        logger.error(f'this should not happen!')
+        return
     url = wpx_dict['url']
     url_hash = wpx_dict['url_hash']
     page_query_param = domain_info['page'][0]

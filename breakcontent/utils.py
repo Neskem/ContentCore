@@ -247,6 +247,7 @@ class DomainSetting():
         if match_type == 'MATCH_REGEX' and re.search(my_regex, url) != None:
             return True
         if match_type == 'NOT_MATCH_REGEX' and re.search(my_regex, url):
+            logger.debug(f'match_type {match_type} my_regex {my_regex}')
             return False
         if match_type == 'MATCH_REGEX_I' and re.search(my_regex, url, re.IGNORECASE):
             return True
@@ -255,14 +256,18 @@ class DomainSetting():
         return None
 
     def checkSyncRule(self, url):
+        logger.debug(f'operate checkSyncRule() on url {url}')
         # if self.status == 'off':
             # return None
         if self.regex and len(self.regex) > 0:
             # loop through all the rules
             for rule in self.regex:
                 status = self.checkUrl(url, rule)
-                if status:
-                    return status
+                logger.debug(f'rule {rule} status {status}')
+                if status is True:
+                    return True
+                elif status is False:
+                    return False
         return False
 
     def isSyncDay(self, publish_date: object):
@@ -389,7 +394,8 @@ def parse_domain_info(data: dict) -> dict:
 
     for k, v in data.items():
         if k == 'data':
-            if v is []:
+            if isinstance(v, list):
+                logger.error('it should be a dict')
                 return None
             # key check and filter (not sure if necessary)
             # logger.debug(f'type(v) {type(v)}')
@@ -553,7 +559,7 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
         ts = TaskNoService().select(q)
 
     if not ts:
-        return
+        return None
 
 
 
@@ -655,8 +661,9 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     secrt = Secret()
 
     check_rule = ds.checkSyncRule(url)
-    iac.zi_sync = check_rule if iac.zi_sync else True
-    if not check_rule:
+    logger.debug(f'check_rule {check_rule}')
+    iac.zi_sync = check_rule if check_rule else False
+    if check_rule is False:
         iac.zi_defy.add('regex')
 
     html = None
@@ -883,7 +890,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
             # check if category should sync
             isc = ds.isSyncCategory(categories)
-            iac.zi_sync = isc if iac.zi_sync else True
+            iac.zi_sync = isc if iac.zi_sync else False
             if not isc:
                 iac.zi_defy.add('category')
 
@@ -1164,7 +1171,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 iac.publish_date = publish_date
 
                 isd = ds.isSyncDay(publish_date)
-                iac.zi_sync = isd if iac.zi_sync else True
+                iac.zi_sync = isd if iac.zi_sync else False
                 if not isd:
                     iac.zi_defy.add('delayday')
             else:
@@ -1270,7 +1277,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             # i_author = domain_info.get('authorList', None)
             # e_author = domain_info.get('e_authorList', None)
             isa = ds.isSyncAuthor(author)
-            iac.zi_sync = isa if iac.zi_sync else True
+            iac.zi_sync = isa if iac.zi_sync else False
             if not isa:
                 iac.zi_defy.add('authorList')
 

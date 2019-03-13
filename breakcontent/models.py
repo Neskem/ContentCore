@@ -279,7 +279,7 @@ class TaskService(Model):
     partner_id = Column(String(64), nullable=True)
     request_id = Column(String(256), index=True, nullable=True)
     page_query_param = Column(String(50), nullable=True)
-    is_multipage = Column(Boolean, default=False)
+    is_multipage = Column(Boolean, default=False, index=True)
     secret = Column(Boolean, default=False)
     status_code = Column(Integer, index=True, nullable=True)
     retry_xpath = Column(Integer, default=0)

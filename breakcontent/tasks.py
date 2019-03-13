@@ -1,5 +1,5 @@
 from breakcontent.factory import create_celery_app
-from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request
+from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request, request_api
 
 
 from breakcontent.utils import mercuryContent, prepare_crawler, ai_a_crawler
@@ -167,9 +167,14 @@ def create_tasks(priority: str):
             prepare_task.delay(data)
 
         else:
-            q = dict(url_hash=url_hash)
-            data = dict(status='done')
-            tm.update(q, data)
+            # this might happen if you use sql to change doing back to pending
+            # plz use reset_doing_tasks() instead
+            bypass_crawler.delay(url_hash)
+            # logger.error(
+            #     f'url_hash {url_hash}, this usually should not happen or the worker will be jammed!')
+            # q = dict(url_hash=url_hash)
+            # data = dict(status='done', done_time=datetime.utcnow())
+            # tm.update(q, data)
 
     logger.debug(f'done sending {len(tml)} tasks to broker')
 
@@ -216,7 +221,6 @@ def prepare_task(task: dict):
     # dict(domain=domain)
     tm = TaskMain()
     tm.update(q, data)
-
     if task.get('partner_id', None):
 
         partner_id = task['partner_id']
@@ -241,7 +245,7 @@ def prepare_task(task: dict):
                     'status_xpath': 'preparing',
                     'domain': domain
                 }
-                ts.upsert(q, udata)
+                ts.update(q, udata)
 
                 logger.debug(f'ts.url_hash {ts.url_hash}')  # Lance debug
 
@@ -264,8 +268,10 @@ def prepare_task(task: dict):
                         'multipage': mp_url,
                         'domain': domain
                     }
-                    resp_data = retry_request(
-                        'post', ac_content_multipage_api, data, headers)
+                    resp_data = request_api(
+                        ac_content_multipage_api, 'post', data)
+                    # resp_data = retry_request(
+                    # 'post', ac_content_multipage_api, data, headers)
 
                     if resp_data:
                         logger.debug(f'resp_data {resp_data}')
@@ -292,23 +298,24 @@ def prepare_task(task: dict):
                         ai_multi_crawler.delay(
                             task['id'], partner_id, domain, domain_info)
                     else:
-                        tm = TaskMain()
-                        q = dict(url_hash=url_hash)
-                        data = dict(status='done')  # to prevent redo
-                        tm.update(q, data)
+                        bypass_crawler.delay(url_hash)
+                        # tm = TaskMain()
+                        # q = dict(url_hash=url_hash)
+                        # data = dict(status='done')  # to prevent redo
+                        # tm.update(q, data)
 
             else:
                 # preparing for singlepage crawler
                 udata = {
-                    'status_ai': 'doing',
+                    'status_ai': 'preparing',
                     'status_xpath': 'preparing',
                     'domain': domain
                 }
-                ts.upsert(q, udata)
+                ts.update(q, udata)
 
                 if priority and int(priority) == 1:
                     logger.debug(
-                        f'url_hash {url_hash} sent task to xpath_single_crawler()')
+                        f'url_hash {url_hash} run xpath_single_crawler() in high_speed_p1 task func')
                     xpath_single_crawler(
                         task['id'], partner_id, domain, domain_info)
                 else:
@@ -321,40 +328,44 @@ def prepare_task(task: dict):
                 if celery.conf['PARTNER_AI_CRAWLER']:
                     ai_single_crawler.delay(
                         task['id'], partner_id, domain, domain_info)
+                    logger.debug(f'url_hash {url_hash} task sent')
                 else:
-                    tm = TaskMain()
-                    q = dict(url_hash=url_hash)
-                    data = dict(status='done')  # to prevent redo
-                    tm.update(q, data)
-                logger.debug(f'url_hash {url_hash} task sent')
+                    bypass_crawler.delay(url_hash)
+                    # tm = TaskMain()
+                    # q = dict(url_hash=url_hash)
+                    # # to prevent redo
+                    # data = dict(status='done', done_time=datetime.utcnow())
+                    # tm.update(q, data)
+
         else:
             logger.error(
                 f'there is no partner settings for partner_id {partner_id} domain {domain}')
 
-            iac = InformAC()
-            iac.url_hash = url_hash
-            iac.url = url
-            iac.request_id = task['request_id']
-            iac.zi_sync = False
-            iac.status = False
-            data = iac.to_dict()
-            # need more code
-            headers = {'Content-Type': "application/json"}
-            resp_data = retry_request(
-                'put', ac_content_status_api, data, headers)
+            bypass_crawler.delay(url_hash)
+            # iac = InformAC()
+            # iac.url_hash = url_hash
+            # iac.url = url
+            # iac.request_id = task['request_id']
+            # # iac.zi_sync = False
+            # iac.status = False
+            # data = iac.to_dict()
+            # # need more code
+            # headers = {'Content-Type': "application/json"}
+            # resp_data = retry_request(
+            #     'put', ac_content_status_api, data, headers)
 
-            if resp_data:
-                logger.debug(f'resp_data {resp_data}')
-                ts.status_xpath = 'done'
-                ts.task_main.status = 'done'
-                ts.task_main.done_time = datetime.utcnow()
-                db.session.commit()
-                logger.debug(f'url_hash {url_hash}, inform AC successful')
-            else:
-                ts.status_xpath = 'failed'
-                ts.task_main.status = 'failed'
-                db.session.commit()
-                logger.error(f'url_hash {url_hash}, inform AC failed')
+            # if resp_data:
+            #     logger.debug(f'resp_data {resp_data}')
+            #     ts.status_xpath = 'done'
+            #     ts.task_main.status = 'done'
+            #     ts.task_main.done_time = datetime.utcnow()
+            #     db.session.commit()
+            #     logger.debug(f'url_hash {url_hash}, inform AC successful')
+            # else:
+            #     ts.status_xpath = 'failed'
+            #     ts.task_main.status = 'failed'
+            #     db.session.commit()
+            #     logger.error(f'url_hash {url_hash}, inform AC failed')
 
             # task {'id': 1398, 'task_main_id': 1398, 'url_hash': '5cd6548adc4c7d13c896b1670eef51772c22092d', 'url': 'https://healthnice.org/8adb355df5914ecfeefdaf046cf5cb4793745bd7/', 'partner_id': 'YUZ7T18', '
             # request_id': 'ee7fbaa2-6433-4232-8666-8b96923f8447', 'is_multipage': False, 'page_query_param': None, 'secret': False, 'status_xpath': 'doing', 'status_ai': 'doing'}
@@ -375,36 +386,38 @@ def prepare_task(task: dict):
             logger.debug(
                 f'url_hash {url_hash}, sent task to ai_single_crawler()')
         else:
-            tm = TaskMain()
-            q = dict(url_hash=url_hash)
-
             logger.debug(
                 f'url_hash {url_hash}, MERCURY_TOKEN env variable not set')
-            inform_ac = InformAC()
-            inform_ac.status = False
-            inform_ac.url = url
-            inform_ac.url_hash = url_hash
-            inform_ac.request_id = request_id
+            bypass_crawler.delay(url_hash)
 
-            inform_ac_data = inform_ac.to_dict()
 
-            logger.debug(
-                f'url_hash {url_hash} ready to inform AC, inform_ac_data {inform_ac_data}')
-            data = dict(status='ready')  # to prevent redo
-            tm.update(q, data)
+            # tm = TaskMain()
+            # q = dict(url_hash=url_hash)
+            # inform_ac = InformAC()
+            # inform_ac.status = False
+            # inform_ac.url = url
+            # inform_ac.url_hash = url_hash
+            # inform_ac.request_id = request_id
 
-            headers = {'Content-Type': "application/json"}
-            resp_data = retry_request(
-                'put', ac_content_status_api, inform_ac_data, headers)
+            # inform_ac_data = inform_ac.to_dict()
 
-            if resp_data:
-                data = dict(status='done')
-                tm.update(q, data)
-                logger.debug(f'url_hash {url_hash} inform AC successful')
-            else:
-                data = dict(status='failed')
-                tm.update(q, data)
-                logger.debug(f'url_hash {url_hash} inform AC failed')
+            # logger.debug(
+            #     f'url_hash {url_hash} ready to inform AC, inform_ac_data {inform_ac_data}')
+            # data = dict(status='ready')  # to prevent redo
+            # tm.update(q, data)
+
+            # headers = {'Content-Type': "application/json"}
+            # resp_data = retry_request(
+            #     'put', ac_content_status_api, inform_ac_data, headers)
+
+            # if resp_data:
+            #     data = dict(status='done')
+            #     tm.update(q, data)
+            #     logger.debug(f'url_hash {url_hash} inform AC successful')
+            # else:
+            #     data = dict(status='failed')
+            #     tm.update(q, data)
+            #     logger.debug(f'url_hash {url_hash} inform AC failed')
 
 
 @celery.task()
@@ -453,6 +466,8 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
         a_wpx.task_service.retry_xpath += 1
         time.sleep(0.5)
         if int(priority) == 1:
+            logger.debug(
+                f'url_hash {url_hash} run xpath_single_crawler() in high_speed_p1 task func')
             xpath_single_crawler(tid, partner_id, domain, domain_info)
         else:
             xpath_single_crawler.delay(tid, partner_id, domain, domain_info)
@@ -814,12 +829,46 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
 # ==== tool tasks ====
 
 @celery.task()
+def bypass_crawler(url_hash: str):
+    '''
+    this url need not to crawl
+
+    do two things:
+    1. infrom AC through request
+    2. if (1) succeed, change db TaskMain() status to done
+
+    data should have keys: url_hash, url, request_id
+    '''
+
+    q = dict(url_hash=url_hash)
+    tm = TaskMain().select(q)
+    iac = InformAC()
+    iac.url = tm.url
+    iac.url_hash = tm.url_hash
+    iac.request_id = tm.request_id
+    iac.status = False
+    iac_data = iac.to_dict()
+
+    resp_data = request_api(ac_content_status_api, 'put', iac_data)
+    if resp_data:
+        logger.debug(f'url_hash {url_hash} inform AC successful')
+        data = dict(status='done', done_time=datetime.utcnow())
+        tm.update(q, data)
+    else:
+        logger.error(f'url_hash {url_hash} inform AC failed')
+        data = dict(status='failed', done_time=datetime.utcnow())
+        tm.update(q, data)
+
+
+@celery.task()
 def reset_doing_tasks(hour: int=1, limit: int=10000):
     '''
     query the hanging task (status = doing) from TaskMain() with _mtime at least a hour before now
 
     status = doing
     _mtime < now - 1 hour
+
+    Caution: do not use sql syntax to update status 'doing' back to 'pending'
     '''
     q = {
         'status': 'doing',

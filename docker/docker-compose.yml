@@ -107,6 +107,22 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-bypass:
+        container_name: worker-bypass
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-bypass
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker-p1:
         container_name: worker-p1
         image: cc

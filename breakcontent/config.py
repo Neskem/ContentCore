@@ -42,7 +42,9 @@ ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 CELERY_ROUTES = {
     # upsert_tm
     'breakcontent.tasks.upsert_main_task': {'queue': 'upsert_tm'},
-    # # aicrawler
+    # bypass_crawler
+    'breakcontent.tasks.bypass_crawler': {'queue': 'bypass_crawler'},
+    # aicrawler
     'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
     'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},
     # xpcrawler

@@ -19,7 +19,7 @@ docker build -t cc -f ../Dockerfile ../
 
 docker-compose up -d
 
-psql -U postgres -h localhost < postgresql/init.sql
+# psql -U postgres -h localhost < postgresql/init.sql
 
 # manual garbage collection
 docker rmi $(docker images -f "dangling=true" -q)
@@ -29,8 +29,13 @@ docker rmi $(docker images -f "dangling=true" -q)
 
 # docker-compose restart nginx
 
+psql -U postgres -h localhost < postgresql/init.sql
+docker-compose restart
+
 # check status
 docker-compose ps
+
+
 
 # check server return status code
 curl -v -X GET 'http://localhost:8100/v1/create_tasks/1'

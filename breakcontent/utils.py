@@ -1611,8 +1611,18 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         return None
 
 
-def request_ac(api: str, header: dict, payload: dict):
-    pass
+def request_api(api: str, method: str, payload: dict, headers: dict=None):
+    '''
+    a wrapper func for requesting api
+    '''
+    if not headers:
+        headers = {'Content-Type': "application/json"}
+
+    resp_data = retry_request(
+        method, api, payload, headers)
+
+    return resp_data
+
 
 # ===== below are def from PartnerSync =====
 

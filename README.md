@@ -252,6 +252,25 @@ crontab -e
 
 ---
 
+### HOWTO optimize PSQL
+* spec: SSD disk with RAM 15G
+```sh
+vi /etc/postgresql/10/main/postgresql.conf
+
+shared_buffers=10GB #10 ~ 25% suggested
+work_mem=300MB # 2~4%
+max_connections=200
+effective_cache_size=13G
+maintence_work_mem=512M
+
+
+service postgresql restart
+systemctl status postgresql
+
+
+# note
+max_connections * work_mem < total RAM
+```
 
 
 ### HOWTO initiate psql db

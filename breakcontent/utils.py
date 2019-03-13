@@ -247,7 +247,7 @@ class DomainSetting():
         if match_type == 'MATCH_REGEX' and re.search(my_regex, url) != None:
             return True
         if match_type == 'NOT_MATCH_REGEX' and re.search(my_regex, url):
-            logger.debug(f'match_type {match_type} my_regex {my_regex}')
+            # logger.debug(f'match_type {match_type} my_regex {my_regex}')
             return False
         if match_type == 'MATCH_REGEX_I' and re.search(my_regex, url, re.IGNORECASE):
             return True
@@ -263,7 +263,7 @@ class DomainSetting():
             # loop through all the rules
             for rule in self.regex:
                 status = self.checkUrl(url, rule)
-                logger.debug(f'rule {rule} status {status}')
+                # logger.debug(f'rule {rule} status {status}')
                 if status is True:
                     return True
                 elif status is False:

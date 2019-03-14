@@ -48,6 +48,15 @@ ssh ubuntu@192.168.18.121
 3. study bs4
 4. [enhance aujs detect](https://docs.google.com/spreadsheets/d/15P93Nn2Yon5jMQpKWmstLkpwHM7p49-t5YCNdcZIGKk/edit#gid=18960491)
 
+# todo list (after 2019.3.14 discussion w/ joy)
+1. ads.txt scanning (as jphf w/ DFP api)
+2. if div exists in html?
+3. if ads.txt in root domain or sub domain?
+4. div id with prefix 'zi_ad_*'
+5. https://zi.media/robots.txt
+6. https://zi.media/ads.txt
+7. https://docs.google.com/spreadsheets/d/1tA_322BEnBuC2uE9xghpruDJzmgZL5IDhIAWjb50I0I/edit#gid=594128750
+
 
 ---
 ### CC Endpoints & purpose

@@ -14,6 +14,7 @@ from celery.utils.log import get_task_logger
 
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from sqlalchemy.orm import load_only
+from sqlalchemy import or_
 
 from breakcontent import db
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
@@ -869,7 +870,7 @@ def bypass_crawler(url_hash: str):
 
 
 @celery.task()
-def reset_doing_tasks(hour: int=1, limit: int=10000):
+def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
     '''
     query the hanging task (status = doing) from TaskMain() with _mtime at least a hour before now
 
@@ -883,10 +884,17 @@ def reset_doing_tasks(hour: int=1, limit: int=10000):
     }
     hours_before_now = datetime.utcnow() - timedelta(hours=hour)
     logger.debug(f'hours_before_now {hours_before_now}')
-    tml = TaskMain.query.options(load_only('url_hash')).filter_by(
-        **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime)).order_by(TaskMain._mtime.asc()).limit(limit).all()
-    # TaskMain.partner_id is not None
+    # tml = TaskMain.query.options(load_only('url_hash')).filter_by(
+    #     **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime)).order_by(TaskMain._mtime.asc()).limit(limit).all()
 
+    if priority and priority != 0:
+        tml = TaskMain.query.options(load_only('url_hash')).filter_by(priority=priority).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(
+            hours_before_now, db.DateTime), or_(TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+    else:
+        tml = TaskMain.query.options(load_only('url_hash')).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), or_(
+            TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+
+    # TaskMain.partner_id is not None
     # logger.debug(f'type(tml) {type(tml)}')
     logger.debug(f'len {len(tml)}')
     if not len(tml):

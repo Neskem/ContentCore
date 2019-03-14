@@ -693,7 +693,13 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 r = requests.get(url, allow_redirects=True, headers=headers)
         else:
             logger.debug('use LOCAL to request')
-            r = requests.get(url, allow_redirects=True, headers=headers)
+            try:
+                r = requests.get(url, allow_redirects=True, headers=headers)
+            except requests.exceptions.ConnectionError as e:
+                logger.error(e)
+                iac.status = False
+                return a_wpx, iac
+
     else:
         try:
             r = requests.get(url, verify=False, allow_redirects=True)

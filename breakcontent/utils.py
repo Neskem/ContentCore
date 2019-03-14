@@ -247,7 +247,6 @@ class DomainSetting():
         if match_type == 'MATCH_REGEX' and re.search(my_regex, url) != None:
             return True
         if match_type == 'NOT_MATCH_REGEX' and re.search(my_regex, url):
-            # logger.debug(f'match_type {match_type} my_regex {my_regex}')
             return False
         if match_type == 'MATCH_REGEX_I' and re.search(my_regex, url, re.IGNORECASE):
             return True
@@ -257,17 +256,26 @@ class DomainSetting():
 
     def checkSyncRule(self, url):
         logger.debug(f'operate checkSyncRule() on url {url}')
-        # if self.status == 'off':
-            # return None
+
+        # Paul reported that black list should has the highest priority
+        black_rules = ['NOT_EQUALS', 'NOT_MATCH_REGEX', 'NOT_MATCH_REGEX_I']
         if self.regex and len(self.regex) > 0:
-            # loop through all the rules
+            # list of dict
+            # 1. scan through black rules first
             for rule in self.regex:
-                status = self.checkUrl(url, rule)
-                # logger.debug(f'rule {rule} status {status}')
-                if status is True:
-                    return True
-                elif status is False:
-                    return False
+                if rule['type'] in black_rules:
+                    status = self.checkUrl(url, rule)
+                    if status is False:
+                        logger.debug(f'rule {rule} status {status}')
+                        return False
+            # 2. scan through white rules next
+            for rule in self.regex:
+                if rule['type'] not in black_rules:
+                    status = self.checkUrl(url, rule)
+                    if status is True:
+                        logger.debug(f'rule {rule} status {status}')
+                        return True
+
         return False
 
     def isSyncDay(self, publish_date: object):
@@ -540,7 +548,7 @@ def db_session_query(table: object, query: dict, order_by: 'column name'=None, a
                 raise
 
 
-def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
+def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False) -> dict:
     '''
     init record in WebpagesPartnerXpath for singlepage or multipage crawler, so the fk will be linked to TaskService and the pk will be created.
 
@@ -552,7 +560,7 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     a WebpagesNoService dict
     '''
     logger.debug('start prepare_crawler()...')
-    q = dict(id=tid)
+    q = dict(url_hash=url_hash)
     if partner:
         ts = TaskService().select(q)
     else:
@@ -561,9 +569,6 @@ def prepare_crawler(tid: int, partner: bool=False, xpath: bool=False) -> dict:
     if not ts:
         return None
 
-
-
-    q = dict(url_hash=ts.url_hash)
     udata = {
         'url_hash': ts.url_hash,
         'url': ts.url,  # should url be updated here?
@@ -633,11 +638,10 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     obj1, a WebpagesPartnerXpath instance
     obj2, an InformAC instance
 
-
     '''
-    url = wpx['url']
     url_hash = wpx['url_hash']
-    logger.debug(f'url_hash {url_hash}, run the basic unit of xpath crawler on {url}')
+    url = wpx['url']
+    logger.debug(f'run the basic unit of xpath crawler on url_hash {url_hash}')
 
     task_service_id = wpx['task_service_id']
     tsf = TaskService.query.filter_by(id=task_service_id).first()
@@ -698,6 +702,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             except requests.exceptions.ConnectionError as e:
                 logger.error(e)
                 iac.status = False
+                db.session.commit()
                 return a_wpx, iac
 
     else:
@@ -707,6 +712,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         except requests.exceptions.ConnectionError as e:
             logger.error(e)
             iac.status = False
+            db.session.commit()
             return a_wpx, iac
 
 
@@ -1470,9 +1476,10 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
     '''
 
     # logger.debug(f'wp {wp}')
+    url_hash = wp['url_hash']
     url = wp['url']
     domain = wp['domain']
-    logger.debug(f'run ai_a_crawler() on {url}')
+    logger.debug(f'run ai_a_crawler() on url_hash {url_hash}')
 
     if partner_id:
         tid = wp['task_service_id']

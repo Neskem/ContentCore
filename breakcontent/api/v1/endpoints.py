@@ -35,6 +35,9 @@ def init_task():
 
     if {"500": "blablabla"} exists return 500
 
+    # Rule check should be False
+    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://ez3c.tw/tag/powercfg%20batteryreport-1", "url_hash": "9039f44873d8d2e0fef8c53a8f58fe5244be8c07", "priority": 2, "partner_id": "PPY6H18", "generator": "", "notexpected": "blablabla"}'
+
     # 20190123 update
     get request_id from header
 

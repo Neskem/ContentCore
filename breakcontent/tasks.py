@@ -203,23 +203,19 @@ def prepare_task(task: dict):
     # logger.debug(f'task {task}')
     logger.debug(f'task {task} in prepare_task()')
     priority = task['priority'] if task.get('priority', None) else None
-    request_id = task['request_id']
     url_hash = task['url_hash']
+    request_id = task['request_id']
     logger.debug(
         f'url_hash {url_hash}, run prepare_task() with priority {priority}')
     url = task['url']
     domain = task['domain']
-    # o = urlparse(url)
-    # domain = o.netloc
-    # if domain == '\\x':
-    #     logger.error(f'failed to parse domain for url_hash {url_hash}')
+
     q = dict(url_hash=task['url_hash'])
     data = {
         'status': 'preparing',
         'doing_time': datetime.utcnow(),
         'domain': domain
     }
-    # dict(domain=domain)
     tm = TaskMain()
     tm.update(q, data)
     if task.get('partner_id', None):
@@ -231,10 +227,8 @@ def prepare_task(task: dict):
         domain_info = get_domain_info(domain, partner_id)
         q = dict(id=task['id'])
         ts = TaskService()
-        # ts.upsert(q, data)
 
         if domain_info:
-            # logger.debug(f'url_hash {url_hash}, domain_info {domain_info}')
             if domain_info.get('page', None) and domain_info['page'] != '':
                 # preparing for multipage crawler
                 page_query_param = domain_info['page'][0]
@@ -271,8 +265,6 @@ def prepare_task(task: dict):
                     }
                     resp_data = request_api(
                         ac_content_multipage_api, 'post', data)
-                    # resp_data = retry_request(
-                    # 'post', ac_content_multipage_api, data, headers)
 
                     if resp_data:
                         logger.debug(f'resp_data {resp_data}')
@@ -291,20 +283,15 @@ def prepare_task(task: dict):
                         f"task['id'] {task['id']}, partner_id {partner_id}, domain {domain}, domain_info {domain_info}")
                     if priority and int(priority) == 1:
                         xpath_multi_crawler(
-                            task['id'], partner_id, domain, domain_info)
+                            url_hash, partner_id, domain, domain_info)
                     else:
                         xpath_multi_crawler.delay(
-                            task['id'], partner_id, domain, domain_info)
+                            url_hash, partner_id, domain, domain_info)
                     if celery.conf['PARTNER_AI_CRAWLER']:
                         ai_multi_crawler.delay(
-                            task['id'], partner_id, domain, domain_info)
+                            url_hash, partner_id, domain, domain_info)
                     else:
                         pass
-                        # bypass_crawler.delay(url_hash)
-                        # tm = TaskMain()
-                        # q = dict(url_hash=url_hash)
-                        # data = dict(status='done')  # to prevent redo
-                        # tm.update(q, data)
 
             else:
                 # preparing for singlepage crawler
@@ -319,60 +306,27 @@ def prepare_task(task: dict):
                     logger.debug(
                         f'url_hash {url_hash} run xpath_single_crawler() in high_speed_p1 task func')
                     xpath_single_crawler(
-                        task['id'], partner_id, domain, domain_info)
+                        url_hash, partner_id, domain, domain_info)
                 else:
                     logger.debug(
                         f'url_hash {url_hash} sent task to xpath_single_crawler.delay()')
                     xpath_single_crawler.delay(
-                        task['id'], partner_id, domain, domain_info)
+                        url_hash, partner_id, domain, domain_info)
                 logger.debug(
                     f"celery.conf['PARTNER_AI_CRAWLER'] {celery.conf['PARTNER_AI_CRAWLER']}")
                 if celery.conf['PARTNER_AI_CRAWLER']:
                     # even p1's aicrawler task will be sent to delay
                     ai_single_crawler.delay(
-                        task['id'], partner_id, domain, domain_info)
+                        url_hash, partner_id, domain, domain_info)
                     logger.debug(f'url_hash {url_hash} task sent')
                 else:
                     pass
-                    # bypass_crawler.delay(url_hash)
-                    # tm = TaskMain()
-                    # q = dict(url_hash=url_hash)
-                    # # to prevent redo
-                    # data = dict(status='done', done_time=datetime.utcnow())
-                    # tm.update(q, data)
 
         else:
             logger.error(
                 f'there is no partner settings for partner_id {partner_id} domain {domain}')
 
             bypass_crawler.delay(url_hash)
-            # iac = InformAC()
-            # iac.url_hash = url_hash
-            # iac.url = url
-            # iac.request_id = task['request_id']
-            # # iac.zi_sync = False
-            # iac.status = False
-            # data = iac.to_dict()
-            # # need more code
-            # headers = {'Content-Type': "application/json"}
-            # resp_data = retry_request(
-            #     'put', ac_content_status_api, data, headers)
-
-            # if resp_data:
-            #     logger.debug(f'resp_data {resp_data}')
-            #     ts.status_xpath = 'done'
-            #     ts.task_main.status = 'done'
-            #     ts.task_main.done_time = datetime.utcnow()
-            #     db.session.commit()
-            #     logger.debug(f'url_hash {url_hash}, inform AC successful')
-            # else:
-            #     ts.status_xpath = 'failed'
-            #     ts.task_main.status = 'failed'
-            #     db.session.commit()
-            #     logger.error(f'url_hash {url_hash}, inform AC failed')
-
-            # task {'id': 1398, 'task_main_id': 1398, 'url_hash': '5cd6548adc4c7d13c896b1670eef51772c22092d', 'url': 'https://healthnice.org/8adb355df5914ecfeefdaf046cf5cb4793745bd7/', 'partner_id': 'YUZ7T18', '
-            # request_id': 'ee7fbaa2-6433-4232-8666-8b96923f8447', 'is_multipage': False, 'page_query_param': None, 'secret': False, 'status_xpath': 'doing', 'status_ai': 'doing'}
 
     else:
         # not partner goes here
@@ -385,8 +339,7 @@ def prepare_task(task: dict):
         tns.upsert(q, data)
 
         if celery.conf['MERCURY_TOKEN']:
-            ai_single_crawler.delay(
-                task['id'])
+            ai_single_crawler.delay(url_hash)
             logger.debug(
                 f'url_hash {url_hash}, sent task to ai_single_crawler()')
         else:
@@ -394,37 +347,9 @@ def prepare_task(task: dict):
                 f'url_hash {url_hash}, MERCURY_TOKEN env variable not set')
             bypass_crawler.delay(url_hash)
 
-            # tm = TaskMain()
-            # q = dict(url_hash=url_hash)
-            # inform_ac = InformAC()
-            # inform_ac.status = False
-            # inform_ac.url = url
-            # inform_ac.url_hash = url_hash
-            # inform_ac.request_id = request_id
-
-            # inform_ac_data = inform_ac.to_dict()
-
-            # logger.debug(
-            #     f'url_hash {url_hash} ready to inform AC, inform_ac_data {inform_ac_data}')
-            # data = dict(status='ready')  # to prevent redo
-            # tm.update(q, data)
-
-            # headers = {'Content-Type': "application/json"}
-            # resp_data = retry_request(
-            #     'put', ac_content_status_api, inform_ac_data, headers)
-
-            # if resp_data:
-            #     data = dict(status='done')
-            #     tm.update(q, data)
-            #     logger.debug(f'url_hash {url_hash} inform AC successful')
-            # else:
-            #     data = dict(status='failed')
-            #     tm.update(q, data)
-            #     logger.debug(f'url_hash {url_hash} inform AC failed')
-
 
 @celery.task()
-def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: dict):
+def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_info: dict):
     '''
     <purpose>
     use the domain config from Partner System to crawl through the entire page, then inform AC with request
@@ -433,27 +358,19 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
     partner only
 
     <arguments>
-    tid,
+    url_hash,
     partner_id,
     domain,
     domain_info,
 
     <return>
     '''
-    logger.debug(f'start to crawl single-paged url on tid {tid}')
-    # logger.debug(f'tid type {type(tid)}')
-    # iac = InformAC()
-    wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
+    logger.debug(f'start to crawl single-paged url on url_hash {url_hash}')
+
+    wpx_dict = prepare_crawler(url_hash, partner=True, xpath=True)
     if not wpx_dict:
         logger.error(f'this should not happen!')
         return
-    url_hash = wpx_dict['url_hash']
-    # q = dict(url_hash=url_hash)
-    # data = {
-    #     'status_xpath': 'doing'
-    # }
-    # ts = TaskService()
-    # ts.update(q, data)
 
     a_wpx, inform_ac = xpath_a_crawler(
         wpx_dict, partner_id, domain, domain_info)
@@ -474,9 +391,10 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
         if int(priority) == 1:
             logger.debug(
                 f'url_hash {url_hash} run xpath_single_crawler() in high_speed_p1 task func')
-            xpath_single_crawler(tid, partner_id, domain, domain_info)
+            xpath_single_crawler(url_hash, partner_id, domain, domain_info)
         else:
-            xpath_single_crawler.delay(tid, partner_id, domain, domain_info)
+            xpath_single_crawler.delay(
+                url_hash, partner_id, domain, domain_info)
         db.session.commit()
         return
     elif retry >= 5:
@@ -539,7 +457,7 @@ def xpath_single_crawler(tid: int, partner_id: str, domain: str, domain_info: di
 
 
 @celery.task()
-def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dict):
+def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info: dict):
     '''
     partner only
 
@@ -547,30 +465,25 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
 
     ** remember to update the url & url_hash in CC and AC
     '''
-    logger.debug(f'start to crawl multipaged url on tid {tid}')
+    logger.debug(f'start to crawl multipaged url on url_hash {url_hash}')
 
-    wpx_dict = prepare_crawler(tid, partner=True, xpath=True)
+    wpx_dict = prepare_crawler(url_hash, partner=True, xpath=True)
     if not wpx_dict:
         logger.error(f'this should not happen!')
         return
     url = wpx_dict['url']
-    url_hash = wpx_dict['url_hash']
+    # url_hash = wpx_dict['url_hash']
     page_query_param = domain_info['page'][0]
 
     # logger.debug(f'url {url}')
     logger.debug(f'page_query_param {page_query_param}')
 
     q = dict(url_hash=url_hash)
-    # data = dict(status_xpath='doing')
-    # ts = TaskService()
-    # ts.update(q, data)
 
     page_num = 0
     cat_wpx = WebpagesPartnerXpath().select(q)
     cat_wpx_data = cat_wpx.to_dict()
-    # object
     cat_inform_ac = InformAC()
-    # dict
     cat_inform_ac_data = cat_inform_ac.to_dict()
     logger.debug(f'cat_wpx_data {cat_wpx_data}')
     logger.debug(f'cat_inform_ac_dict {cat_inform_ac_data}')
@@ -672,9 +585,6 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
         }
         tm = TaskMain()
         tm.update(q, data)
-        # cat_wpx.task_service.status_xpath = 'done'
-        # cat_wpx.task_service.task_main.done_time = datetime.utcnow()
-        # db.session.commit()
 
         logger.debug(f'url_hash {url_hash}, inform AC successful')
     else:
@@ -683,19 +593,19 @@ def xpath_multi_crawler(tid: int, partner_id: str, domain: str, domain_info: dic
 
 
 @celery.task()
-def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_info: dict=None):
+def ai_single_crawler(url_hash: str, partner_id: str=None, domain: str=None, domain_info: dict=None):
     '''
     might be a partner or non-partner
     '''
-    logger.debug('run ai_single_crawler()...')
+    logger.debug(f'run ai_single_crawler() on url_hash {url_hash}')
 
     if partner_id:
 
-        wp_dict = prepare_crawler(tid, partner=True, xpath=False)
+        wp_dict = prepare_crawler(url_hash, partner=True, xpath=False)
         url_hash = wp_dict['url_hash']
         a_wp = ai_a_crawler(wp_dict, partner_id)
 
-        q = dict(url_hash=wp_dict['url_hash'])
+        q = dict(url_hash=url_hash)
 
         wpa = WebpagesPartnerAi()
         ts = TaskService()
@@ -713,7 +623,7 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
         # do not notify AC here
     else:
         # must inform AC
-        wp_dict = prepare_crawler(tid, partner=False, xpath=False)
+        wp_dict = prepare_crawler(url_hash, partner=False, xpath=False)
         url_hash = wp_dict['url_hash']
         a_wp = ai_a_crawler(wp_dict)
 
@@ -764,16 +674,16 @@ def ai_single_crawler(tid: int, partner_id: str=None, domain: str=None, domain_i
 
 
 @celery.task()
-def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_info: dict=None):
+def ai_multi_crawler(url_hash: str, partner_id: str=None, domain: str=None, domain_info: dict=None):
     '''
     must be a partner
 
     no need to inform AC
     '''
-    logger.debug('run ai_multi_crawler()...')
+    logger.debug(f'run ai_multi_crawler() on url_hash {url_hash}')
 
     if partner_id:
-        wp_dict = prepare_crawler(tid, partner=True, xpath=False)
+        wp_dict = prepare_crawler(url_hash, partner=True, xpath=False)
         cat_wp_data = WebpagesPartnerAi().to_dict()
         # logger.debug(f'cat_wp_data {cat_wp_data}')
 
@@ -797,7 +707,6 @@ def ai_multi_crawler(tid: int, partner_id: str=None, domain: str=None, domain_in
         a_wp = ai_a_crawler(wp_dict, partner_id, multipaged=True)
         logger.debug(f'a_wp {a_wp}')
         if not a_wp:
-
             break
         wp_data = a_wp.to_dict()
         logger.debug(f'wp_data from xpath_a_crawler(): {wp_data}')

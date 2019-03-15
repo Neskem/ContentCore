@@ -567,6 +567,7 @@ def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False) -> di
         ts = TaskNoService().select(q)
 
     if not ts:
+        # this will cause the task be hanging at status 'preparing'
         return None
 
     udata = {

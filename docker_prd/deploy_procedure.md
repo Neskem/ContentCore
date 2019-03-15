@@ -147,7 +147,6 @@ mkdir -p /usr/app/docker
 cd /usr/app/docker
 
 vi docker-compose.yml
-
 vi breakcontent.env
 
 mkdir nginx

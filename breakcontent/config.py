@@ -12,6 +12,10 @@ OUTBOUND_PROXY = None  # for both http/https e.g.'http://127.0.0.1:8080'
 # SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', None))
+SQLALCHEMY_POOL_TIMEOUT = int(os.environ.get('SQLALCHEMY_POOL_TIMEOUT', None))
+SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', None))
+SQLALCHEMY_MAX_OVERFLOW = int(os.environ.get('SQLALCHEMY_MAX_OVERFLOW', None))
 CLEAN_TABLE = True if os.environ.get('CLEAN_TABLE') == 'True' else False
 
 # Redis

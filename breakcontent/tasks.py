@@ -819,3 +819,18 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
             data['partner_id'] = tm.partner_id
         upsert_main_task.delay(data)
         logger.debug(f'url_hash {tm.url_hash}, upsert_main_task.delay() sent')
+
+
+@celery.task()
+def stats_cc(itype: str='day'):
+    '''
+    summarize the daily statistics of CC
+    '''
+
+    if itype not in ['day', 'hour']:
+        return
+
+    # under construction
+    sql_string = ''
+
+    ret = db.engine.execute(sql_string)

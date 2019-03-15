@@ -295,7 +295,7 @@ docker-compose down -v
 ssh ubuntu@192.168.18.123
 PASSWORD=ContentBreak_psql1qaz psql -U postgres -h localhost
 #pw: ContentBreak_psql1qaz
-
+#pw: ArticleBreak_psql1qaz
 ```
 ```sql
 SELECT pg_terminate_backend(pg_stat_activity.pid)

@@ -108,7 +108,7 @@ services:
         container_name: worker-p1
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=50,2 -n worker-p1.%%h -P gevent --purge
+        command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=50,2 -n worker-p1.%%h -P gevent --purge --prefetch-multiplier 1
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -124,7 +124,7 @@ services:
         container_name: worker-xpcrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q xpcrawler --loglevel=DEBUG --autoscale=200,10 -n worker-xpcrawler.%%h -P gevent --purge
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --loglevel=DEBUG --autoscale=200,10 -n worker-xpcrawler.%%h -P gevent --purge --prefetch-multiplier 1
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -139,7 +139,7 @@ services:
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
         image: cc
-        command: celery worker -A breakcontent.tasks -Q xpmcrawler --loglevel=DEBUG --autoscale=50,4 -n worker-xpmcrawler.%%h -P gevent --purge
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --loglevel=DEBUG --autoscale=50,4 -n worker-xpmcrawler.%%h -P gevent --purge --prefetch-multiplier 1
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -155,7 +155,7 @@ services:
         container_name: worker-aicrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q aicrawler --loglevel=DEBUG --autoscale=100,5 -n worker-aicrawler.%%h -P gevent --purge
+        command: celery worker -A breakcontent.tasks -Q aicrawler --loglevel=DEBUG --autoscale=100,5 -n worker-aicrawler.%%h -P gevent --purge --prefetch-multiplier 1
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore

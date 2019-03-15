@@ -678,10 +678,14 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         iac.zi_defy.add('regex')
 
     html = None
+
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
+
     if multipaged or priority == 5:
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
+        # headers = {
+        #     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
 
         candidate = [
             'www.top1health.com'
@@ -709,17 +713,17 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             except requests.exceptions.ConnectionError as e:
                 logger.error(e)
                 iac.status = False
-                db.session.commit()
+                # db.session.commit()
                 return a_wpx, iac
 
     else:
         try:
-            r = requests.get(url, verify=False, allow_redirects=True)
+            r = requests.get(url, verify=False, allow_redirects=True, headers=headers)
             # raise requests.exceptions.ConnectionError # Lance debug
         except requests.exceptions.ConnectionError as e:
             logger.error(e)
             iac.status = False
-            db.session.commit()
+            # db.session.commit()
             return a_wpx, iac
 
 
@@ -1500,10 +1504,11 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
     logger.debug(f'wp {wp}')
     # logger.debug(f'parseData {parseData}')
 
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
     if multipaged:
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
+
 
         # slight different w/ that of xpath_a_crawler
         candidate = [
@@ -1533,7 +1538,7 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         else:
             r = requests.get(url, allow_redirects=False, headers=headers)
     else:
-        r = requests.get(url, verify=False, allow_redirects=False)
+        r = requests.get(url, verify=False, allow_redirects=False, headers=headers)
 
     # ======== xpath ========
     if check_r(r):

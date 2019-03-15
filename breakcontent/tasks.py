@@ -124,7 +124,7 @@ def upsert_main_task(task, data: dict):
 
 
 @celery.task()
-def create_tasks(priority: str):
+def create_tasks(priority: str, asc: bool=True):
     '''
     update status (pending > doing) and generate tasks
     '''
@@ -132,7 +132,7 @@ def create_tasks(priority: str):
     # with db.session.no_autoflush:
 
     q = dict(priority=priority, status='pending')
-    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=True,
+    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=asc,
                             limit=celery.conf['TASK_NUMBER_PER_BEAT'])
 
     logger.debug(f'priority {priority}, len {len(tml)}')
@@ -171,11 +171,6 @@ def create_tasks(priority: str):
             # this might happen if you use sql to change doing back to pending
             # plz use reset_doing_tasks() instead
             bypass_crawler.delay(url_hash)
-            # logger.error(
-            #     f'url_hash {url_hash}, this usually should not happen or the worker will be jammed!')
-            # q = dict(url_hash=url_hash)
-            # data = dict(status='done', done_time=datetime.utcnow())
-            # tm.update(q, data)
 
     logger.debug(f'done sending {len(tml)} tasks to broker')
 
@@ -367,11 +362,14 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     '''
     logger.debug(f'start to crawl single-paged url on url_hash {url_hash}')
 
-
     wpx_dict = prepare_crawler(url_hash, partner=True, xpath=True)
     if not wpx_dict:
         logger.error(f'url_hash {url_hash} this usually should not happen!')
         return
+
+    tm = TaskMain()
+    ts = TaskService()
+    q = dict(url_hash=url_hash)
 
     a_wpx, inform_ac = xpath_a_crawler(
         wpx_dict, partner_id, domain, domain_info)
@@ -387,7 +385,9 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     if retry < 5 and (status_code in candidate or status_code != 200):
         logger.warning(
             f'url_hash {url_hash}, status_code {status_code}, retry {retry} times')
-        a_wpx.task_service.retry_xpath += 1
+        retry += 1
+        ts.update(q, dict(retry_xpath=retry))
+
         time.sleep(0.5)
         if int(priority) == 1:
             logger.debug(
@@ -396,18 +396,15 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
         else:
             xpath_single_crawler.delay(
                 url_hash, partner_id, domain, domain_info)
-        db.session.commit()
-        return
+        return  # exit this func
     elif retry >= 5:
         logger.critical(
             f'url_hash {url_hash}, status_code {status_code}, stop after retry {retry} times!')
-        a_wpx.task_service.status_xpath = 'failed'
-        a_wpx.task_service.task_main.status = 'failed'
-        db.session.commit()
+        ts.update(q, dict(status_xpath='failed'))
+        tm.update(q, dict(status='failed'))
 
     # inform AC
     wpx_data = a_wpx.to_dict()
-    q = dict(id=a_wpx.id)
     a_wpx.update(q, wpx_data)
     logger.debug(f'url_hash {url_hash}, update successful, crawler completed')
 
@@ -415,8 +412,10 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     inform_ac_data = inform_ac.to_dict()
     logger.debug(f'url_hash {url_hash}, inform_ac_data {inform_ac_data}')
 
-    a_wpx.task_service.status_xpath = 'ready'
-    db.session.commit()
+    ts.update(q, dict(status_xpath='ready'))
+    # a_wpx.task_service.status_xpath = 'ready'
+    # db.session.commit()
+
     logger.debug(
         f'url_hash {url_hash} status {a_wpx.task_service.status_xpath}')
 
@@ -431,30 +430,32 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
                 'content_hash': a_wpx.content_hash
             }
             u2c = UrlToContent().select(q)
-            u2c.replaced = True
-            db.session.commit()
+            u2c.update(q, dict(replaced=True))
             logger.debug(
                 f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in UrlToContent() has been modified')
 
             q = {'url_hash': inform_ac.old_url_hash}
-            tm = TaskMain()
+            # tm = TaskMain()
             doc = tm.select(q)
             tm.delete(doc)
             logger.debug(
                 f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in TaskMain() has been deleted')
 
         logger.debug(f'resp_data {resp_data}')
-        a_wpx.task_service.status_xpath = 'done'
-        a_wpx.task_service.task_main.status = 'done'
-        a_wpx.task_service.task_main.done_time = datetime.utcnow()
-        db.session.commit()
+        q = dict(url_hash=url_hash)
+        # ts = TaskService()
+        ts.update(q, dict(status_xpath='done'))
+        # tm = TaskMain()
+        tm.update(q, dict(status='done', done_time=datetime.utcnow()))
         logger.debug(f'url_hash {url_hash}, inform AC successful')
 
     else:
+        # ts = TaskService()
+        # tm = TaskMain()
+        q = dict(url_hash=url_hash)
+        ts.update(q, dict(status_xpath='failed'))
+        tm.update(q, dict(status='failed'))
         logger.error(f'url_hash {url_hash}, inform AC failed')
-        a_wpx.task_service.status_xpath = 'failed'
-        a_wpx.task_service.task_main.status = 'failed'
-        db.session.commit()
 
 
 @celery.task()
@@ -472,14 +473,13 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
     if not wpx_dict:
         logger.error(f'this should not happen!')
         return
-    url = wpx_dict['url']
-    # url_hash = wpx_dict['url_hash']
-    page_query_param = domain_info['page'][0]
-
-    # logger.debug(f'url {url}')
-    logger.debug(f'page_query_param {page_query_param}')
 
     q = dict(url_hash=url_hash)
+    tm = TaskMain()
+    ts = TaskService()
+
+    url = wpx_dict['url']
+    page_query_param = domain_info['page'][0]
 
     page_num = 0
     cat_wpx = WebpagesPartnerXpath().select(q)
@@ -549,8 +549,7 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
     logger.debug(f'url_hash {url_hash}, payload {data}')
     headers = {'Content-Type': "application/json"}
 
-    cat_wpx.task_service.status_xpath = 'ready'
-    db.session.commit()
+    ts.update(q, dict(status_xpath='ready'))
 
     resp_data = retry_request('put', ac_content_status_api, data, headers)
     logger.debug(f'resp_data {resp_data}')
@@ -561,8 +560,7 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
                 'content_hash': cat_wpx.content_hash
             }
             u2c = UrlToContent().select(q)
-            u2c.replaced = True
-            db.session.commit()
+            u2c.update(q, dict(replaced=True))
             logger.debug(
                 f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in UrlToContent() has been modified')
 
@@ -574,23 +572,18 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
                 f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in TaskMain() has been deleted')
 
         logger.debug(f'url_hash {url_hash}, before updating TaskService()')
-        q = {'url_hash': url_hash}
-        data = {
-            'status_xpath': 'done'
-        }
-        ts = TaskService()
-        ts.update(q, data)
-        data = {
-            'status': 'done',
-            'done_time': datetime.utcnow()
-        }
+        q = dict(url_hash=url_hash)
+        ts.update(q, dict(status_xpath='done'))
         tm = TaskMain()
-        tm.update(q, data)
+        tm.update(q, dict(status='done', done_time=datetime.utcnow()))
 
         logger.debug(f'url_hash {url_hash}, inform AC successful')
     else:
-        cat_wpx.task_service.status_xpath = 'failed'
-        logger.error('inform AC failed')
+        q = dict(url_hash=url_hash)
+        ts.update(q, dict(status_xpath='failed'))
+        tm.update(q, dict(status='failed'))
+        # cat_wpx.task_service.status_xpath = 'failed'
+        logger.error(f'url_hash {url_hash} inform AC failed')
 
 
 @celery.task()

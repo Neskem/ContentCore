@@ -4,10 +4,13 @@
 * 192.168.18.111
 
 ### Stg env
-* AC IP: 35.236.166.182
-* AC/CC PSQL GCP IP: 35.194.207.202 # backup .sql 
-* CC GCP IP: 10.140.0.17 (dynamic 35.221.227.168)
-* CC IDC IP: 192.168.250.140 (112.121.109.120) (ubuntu/1qaz@WSX)
+| Machine | private IP | CPU | RAM | DISK | Pub_IP | Desc |
+|:-------:|:--------:|:---:|:---:|:----:|:-----:|:----:|
+| stg-cc | 10.140.0.56 | 4 | 7.5G | 40G | N | nginx,redis,web,workers |
+| stg-cc-psql | 10.140.15.248 | 4 | 15G | 50G | N | postgres/ContentBreak_psql1qaz |
+| stg-AC(stg-article-content-dev-worker) | 10.140.0.17 |||||
+| stg-PS | stg-partner.breaktime.com.tw |||||
+
 
 ### Prd-GCP env & spec 
 * Compute Engine
@@ -340,6 +343,26 @@ SELECT * FROM pg_stat_activity;
 ```shell
 SELECT COUNT(*) from pg_stat_activity;
 ```
+* check client conn count
+```shell
+SELECT client_addr,count(*) from pg_stat_activity group by client_addr order by count desc;
+```
+* check task status 
+```shell
+select status,count(id) from task_main group by status order by count desc;
+```
+* check pending and preparing tasks by priority
+```shell
+select priority,status,count(id) from task_main where status = 'pending' or status = 'preparing' or status = 'doing' group by priority,status;
+```
+* check single/multi-page status
+```shell
+select b.is_multipage,a.status,count(a.id) from task_main as a, task_service as b where b.task_main_id = a.id group by b.is_multipage,a.status;
+```
+
+### HOWTO monitor celery
+
+
 
 ### HOWTO install [Stackdriver](https://cloud.google.com/monitoring/agent/install-agent#linux-install) agent
 * for system monitoring

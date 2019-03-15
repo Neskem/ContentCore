@@ -561,14 +561,20 @@ def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False) -> di
     '''
     logger.debug('start prepare_crawler()...')
     q = dict(url_hash=url_hash)
+
     if partner:
         ts = TaskService().select(q)
     else:
         ts = TaskNoService().select(q)
 
+    tm = TaskMain()
     if not ts:
         # this will cause the task be hanging at status 'preparing'
+        logger.error(f'url_hash {url_hash} this usually should not happen!')
+        tm.update(q, dict(status='failed'))
         return None
+
+    tm.update(q, dict(status='doing'))
 
     udata = {
         'url_hash': ts.url_hash,

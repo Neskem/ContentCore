@@ -367,9 +367,10 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     '''
     logger.debug(f'start to crawl single-paged url on url_hash {url_hash}')
 
+
     wpx_dict = prepare_crawler(url_hash, partner=True, xpath=True)
     if not wpx_dict:
-        logger.error(f'this should not happen!')
+        logger.error(f'url_hash {url_hash} this usually should not happen!')
         return
 
     a_wpx, inform_ac = xpath_a_crawler(

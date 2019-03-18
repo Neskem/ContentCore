@@ -826,9 +826,16 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 src = image.get('src')
                 if src != None and src.strip():
                     alt = image.get('alt')
-                    src = urljoin(url, src)
-                    image.set('src', src)
-                    content_image += '<img src="{}" alt="{}">'.format(src, alt)
+                    src = urljoin(url, src) # Lance test
+                    try:
+                        image.set('src', src)
+                    except ValueError as e:
+                        logger.error(f'url {url}')
+                        logger.error(f'image {image}')
+                        logger.error(f'src {src}')
+                        logger.error(e)
+                        # raise e
+                    content_image += f'<img src=\"{src}\" alt=\"{alt}\">'
             # domain specifc logic
             if "www.iphonetaiwan.org" in url and len(ximage) > 0:
                 present_image = ximage[0].get('src')

@@ -23,6 +23,7 @@ from urllib.parse import urlencode, quote_plus, unquote, quote, unquote_plus, pa
 from urllib.parse import urlparse, urljoin
 # import datetime
 from datetime import timedelta, datetime
+import csv
 
 celery = create_celery_app()
 logger = get_task_logger('default')
@@ -236,9 +237,6 @@ def prepare_task(task: dict):
                     'domain': domain
                 }
                 ts.update(q, udata)
-
-                logger.debug(f'ts.url_hash {ts.url_hash}')  # Lance debug
-
                 mp_url = url
                 if page_query_param:
                     if page_query_param == "d+":
@@ -319,8 +317,7 @@ def prepare_task(task: dict):
 
         else:
             logger.error(
-                f'there is no partner settings for partner_id {partner_id} domain {domain}')
-
+                f'url_hash {url_hash}, no domain_info!')
             bypass_crawler.delay(url_hash)
 
     else:
@@ -782,9 +779,9 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
 
     Caution: do not use sql syntax to update status 'doing' back to 'pending'
     '''
-    q = {
-        'status': 'doing',
-    }
+    # q = {
+    #     'status': 'doing',
+    # }
     hours_before_now = datetime.utcnow() - timedelta(hours=hour)
     logger.debug(f'hours_before_now {hours_before_now}')
     # tml = TaskMain.query.options(load_only('url_hash')).filter_by(
@@ -792,10 +789,10 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
 
     if priority and priority != 0:
         tml = TaskMain.query.options(load_only('url_hash')).filter_by(priority=priority).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(
-            hours_before_now, db.DateTime), or_(TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+            hours_before_now, db.DateTime), or_(TaskMain.status == 'preparing', TaskMain.status == 'doing', TaskMain.status == 'ready')).order_by(TaskMain._mtime.asc()).limit(limit).all()
     else:
         tml = TaskMain.query.options(load_only('url_hash')).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), or_(
-            TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+            TaskMain.status == 'preparing', TaskMain.status == 'doing', TaskMain.status == 'ready')).order_by(TaskMain._mtime.asc()).limit(limit).all()
 
     # TaskMain.partner_id is not None
     # logger.debug(f'type(tml) {type(tml)}')
@@ -824,7 +821,25 @@ def stats_cc(itype: str='day'):
     if itype not in ['day', 'hour']:
         return
 
-    # under construction
-    sql_string = ''
+    start_dt_str = None
+    end_dt_str = None
 
-    ret = db.engine.execute(sql_string)
+    if itype == 'day':
+        start_dt_str = (datetime.utcnow() - timedelta(days=2)
+                        ).strftime("%Y-%m-%d 16:00:00")
+        end_dt_str = (datetime.utcnow() - timedelta(days=1)
+                      ).strftime("%Y-%m-%d 16:00:00")
+
+    logger.debug(
+        f'start_dt_str \'{start_dt_str}\' ~ end_dt_str \'{end_dt_str}\'')
+    # under construction
+    sql_str = f'select priority,status,count(id) from task_main where _mtime > \'{start_dt_str}\' and _mtime < \'{end_dt_str}\' group by priority,status;'
+    logger.debug(f'sql_str {sql_str}')
+
+    ret = db.engine.execute(sql_str)
+    logger.debug(f'ret {ret}')
+
+    rows = []
+    for irow in ret:
+        pass
+        # todo

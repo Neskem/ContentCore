@@ -1,0 +1,4 @@
+[Definition]
+failregex = ^<HOST> - - .*(POST|GET) .*(xmlrpc.php|wp-login.php|wp-json|mj12|ahrefs|semrush|apache|mail.ru|apachebench|ApacheBench|Apache|megaindex|Java|Python|Go-http|github|invokefunction|phpinfo|python|shell_exec|wget|VelenPublicWebCrawler|SELECT|UNION|hex\(version|CHAR)
+
+ignoreregex = ^<HOST> - - .*(POST|GET|PUT)\ .*(Live Writer|wp-admin|node-superagent|Jetpack|css|loggedout|MarsEdit)

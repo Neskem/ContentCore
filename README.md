@@ -6,7 +6,7 @@
 ### Stg env
 | Machine | private IP | CPU | RAM | DISK | Pub_IP | Desc |
 |:-------:|:--------:|:---:|:---:|:----:|:-----:|:----:|
-| stg-cc | 10.140.0.56 | 4 | 7.5G | 40G | N | nginx,redis,web,workers |
+| stg-cc | 10.140.0.56 | 4 | 7.5G | 40G | 35.229.131.198 | nginx,redis,web,workers |
 | stg-cc-psql | 10.140.15.248 | 4 | 15G | 50G | N | postgres/ContentBreak_psql1qaz |
 | stg-AC(stg-article-content-dev-worker) | 10.140.0.17 |||||
 | stg-PS | stg-partner.breaktime.com.tw |||||
@@ -44,14 +44,14 @@ ssh-copy-id -i ~/.ssh/id_rsa ubuntu@192.168.18.121
 ssh ubuntu@192.168.18.121
 ```
 
-### Todo list
+### Todo list (mine)
 1. selenium for infinity page
 2. extract domain/bsp specific rules from code
 2. og and item parser
 3. study bs4
 4. [enhance aujs detect](https://docs.google.com/spreadsheets/d/15P93Nn2Yon5jMQpKWmstLkpwHM7p49-t5YCNdcZIGKk/edit#gid=18960491)
 
-# todo list (after 2019.3.14 discussion w/ joy)
+### Todo list (after 2019.3.14 discussion w/ joy)
 1. ads.txt scanning (as jphf w/ DFP api)
 2. if div exists in html?
 3. if ads.txt in root domain or sub domain?
@@ -59,6 +59,18 @@ ssh ubuntu@192.168.18.121
 5. https://zi.media/robots.txt
 6. https://zi.media/ads.txt
 7. https://docs.google.com/spreadsheets/d/1tA_322BEnBuC2uE9xghpruDJzmgZL5IDhIAWjb50I0I/edit#gid=594128750
+
+### Todo list to Alan (day cost: > 20d)
+1. CC statistic cronjob (3d)
+2. CC migrate from GCP to IDC (3d)
+3. enhanced aujs detection (1d)
+4. itemprop/og parsing (5d)
+5. extract domain/bsp specific rules from code (5d)
+6. detecting div id with prefix 'zi_ad_*' (1d, discussion required)
+7. ads.txt (discussion required)
+8. robot.txt (discussion reuqired)
+9. selenium for js decorated page (depends)
+10. CC deployment on K8S (2d)
 
 
 ---
@@ -351,9 +363,9 @@ SELECT client_addr,count(*) from pg_stat_activity group by client_addr order by 
 ```shell
 select status,count(id) from task_main group by status order by count desc;
 ```
-* check pending and preparing tasks by priority
+* check tasks status by priority
 ```shell
-select priority,status,count(id) from task_main where status = 'pending' or status = 'preparing' or status = 'doing' group by priority,status;
+select priority,status,count(id) from task_main group by priority,status;
 ```
 * check single/multi-page status
 ```shell

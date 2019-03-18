@@ -671,7 +671,12 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
     secrt = Secret()
 
-    check_rule = ds.checkSyncRule(url)
+    check_rule = None
+    if priority == 1:
+        logger.info(f'url_hash {url_hash} sync rule check is skipped for p1 tasks')
+        check_rule = True
+    else:
+        check_rule = ds.checkSyncRule(url)
     logger.debug(f'check_rule {check_rule}')
     iac.zi_sync = check_rule if check_rule else False
     if check_rule is False:
@@ -723,7 +728,6 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
         except requests.exceptions.ConnectionError as e:
             logger.error(e)
             iac.status = False
-            # db.session.commit()
             return a_wpx, iac
 
 

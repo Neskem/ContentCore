@@ -107,6 +107,22 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-prep:
+        container_name: worker-prep
+        image: cc
+        # image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q prepare --loglevel=DEBUG --autoscale=20,1 -n worker-prep.%%h
+        volumes:
+           # - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-prep
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker-bypass:
         container_name: worker-bypass
         image: cc

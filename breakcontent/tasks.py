@@ -368,8 +368,16 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     ts = TaskService()
     q = dict(url_hash=url_hash)
 
-    a_wpx, inform_ac = xpath_a_crawler(
-        wpx_dict, partner_id, domain, domain_info)
+    try:
+        a_wpx, inform_ac = xpath_a_crawler(
+            wpx_dict, partner_id, domain, domain_info)
+    except requests.exceptions.ReadTimeout as e:
+        logger.error(
+            f'url_hash {url_hash} site task too long to response, quit waiting!')
+        logger.error(e)
+        bypass_crawler.delay(url_hash)
+        return
+
     logger.debug(f'url_hash {url_hash}, a_wpx from xpath_a_crawler(): {a_wpx}')
     # logger.debug(f'inform_ac {inform_ac.to_dict()}')
 
@@ -379,7 +387,7 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     status_code = a_wpx.task_service.status_code
     priority = a_wpx.task_service.task_main.priority
     candidate = [406, 426]
-    if retry < 5 and (status_code in candidate or status_code != 200):
+    if retry < 2 and (status_code in candidate or status_code != 200):
         logger.warning(
             f'url_hash {url_hash}, status_code {status_code}, retry {retry} times')
         retry += 1
@@ -391,7 +399,9 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
                 f'url_hash {url_hash} run xpath_single_crawler() in high_speed_p1 task func')
             xpath_single_crawler(url_hash, partner_id, domain, domain_info)
         else:
-            xpath_single_crawler.delay(
+            # xpath_single_crawler.delay(
+                # url_hash, partner_id, domain, domain_info)
+            xpath_single_crawler(
                 url_hash, partner_id, domain, domain_info)
         return  # exit this func
     elif retry >= 5:
@@ -495,8 +505,15 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
             i_url = f'{url}?{page_query_param}={page_num}'
 
         wpx_dict['url'] = i_url
-        a_wpx, inform_ac = xpath_a_crawler(
-            wpx_dict, partner_id, domain, domain_info, multipaged=True)
+        try:
+            a_wpx, inform_ac = xpath_a_crawler(
+                wpx_dict, partner_id, domain, domain_info, multipaged=True)
+        except requests.exceptions.ReadTimeout as e:
+            logger.error(
+                f'url_hash {url_hash}, i_url {i_url} site task too long to response, quit waiting!')
+            logger.error(e)
+            cat_inform_ac.status = False
+            break
 
         if not inform_ac.status:
             logger.debug(f'failed to crawl {i_url}')

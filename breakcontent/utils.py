@@ -702,28 +702,26 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
             }
             r = requests.get(url, allow_redirects=True,
-                             headers=headers, proxies=proxies, verify=False)
+                             headers=headers, proxies=proxies, verify=False, timeout=6)
 
             if check_r(r):
-                pass
                 logger.debug('CRAWLERA reqeust successful')
             else:
-                logger.warning('CRAWLERA request failed, try local')
+                logger.warning('CRAWLERA request failed, try LOCAL')
                 # don't use crawlera if failed at once
-                r = requests.get(url, allow_redirects=True, headers=headers)
+                r = requests.get(url, allow_redirects=True, headers=headers, timeout=6)
         else:
             logger.debug('use LOCAL to request')
             try:
-                r = requests.get(url, allow_redirects=True, headers=headers)
+                r = requests.get(url, allow_redirects=True, headers=headers, timeout=6)
             except requests.exceptions.ConnectionError as e:
                 logger.error(e)
                 iac.status = False
                 # db.session.commit()
                 return a_wpx, iac
-
     else:
         try:
-            r = requests.get(url, verify=False, allow_redirects=True, headers=headers)
+            r = requests.get(url, verify=False, allow_redirects=True, headers=headers, timeout=6)
             # raise requests.exceptions.ConnectionError # Lance debug
         except requests.exceptions.ConnectionError as e:
             logger.error(e)
@@ -1540,7 +1538,6 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
                              headers=headers, proxies=proxies, verify=False)
 
             if check_r(r):
-                pass
                 logger.debug('CRAWLERA reqeust successful')
             else:
                 logger.warning('CRAWLERA request failed, try local')

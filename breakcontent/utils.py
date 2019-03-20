@@ -391,7 +391,7 @@ def parse_domain_info(data: dict) -> dict:
         'category',
         'e_category',
         'authorList',
-        'e_autherList',
+        'e_authorList',
         'regex',
         'e_title',
         'syncDate',

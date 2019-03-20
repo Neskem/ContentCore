@@ -76,7 +76,7 @@ MY_LOGGINGS = {
             "filename": f"/var/log/contentcore/{CONTAINER_TAG}.log" if CONTAINER_TAG else "/var/log/contentcore/app-contentcore.log",
             "when": "midnight",
             "interval": 1,
-            "backupCount": 7,
+            "backupCount": 3,
             "encoding": 'utf-8',  # if not set to 'utf-8', Unicode char will fail to log
             "delay": False,
             "utc": False,

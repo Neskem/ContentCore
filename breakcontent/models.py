@@ -209,7 +209,7 @@ class TaskMain(Model):
     task_noservice = relationship(
         "TaskNoService", back_populates="task_main", uselist=False, foreign_keys='TaskNoService.task_main_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
-    url = Column(String(1000), nullable=False)
+    url = Column(String(1000), nullable=False, index=True)
     domain = Column(String(500), index=True, nullable=True)
     request_id = Column(String(256), nullable=True)
     partner_id = Column(String(64), nullable=True, index=True)
@@ -219,11 +219,12 @@ class TaskMain(Model):
     parent_url = Column(String(1000), nullable=True)
 
     # notify ac after crawler done, no matter partner or non-partner
-    status = Column(Enum('pending', 'preparing', 'doing', 'ready', 'done', 'failed',
+    status = Column(Enum('pending', 'preparing', 'doing', 'ready', 'done', 'failed', 'debug',
                          name='status_tm'), default='pending', index=True)
+    zi_sync = Column(Boolean, default=False, index=True)
     doing_time = Column(DateTime(timezone=False), nullable=True)
     # notify_ac_time
-    done_time = Column(DateTime(timezone=False), nullable=True)
+    done_time = Column(DateTime(timezone=False), nullable=True, index=True)
     # notify_ac_time = Column(DateTime(timezone=False), nullable=True)
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)
@@ -414,7 +415,7 @@ class WebpagesPartnerXpath(Model):
 
         return {
             'id': self.id,
-            'task_service_id': self.task_service_id,
+            # 'task_service_id': self.task_service_id,
             'domain': self.domain,
             'url_hash': self.url_hash,
             'url': self.url,
@@ -691,6 +692,7 @@ class UrlToContent(Model):
     request_id = Column(String(256), nullable=True)
     url_hash = Column(String(64), nullable=False)
     url = Column(String(1000), nullable=False)
+    domain = Column(String(500), nullable=True, index=True)
     content_hash = Column(String(256), nullable=False)
     # a tag to present if AC is informed to replace this url_hash with new one
     replaced = Column(Boolean, default=False)
@@ -709,6 +711,7 @@ class UrlToContent(Model):
             'id': self.id,
             'request_id': self.request_id,
             'url_hash': self.url_hash,
+            'domain': self.domain,
             'url': self.url,
             'content_hash': self.content_hash
         }

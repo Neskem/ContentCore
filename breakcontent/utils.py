@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from breakcontent import db
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 
+from flask import current_app
 from urllib.parse import urlencode, quote_plus, unquote, quote, unquote_plus, parse_qs
 from urllib.parse import urlparse, urljoin
 import requests
@@ -73,7 +74,8 @@ class InformAC():
         'quality': None,
         'zi_sync': True,
         'zi_defy': set(),
-        'status': True
+        'status': True,
+        'skip_crawler': None # Lance added 3/22
     }
 
     def __init__(self):
@@ -121,6 +123,7 @@ class InformAC():
         idata = {
             'request_id': self.request_id,
             'url_hash': self.url_hash,
+            'domain': wp.domain,
             'url': self.url,
             'content_hash': wp.content_hash,
             'replaced': False,
@@ -310,6 +313,7 @@ class DomainSetting():
 
 def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
 
+    method = method.lower()
     while retry:
         try:
             if method == 'put':
@@ -628,7 +632,7 @@ def check_r(r: 'response', ts: object=None):
         return False
 
 
-def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False) -> (object, object):
+def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False, timeout: int=6) -> (object, object):
     '''
     note: this is not a celey task function
 
@@ -657,9 +661,12 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     ds = DomainSetting(domain_info)
 
     # required, some previous data will be brought in for comparison use
-    a_wpx = tsf.webpages_partner_xpath
+    if multipaged:
+        a_wpx = WebpagesPartnerXpath()
+    else:
+        a_wpx = tsf.webpages_partner_xpath
+        a_wpx.task_service_id = task_service_id
     a_wpx.domain = domain
-    a_wpx.task_service_id = task_service_id
     url_hash = wpx['url_hash']
 
     iac = InformAC()
@@ -681,13 +688,49 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     iac.zi_sync = check_rule if check_rule else False
     if check_rule is False:
         iac.zi_defy.add('regex')
+        if multipaged:
+            iac.status = False
+            return a_wpx, iac
 
+
+    # this should be done before requesting
+    logger.debug(f"CRAWLER_SKIP_REQUEST {current_app.config['CRAWLER_SKIP_REQUEST']}")
+    if current_app.config['CRAWLER_SKIP_REQUEST']:
+        doc = WebpagesPartnerXpath().select(dict(url_hash=url_hash))
+        # logger.debug(f'doc {doc}')
+        # logger.debug(f'doc.title {doc.title}')
+        # logger.debug(f'doc.publish_date {doc.publish_date}')
+        # check webpages_partner_xpath
+        if doc.title and doc.publish_date:
+            logger.debug(f'url_hash {url_hash} exists in WebpagesPartnerXpath() table')
+            iac.skip_crawler = True
+            # if exist, meant this record has been crawled before
+            # a_wpx_data = a_wpx.to_dict()
+            # logger.debug(f'a_wpx_data {a_wpx_data}')
+            isc = ds.isSyncCategory(doc.categories)
+            iac.zi_sync = isc if iac.zi_sync else False
+            if not isc:
+                iac.zi_defy.add('category')
+            isd = ds.isSyncDay(doc.publish_date)
+            iac.zi_sync = isd if iac.zi_sync else False
+            if not isd:
+                iac.zi_defy.add('delayday')
+            isa = ds.isSyncAuthor(doc.author)
+            iac.zi_sync = isa if iac.zi_sync else False
+            if not isa:
+                iac.zi_defy.add('authorList')
+            logger.debug(f'rule check by DB done')
+            return doc, iac # Lance debug
+
+    # below are prepartion for request
     html = None
 
     headers = {
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
 
     if multipaged or priority == 5:
+        timeout = 12
+
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
         # headers = {
         #     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
@@ -702,31 +745,39 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
             }
             r = requests.get(url, allow_redirects=True,
-                             headers=headers, proxies=proxies, verify=False, timeout=6)
+                             headers=headers, proxies=proxies, verify=False, timeout=timeout)
 
             if check_r(r):
                 logger.debug('CRAWLERA reqeust successful')
             else:
                 logger.warning('CRAWLERA request failed, try LOCAL')
                 # don't use crawlera if failed at once
-                r = requests.get(url, allow_redirects=True, headers=headers, timeout=6)
+                r = requests.get(url, allow_redirects=True, headers=headers, timeout=timeout)
         else:
             logger.debug('use LOCAL to request')
             try:
-                r = requests.get(url, allow_redirects=True, headers=headers, timeout=6)
+                r = requests.get(url, allow_redirects=True, headers=headers, timeout=timeout)
             except requests.exceptions.ConnectionError as e:
                 logger.error(e)
                 iac.status = False
                 # db.session.commit()
                 return a_wpx, iac
+
+        logger.info(f'url {url}, returned url {r.url}')
+        if url != r.url:
+            logger.warning(f'url {url} != r.url {r.url}, exit crawler.')
+            iac.status = False
+            return a_wpx, iac
+
     else:
         try:
-            r = requests.get(url, verify=False, allow_redirects=True, headers=headers, timeout=6)
+            r = requests.get(url, verify=False, allow_redirects=True, headers=headers, timeout=timeout)
             # raise requests.exceptions.ConnectionError # Lance debug
         except requests.exceptions.ConnectionError as e:
             logger.error(e)
             iac.status = False
             return a_wpx, iac
+
 
 
     ts = tsf if not multipaged else None
@@ -1651,16 +1702,20 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
         return None
 
 
-def request_api(api: str, method: str, payload: dict, headers: dict=None):
+def request_api(api: str, method: str, payload: dict=None, headers: dict=None):
     '''
     a wrapper func for requesting api
     '''
+    method = method.lower()
     if not headers:
         headers = {'Content-Type': "application/json"}
 
-    resp_data = retry_request(
-        method, api, payload, headers)
-
+    if payload:
+        resp_data = retry_request(
+            method, api, payload, headers)
+    else:
+        resp_data = retry_request(
+            method, api, None, headers)
     return resp_data
 
 

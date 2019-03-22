@@ -48,6 +48,8 @@ CELERY_ROUTES = {
     'breakcontent.tasks.upsert_main_task': {'queue': 'upsert_tm'},
     # prepare_task
     'breakcontent.tasks.prepare_task': {'queue': 'prepare'},
+    # mimic_aujs_request_ac
+    'breakcontent.tasks.mimic_aujs_request_ac': {'queue': 'bypass_crawler'},
     # bypass_crawler
     'breakcontent.tasks.bypass_crawler': {'queue': 'bypass_crawler'},
     # aicrawler
@@ -98,7 +100,7 @@ CELERYBEAT_SCHEDULE = {
     },
     'create_tasks_6': {  # Update task (including daily and monthly)
         'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),  # trigger at midnight
+        'schedule': crontab(minute='*'),
         'args': ([6]),
         # 'options': {'queue': 'postman'}
     },
@@ -108,15 +110,24 @@ CELERYBEAT_SCHEDULE = {
         'args': ([1]),
         # 'args': ([1,20000]),
     },
+    'patch_mimic_aujs': {
+        'task': 'breakcontent.tasks.patch_mimic_aujs',
+        'schedule': crontab(minute='*/2'),
+        'args': ([10000]),
+    },
 }
 
 # CC
 TASK_NUMBER_PER_BEAT = os.environ.get('TASK_NUMBER_PER_BEAT', 500)
 PARTNER_SYSTEM_API = os.environ.get('PARTNER_SYSTEM_API')
-ADD_DEFAULT_SCHEDULE = os.environ.get('ADD_DEFAULT_SCHEDULE')
-UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
-MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')
+# ADD_DEFAULT_SCHEDULE = os.environ.get('ADD_DEFAULT_SCHEDULE')
+# UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
+# MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')
 SENTRY_DSN = os.environ.get('SENTRY_DSN', None)
+CRAWLER_SKIP_REQUEST = False if os.environ.get('CRAWLER_SKIP_REQUEST', False) in [
+    'False', 'false', False] else True
+MIMIC_AUJS = False if os.environ.get('MIMIC_AUJS', False) in [
+    'False', 'false', False] else True
 
 # PartnerSystem
 PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)

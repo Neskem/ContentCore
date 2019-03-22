@@ -7,4 +7,4 @@ docker*
 *.md
 sftp-config*.json
 !README.md
-
+cr_*

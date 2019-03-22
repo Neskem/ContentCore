@@ -31,6 +31,7 @@ logger = get_task_logger('default')
 
 ac_content_status_api = os.environ.get('AC_CONTENT_STATUS_API', None)
 ac_content_multipage_api = os.environ.get('AC_CONTENT_MULTIPAGE_API', None)
+ac_content_async = os.environ.get('AC_CONTENT_ASYNC', None)
 
 
 @celery.task()
@@ -88,7 +89,8 @@ def upsert_main_task(task, data: dict):
     udata = {
         'status': 'pending',
         'doing_time': None,
-        'done_time': None
+        'done_time': None,
+        'zi_sync': None
     }
     data.update(udata)
     tm = TaskMain()
@@ -420,8 +422,7 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     logger.debug(f'url_hash {url_hash}, inform_ac_data {inform_ac_data}')
 
     ts.update(q, dict(status_xpath='ready'))
-    # a_wpx.task_service.status_xpath = 'ready'
-    # db.session.commit()
+    tm.update(q, dict(status='ready', zi_sync=inform_ac.zi_sync))
 
     logger.debug(
         f'url_hash {url_hash} status {a_wpx.task_service.status_xpath}')
@@ -450,15 +451,11 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
 
         logger.debug(f'resp_data {resp_data}')
         q = dict(url_hash=url_hash)
-        # ts = TaskService()
         ts.update(q, dict(status_xpath='done'))
-        # tm = TaskMain()
         tm.update(q, dict(status='done', done_time=datetime.utcnow()))
         logger.debug(f'url_hash {url_hash}, inform AC successful')
 
     else:
-        # ts = TaskService()
-        # tm = TaskMain()
         q = dict(url_hash=url_hash)
         ts.update(q, dict(status_xpath='failed'))
         tm.update(q, dict(status='failed'))
@@ -483,21 +480,22 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
 
     q = dict(url_hash=url_hash)
     tm = TaskMain()
-    ts = TaskService()
+    ts = TaskService().select(q)
 
     url = wpx_dict['url']
     page_query_param = domain_info['page'][0]
 
     page_num = 0
-    cat_wpx = WebpagesPartnerXpath().select(q)
-    cat_wpx_data = cat_wpx.to_dict()
+    # cat_wpx = WebpagesPartnerXpath().select(q)
+    cat_wpx = WebpagesPartnerXpath()
+
     cat_inform_ac = InformAC()
     cat_inform_ac_data = cat_inform_ac.to_dict()
-    logger.debug(f'cat_wpx_data {cat_wpx_data}')
-    logger.debug(f'cat_inform_ac_dict {cat_inform_ac_data}')
+    # logger.debug(f'cat_wpx_data {cat_wpx_data}')
+    # logger.debug(f'cat_inform_ac_dict {cat_inform_ac_data}')
 
     multi_page_urls = set()
-    while page_num <= 40:
+    while page_num <= 10:
         page_num += 1
         if page_query_param == "d+":
             i_url = f'{url}/{page_num}'
@@ -508,11 +506,14 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
         try:
             a_wpx, inform_ac = xpath_a_crawler(
                 wpx_dict, partner_id, domain, domain_info, multipaged=True)
+            # multi_page_urls.add(i_url)
         except requests.exceptions.ReadTimeout as e:
             logger.error(
-                f'url_hash {url_hash}, i_url {i_url} site task too long to response, quit waiting!')
+                f'url_hash {url_hash}, i_url {i_url} site take too long to response, quit waiting!')
             logger.error(e)
-            cat_inform_ac.status = False
+            if page_num == 1:
+                # cat_wpx = a_wpx  # reference replacement
+                cat_inform_ac.status = False
             break
 
         if not inform_ac.status:
@@ -520,22 +521,27 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
             cat_inform_ac.status = False
             break
 
-        if not inform_ac.zi_sync:
-            logger.critical(
-                f'{i_url} does not match the sync criteria (regex/author/category/delayday)')
-            # don't break, keep crawling
+        # if not inform_ac.zi_sync:
+        #     logger.critical(
+        #         f'{i_url} does not match the sync criteria (regex/author/category/delayday)')
+        logger.debug(f'inform_ac.skip_crawler {inform_ac.skip_crawler}')
+        if inform_ac.skip_crawler:
+            cat_inform_ac.skip_crawler = True
+            cat_wpx = a_wpx
+            break
 
-        logger.debug(f'a_wpx from xpath_a_crawler(): {a_wpx.to_dict()}')
-        logger.debug(
-            f'inform_ac from xpath_a_crawler(): {inform_ac.to_dict()}')
-
+        multi_page_urls.add(i_url)
         if page_num == 1:
             # if successed, replace
             cat_wpx = a_wpx  # reference replacement
             cat_inform_ac = inform_ac
 
             if not inform_ac.status:
+                # only if failed at first page, it is a total failure
                 cat_inform_ac.status = False
+                break
+
+            # break  # Lance debug
         else:
             cat_wpx.content += a_wpx.content
             cat_wpx.content_h1 += a_wpx.content_h1
@@ -546,25 +552,35 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
             cat_wpx.len_img += a_wpx.len_img
             cat_wpx.len_char += a_wpx.len_char
 
-        multi_page_urls.add(i_url)
+        # logger.debug(f'xpath_a_crawler() a_wpx: {a_wpx.to_dict()}')
+        # logger.debug(
+        # f'xpath_a_crawler() inform_ac: {inform_ac.to_dict()}')
 
     cat_inform_ac.url = url
     cat_wpx.url = url
-    cat_wpx.multi_page_urls = sorted(multi_page_urls)
+    cat_wpx.url_hash = url_hash
+    cat_inform_ac.check_content_hash(cat_wpx)
 
-    # logger.debug(f'cat_inform_ac.status {cat_inform_ac.status}')
-    # logger.debug(f'cat_wpx.len_img {cat_wpx.len_img}')
-    # logger.debug(f'cat_wpx.len_char {cat_wpx.len_char}')
     if cat_inform_ac.status and cat_wpx.len_img < 2 and cat_wpx.len_char < 100:
         cat_inform_ac.quality = False
 
-    cat_inform_ac.check_content_hash(cat_wpx)
+    if cat_inform_ac.skip_crawler:
+        pass
+        # no need to update WebpagesPartnerXpath()
+    else:
+        wpx = WebpagesPartnerXpath()
+        cat_wpx_data = cat_wpx.to_dict()
+        cat_wpx_data['task_service_id'] = ts.id
+        logger.debug(f'cat_wpx_data {cat_wpx_data}')
+        wpx.update(q, cat_wpx_data)
+        cat_wpx.multi_page_urls = sorted(multi_page_urls)
+
+    ts.update(q, dict(status_xpath='ready'))
+    tm.update(q, dict(status='ready', zi_sync=cat_inform_ac.zi_sync))
+
     data = cat_inform_ac.to_dict()
     logger.debug(f'url_hash {url_hash}, payload {data}')
     headers = {'Content-Type': "application/json"}
-
-    ts.update(q, dict(status_xpath='ready'))
-
     resp_data = retry_request('put', ac_content_status_api, data, headers)
     logger.debug(f'resp_data {resp_data}')
     if resp_data:
@@ -755,7 +771,7 @@ def ai_multi_crawler(url_hash: str, partner_id: str=None, domain: str=None, doma
 # ==== tool tasks ====
 
 @celery.task()
-def bypass_crawler(url_hash: str):
+def bypass_crawler(url_hash: str, status: str='done'):
     '''
     this url need not to crawl
 
@@ -778,7 +794,7 @@ def bypass_crawler(url_hash: str):
     resp_data = request_api(ac_content_status_api, 'put', iac_data)
     if resp_data:
         logger.debug(f'url_hash {url_hash} inform AC successful')
-        data = dict(status='done', done_time=datetime.utcnow())
+        data = dict(status=status, done_time=datetime.utcnow())
         tm.update(q, data)
     else:
         logger.error(f'url_hash {url_hash} inform AC failed')
@@ -860,3 +876,129 @@ def stats_cc(itype: str='day'):
     for irow in ret:
         pass
         # todo
+
+
+@celery.task()
+def patch_mimic_aujs(limit: int=10000, file: str=None, itype: str='url_hash'):
+    '''
+    [queue name] default
+
+    extract url_hash(page_id) from csv file provided by Lisa and use them to query TaskMain() table to get url, partner_id and generator and request AC with those payloads.
+
+    [example]
+    tasks.patch_mimic_aujs.delay(10000)
+
+    [old example]
+    file: /usr/src/app/tmp/test.csv
+
+    tasks.patch_mimic_aujs.delay('/usr/src/app/tmp/test.csv')
+
+    tasks.patch_mimic_aujs.delay('/usr/src/app/tmp/url_pageid_2019-03-05T00~2019-03-07T00_v2.csv', 'url')
+
+
+
+    [case 1: no generator]
+    http://localhost:80/v1/content/async?service\_name=Zi_C&&partner_id=9ZT4W18&url=http://tomchun.tw/tomchun/category/3c%e8%b3%87%e8%a8%8a/%e9%9b%bb%e8%85%a6/%e7%a1%ac%e7%a2%9f/page/3/
+
+    [case 2: w/ generator]
+    curl -X GET "http://localhost:80/v1/content/async?&partner_id=F7YWH18&url=https://yii.tw/blog/post/44832748&generator=WordPress 5.0.1"
+
+    total: ~1150000
+    '''
+
+    if itype not in ['url_hash', 'url']:
+        logger.error(f'patch_mimic_aujs() itype not correct: {itype}')
+        return
+
+    if not ac_content_async:
+        logger.debug(f'ac_content_async api url not set: {ac_content_async}')
+        return
+    dedup = {}
+
+    total_count = 0
+    map_count = 0
+    ac_yes_count = 0
+    if file:
+        with open(file) as f:
+            for i, line in enumerate(f):
+                total_count += 1
+                candit = line.split()[0]
+                logger.debug(f'{i}|||{candit}|||')
+                if candit not in dedup:
+                    dedup[candit] = 1
+                    if itype == 'url_hash':
+                        q = dict(url_hash=candit)
+                    elif itype == 'url':
+                        q = dict(url=candit)
+                    tm = TaskMain().select(q)
+                    if not tm or not tm.partner_id:
+                        logger.debug(
+                            f'no record for this {itype} {candit}, skip.')
+                        continue
+
+                    map_count += 1
+                    if not celery.conf['MIMIC_AUJS']:
+                        logger.info(
+                            f'patch_mimic_aujs() no need to inform AC, total_count {total_count}, map_count {map_count}, ac_yes_count {ac_yes_count}')
+                        continue
+
+                    if tm.generator:
+                        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={tm.partner_id}&url={tm.url}&generator={tm.generator}'
+                    else:
+                        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={tm.partner_id}&url={tm.url}'
+
+                    resp_data = request_api(ac_content_async_cat, 'GET')
+                    if resp_data:
+                        ac_yes_count += 1
+                        logger.info(
+                            f'patch_mimic_aujs() inform AC successful, total_count {total_count}, map_count {map_count}, ac_yes_count {ac_yes_count}')
+                    else:
+                        logger.error(f'patch_mimic_aujs() imform AC failed')
+                else:
+                    pass  # skip this url_hash
+        logger.info(
+            f'patch_mimic_aujs(): total_count {total_count}, map_count {map_count}, ac_yes_count {ac_yes_count}')
+
+    else:
+        if not celery.conf['MIMIC_AUJS']:
+            logger.info(
+                f'patch_mimic_aujs() no need to inform AC, total_count {total_count}')
+            return
+
+        # not from file
+        tml = TaskMain.query.options(load_only('url_hash', 'url', 'partner_id', 'generator')).filter(
+            TaskMain.partner_id != None, TaskMain.status == 'failed', TaskMain.done_time == None).limit(limit).all()
+
+        if not len(tml):
+            logger.debug(f'patch_mimic_aujs() no record found!')
+        else:
+            for tm in tml:
+                total_count += 1
+                mimic_aujs_request_ac.delay(
+                    tm.url_hash, tm.url, tm.partner_id, tm.generator)
+                logger.debug(
+                    f'patch_mimic_aujs() url_hash {tm.url_hash} mimic_aujs_request_ac.delay() task sent. total_count {total_count}')
+
+
+@celery.task()
+def mimic_aujs_request_ac(url_hash: str, url: str, partner_id: str, generator: str):
+    '''
+    [queue name]: bypass_crawler
+    '''
+    tm = TaskMain()
+    q = dict(url_hash=url_hash)
+
+    if generator and generator != '':
+        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={partner_id}&url={url}&generator={generator}'
+    else:
+        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={partner_id}&url={url}'
+
+    resp_data = request_api(ac_content_async_cat, 'GET')
+    if resp_data:
+        tm.update(q, dict(status='debug'))
+        logger.info(
+            f'mimic_aujs_request_ac() url_hash {url_hash} inform AC successful')
+    else:
+        tm.update(q, dict(status='failed'))
+        logger.error(
+            f'mimic_aujs_request_ac() url_hash {url_hash} inform AC failed')

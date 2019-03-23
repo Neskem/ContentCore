@@ -427,6 +427,9 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     logger.debug(
         f'url_hash {url_hash} status {a_wpx.task_service.status_xpath}')
 
+    if not ac_content_status_api:
+        return
+
     headers = {'Content-Type': "application/json"}
     resp_data = retry_request(
         'put', ac_content_status_api, inform_ac_data, headers)
@@ -578,6 +581,9 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
     ts.update(q, dict(status_xpath='ready'))
     tm.update(q, dict(status='ready', zi_sync=cat_inform_ac.zi_sync))
 
+    if not ac_content_status_api:
+        return
+
     data = cat_inform_ac.to_dict()
     logger.debug(f'url_hash {url_hash}, payload {data}')
     headers = {'Content-Type': "application/json"}
@@ -672,6 +678,9 @@ def ai_single_crawler(url_hash: str, partner_id: str=None, domain: str=None, dom
         else:
             # no need to update if a_wp == None
             iac_data['status'] = False
+
+        if not ac_content_status_api:
+            return
 
         # inform AC
         logger.debug(f'url_hash {url_hash} ready to inform AC')
@@ -791,6 +800,9 @@ def bypass_crawler(url_hash: str, status: str='done'):
     iac.status = False
     iac_data = iac.to_dict()
 
+
+    if not ac_content_status_api:
+        return
     resp_data = request_api(ac_content_status_api, 'put', iac_data)
     if resp_data:
         logger.debug(f'url_hash {url_hash} inform AC successful')
@@ -822,10 +834,10 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
 
     if priority and priority != 0:
         tml = TaskMain.query.options(load_only('url_hash')).filter_by(priority=priority).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(
-            hours_before_now, db.DateTime), or_(TaskMain.status == 'preparing', TaskMain.status == 'doing', TaskMain.status == 'ready')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+            hours_before_now, db.DateTime), or_(TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
     else:
         tml = TaskMain.query.options(load_only('url_hash')).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), or_(
-            TaskMain.status == 'preparing', TaskMain.status == 'doing', TaskMain.status == 'ready')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+            TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
 
     # TaskMain.partner_id is not None
     # logger.debug(f'type(tml) {type(tml)}')

@@ -122,8 +122,6 @@ watch -n5 curl -v -X GET 'http://192.168.18.121:80/v1/create_tasks/1'
 }
 ```
 
-
-
 #### Get content from CC
 **Request**
 * Endpoint: ```GET /v1/content/{url_hash}```

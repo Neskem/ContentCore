@@ -411,6 +411,16 @@ class WebpagesPartnerXpath(Model):
     def __repr__(self):
         return f'<WebpagesPartnerXpath(id={self.id}, url_hash={self.url_hash}, url={self.url}, content_hash={self.content_hash})>'
 
+    def checkQuality(self):
+        '''
+        if len_img < 2 and len_char < 100 => off bad quality
+        '''
+        if self.len_img < 2 and self.len_char < 100:
+            # content of poor quality
+            return False
+        else:
+            return True
+
     def to_dict(self):
 
         return {

@@ -310,6 +310,12 @@ class DomainSetting():
         else:
             return False
 
+    def checkQuality(self):
+        '''
+        Strickly speaking, this func should not be under this class. Only for handy purpose.
+        '''
+        pass
+
 
 def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
 
@@ -719,7 +725,11 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             iac.zi_sync = isa if iac.zi_sync else False
             if not isa:
                 iac.zi_defy.add('authorList')
-            logger.debug(f'rule check by DB done')
+            ckquality = doc.checkQuality()
+            iac.zi_sync = ckquality if iac.zi_sync else False
+            if not ckquality:
+                iac.zi_defy.add('quality')
+            logger.debug(f'rule check with DB done')
             return doc, iac # Lance debug
 
     # below are prepartion for request
@@ -1409,11 +1419,12 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
             content = unescape(content)
             len_char = len(content)
             a_wpx.len_char = len_char
-            logger.info("chars: {},p count: {}, img count: {}".format(
-                len_char, len_p, len_img))
-            if len_img < 2 and len_char < 100:
-                # content of poor quality
+            logger.info(f"chars: {len_char}, p count: {len_p}, img count: {len_img}")
+            ckquality = a_wpx.checkQuality()
+            iac.zi_sync = ckquality if iac.zi_sync else False
+            if not ckquality:
                 iac.quality = False
+                iac.zi_defy.add('quality')
 
             # ----- re-parse content -----
             content = etree.tostring(

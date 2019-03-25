@@ -701,7 +701,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
     # this should be done before requesting
     logger.debug(f"CRAWLER_SKIP_REQUEST {current_app.config['CRAWLER_SKIP_REQUEST']}")
-    if current_app.config['CRAWLER_SKIP_REQUEST']:
+    if current_app.config['CRAWLER_SKIP_REQUEST'] and priority != 1:
         doc = WebpagesPartnerXpath().select(dict(url_hash=url_hash))
         # logger.debug(f'doc {doc}')
         # logger.debug(f'doc.title {doc.title}')
@@ -731,6 +731,10 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
                 iac.zi_defy.add('quality')
             logger.debug(f'rule check with DB done')
             return doc, iac # Lance debug
+        else:
+            iac.skip_crawler = True
+            iac.status = False
+            return a_wpx, iac
 
     # below are prepartion for request
     html = None

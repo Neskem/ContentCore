@@ -430,6 +430,9 @@ def xpath_single_crawler(url_hash: str, partner_id: str, domain: str, domain_inf
     if not ac_content_status_api:
         return
 
+    if celery.conf['ONLY_PERMIT_P1'] and priority != 1:
+        return
+
     headers = {'Content-Type': "application/json"}
     resp_data = retry_request(
         'put', ac_content_status_api, inform_ac_data, headers)
@@ -484,6 +487,7 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
     q = dict(url_hash=url_hash)
     tm = TaskMain()
     ts = TaskService().select(q)
+    priority = ts.task_main.priority
 
     url = wpx_dict['url']
     page_query_param = domain_info['page'][0]
@@ -583,6 +587,8 @@ def xpath_multi_crawler(url_hash: str, partner_id: str, domain: str, domain_info
 
     if not ac_content_status_api:
         return
+    if celery.conf['ONLY_PERMIT_P1'] and priority != 1:
+        return
 
     data = cat_inform_ac.to_dict()
     logger.debug(f'url_hash {url_hash}, payload {data}')
@@ -652,7 +658,7 @@ def ai_single_crawler(url_hash: str, partner_id: str=None, domain: str=None, dom
         logger.debug('ai_single_crawler() successful')
         # do not notify AC here
     else:
-        # must inform AC
+        # only non-partner should inform AC
         wp_dict = prepare_crawler(url_hash, partner=False, xpath=False)
         url_hash = wp_dict['url_hash']
         a_wp = ai_a_crawler(wp_dict)
@@ -793,6 +799,7 @@ def bypass_crawler(url_hash: str, status: str='done'):
 
     q = dict(url_hash=url_hash)
     tm = TaskMain().select(q)
+    priority = tm.priority
     iac = InformAC()
     iac.url = tm.url
     iac.url_hash = tm.url_hash
@@ -800,9 +807,11 @@ def bypass_crawler(url_hash: str, status: str='done'):
     iac.status = False
     iac_data = iac.to_dict()
 
-
     if not ac_content_status_api:
         return
+    if celery.conf['ONLY_PERMIT_P1'] and priority != 1:
+        return
+
     resp_data = request_api(ac_content_status_api, 'put', iac_data)
     if resp_data:
         logger.debug(f'url_hash {url_hash} inform AC successful')

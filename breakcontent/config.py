@@ -128,6 +128,8 @@ CRAWLER_SKIP_REQUEST = False if os.environ.get('CRAWLER_SKIP_REQUEST', False) in
     'False', 'false', False] else True
 MIMIC_AUJS = False if os.environ.get('MIMIC_AUJS', False) in [
     'False', 'false', False] else True
+ONLY_PERMIT_P1 = False if os.environ.get('ONLY_PERMIT_P1', False) in [
+    'False', 'false', False] else True
 
 # PartnerSystem
 PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)

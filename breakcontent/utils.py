@@ -337,7 +337,7 @@ def retry_request(method: str, api: str, data: dict=None, headers: dict=None, re
             return r.json()
         else:
             logger.error(
-                f"url_hash {data['url_hash']} request status code {r.status_code}")
+                f"url_hash {data.get('url_hash', None)} request status code {r.status_code}")
             retry -= 1
             continue
 
@@ -596,10 +596,10 @@ def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False) -> di
         wpx = WebpagesPartnerXpath()
         udata['task_service_id'] = ts.id
         wpx.upsert(q, udata)
-        wp_data = ts.webpages_partner_xpath.to_inform()
-        wp_data['generator'] = ts.task_main.generator
-        logger.debug(f'wp_data {wp_data}')
-        return wp_data
+        # wp_data = ts.webpages_partner_xpath.to_inform()
+        # wp_data['generator'] = ts.task_main.generator
+        # logger.debug(f'wp_data {wp_data}')
+        # return wp_data
 
     elif partner and not xpath:
         # prepare for ai crawler
@@ -608,10 +608,10 @@ def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False) -> di
         wpa = WebpagesPartnerAi()
         udata['task_service_id'] = ts.id
         wpa.upsert(q, udata)
-        wp_data = ts.webpages_partner_ai.to_inform()
-        wp_data['generator'] = ts.task_main.generator
-        logger.debug(f'wp_data {wp_data}')
-        return wp_data
+        # wp_data = ts.webpages_partner_ai.to_inform()
+        # wp_data['generator'] = ts.task_main.generator
+        # logger.debug(f'wp_data {wp_data}')
+        # return wp_data
 
     elif not partner:
         # prepare for ai crawler
@@ -620,10 +620,10 @@ def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False) -> di
         wns = WebpagesNoService()
         udata['task_noservice_id'] = ts.id
         wns.upsert(q, udata)
-        wp_data = ts.webpages_noservice.to_inform() # if the tm-ts relation was bound to another one this will fail
-        wp_data['generator'] = ts.task_main.generator
-        logger.debug(f'wp_data {wp_data}')
-        return wp_data
+        # wp_data = ts.webpages_noservice.to_inform() # if the tm-ts relation was bound to another one this will fail
+        # wp_data['generator'] = ts.task_main.generator
+        # logger.debug(f'wp_data {wp_data}')
+        # return wp_data
 
 
 def check_r(r: 'response', ts: object=None):
@@ -638,7 +638,7 @@ def check_r(r: 'response', ts: object=None):
         return False
 
 
-def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False, timeout: int=6) -> (object, object):
+def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False, timeout: int=6) -> (object, object):
     '''
     note: this is not a celey task function
 
@@ -656,13 +656,15 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     obj2, an InformAC instance
 
     '''
-    url_hash = wpx['url_hash']
-    url = wpx['url']
+    # url_hash = wpx['url_hash']
+    # url = wpx['url']
     logger.debug(f'run the basic unit of xpath crawler on url_hash {url_hash}')
+    q = dict(url_hash=url_hash)
+    tm = TaskMain().select(q)
 
-    task_service_id = wpx['task_service_id']
-    tsf = TaskService.query.filter_by(id=task_service_id).first()
-    priority = tsf.task_main.priority
+    # task_service_id = wpx['task_service_id']
+    ts = TaskService().select(q)
+    priority = tm.priority
 
     ds = DomainSetting(domain_info)
 
@@ -670,17 +672,17 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     if multipaged:
         a_wpx = WebpagesPartnerXpath()
     else:
-        a_wpx = tsf.webpages_partner_xpath
-        a_wpx.task_service_id = task_service_id
+        a_wpx = WebpagesPartnerXpath.query.options(load_only('url_hash', 'content_hash')).filter_by(**q).first()
+        a_wpx.task_service_id = ts.id
     a_wpx.domain = domain
-    url_hash = wpx['url_hash']
+    # url_hash = wpx['url_hash']
 
     iac = InformAC()
     iac.url_hash = url_hash
     iac.url = url
-    iac.request_id = tsf.request_id
+    iac.request_id = tm.request_id
 
-    generator = wpx.get('generator', None)
+    generator = tm.generator
 
     secrt = Secret()
 
@@ -702,7 +704,9 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
     # this should be done before requesting
     logger.debug(f"CRAWLER_SKIP_REQUEST {current_app.config['CRAWLER_SKIP_REQUEST']}")
     if current_app.config['CRAWLER_SKIP_REQUEST'] and priority != 1:
-        doc = WebpagesPartnerXpath().select(dict(url_hash=url_hash))
+        doc = WebpagesPartnerXpath.query.options(load_only('title', 'category', 'publish_date', 'author', 'len_img', 'len_char')).filter_by(**q).first()
+
+        # WebpagesPartnerXpath().select(dict(url_hash=url_hash))
         # logger.debug(f'doc {doc}')
         # logger.debug(f'doc.title {doc.title}')
         # logger.debug(f'doc.publish_date {doc.publish_date}')
@@ -794,7 +798,7 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
 
 
-    ts = tsf if not multipaged else None
+    ts = ts if not multipaged else None
     if check_r(r, ts):
         r.encoding = 'utf-8'
         html = r.text  # full html here!
@@ -1515,9 +1519,6 @@ def xpath_a_crawler(wpx: dict, partner_id: str, domain: str, domain_info: dict, 
 
     else:
         logger.error(f'requesting {url} failed!')
-        # request failed goes here
-        # tsf.retry_xpath += 1
-        # tsf.commit()
         iac.status = False
         return a_wpx, iac
 

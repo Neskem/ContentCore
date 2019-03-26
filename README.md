@@ -284,6 +284,7 @@ work_mem=500MB # 2~4%
 max_connections=200
 effective_cache_size=13
 maintence_work_mem=512M
+log_min_duration_statement = 250
 
 service postgresql restart
 systemctl status postgresql

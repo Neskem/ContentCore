@@ -262,7 +262,7 @@ class TaskService(Model):
     __tablename__ = 'task_service'
     id = Column(Integer, primary_key=True)
     task_main_id = Column(Integer, ForeignKey(
-        'task_main.id', ondelete='CASCADE'))
+        'task_main.id', ondelete='CASCADE'), index=True)
     task_main = relationship(
         'TaskMain', foreign_keys=task_main_id, single_parent=True)
     webpages_partner_xpath = relationship("WebpagesPartnerXpath", back_populates="task_service", uselist=False,
@@ -323,14 +323,14 @@ class TaskNoService(Model):
     __tablename__ = 'task_noservice'
     id = Column(Integer, primary_key=True)
     task_main_id = Column(Integer, ForeignKey(
-        'task_main.id', ondelete='CASCADE'))
+        'task_main.id', ondelete='CASCADE'), index=True)
     task_main = relationship(
         'TaskMain', foreign_keys=task_main_id, single_parent=True)
 
     webpages_noservice = relationship("WebpagesNoService", back_populates="task_noservice", uselist=False,
                                       foreign_keys='WebpagesNoService.task_noservice_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), ForeignKey(
-        'task_main.url_hash'), nullable=False, unique=True)
+        'task_main.url_hash'), nullable=False, unique=True, index=True)
     url = Column(String(1000))
     domain = Column(String(500), index=True, nullable=True)
     request_id = Column(String(256), index=True, nullable=True)
@@ -367,7 +367,7 @@ class WebpagesPartnerXpath(Model):
 
     id = Column(Integer, primary_key=True)
     task_service_id = Column(Integer, ForeignKey(
-        'task_service.id', ondelete='CASCADE'))
+        'task_service.id', ondelete='CASCADE'), index=True)
     task_service = relationship(
         'TaskService', foreign_keys=task_service_id, single_parent=True)
     domain = Column(String(500), nullable=True)
@@ -531,7 +531,7 @@ class WebpagesPartnerAi(Model):
 
     id = Column(Integer, primary_key=True)
     task_service_id = Column(Integer, ForeignKey(
-        'task_service.id', ondelete='CASCADE'))
+        'task_service.id', ondelete='CASCADE'), index=True)
     task_service = relationship(
         'TaskService', foreign_keys=task_service_id, single_parent=True)
     domain = Column(String(500), nullable=True)
@@ -601,7 +601,7 @@ class WebpagesNoService(Model):
 
     id = Column(Integer, primary_key=True)
     task_noservice_id = Column(Integer, ForeignKey(
-        'task_noservice.id'), nullable=False)
+        'task_noservice.id'), nullable=False, index=True)
     task_noservice = relationship(
         'TaskNoService', foreign_keys=task_noservice_id, single_parent=True)
     domain = Column(String(500), nullable=True)

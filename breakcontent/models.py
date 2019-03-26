@@ -731,8 +731,8 @@ class DomainInfo(Model):
     __tablename__ = 'domain_info'
 
     id = Column(Integer, primary_key=True)
-    domain = Column(String(500), nullable=False, unique=True, index=True)
-    partner_id = Column(String(64), nullable=True, index=True)
+    domain = Column(String(500), nullable=False, index=True)
+    partner_id = Column(String(64), nullable=False, index=True)
     rules = Column(postgresql.JSONB(
         none_as_null=False, astext_type=None), nullable=True)  # to be checked!
 
@@ -756,6 +756,8 @@ class DomainInfo(Model):
 
     __table_args__ = (
         Index('idx_domain_info_rules_gin', rules, postgresql_using="gin"),
+        Index('idx_domain_info_domain_partner_id',
+              domain, partner_id, unique=True),
     )
 
     def to_dict(self):

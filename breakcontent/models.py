@@ -222,6 +222,7 @@ class TaskMain(Model):
     status = Column(Enum('pending', 'preparing', 'doing', 'ready', 'done', 'failed', 'debug',
                          name='status_tm'), default='pending', index=True)
     zi_sync = Column(Boolean, default=False, index=True)
+    inform_ac_status = Column(Boolean, default=False, index=True)
     doing_time = Column(DateTime(timezone=False), nullable=True)
     # notify_ac_time
     done_time = Column(DateTime(timezone=False), nullable=True, index=True)

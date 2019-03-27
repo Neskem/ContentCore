@@ -90,7 +90,8 @@ def upsert_main_task(task, data: dict):
         'status': 'pending',
         'doing_time': None,
         'done_time': None,
-        'zi_sync': None
+        'zi_sync': None,
+        'inform_ac_status': None
     }
     data.update(udata)
     tm = TaskMain()
@@ -127,7 +128,7 @@ def upsert_main_task(task, data: dict):
 
 
 @celery.task()
-def create_tasks(priority: str, asc: bool=True):
+def create_tasks(priority: str, limit: int=4000, asc: bool=True):
     '''
     update status (pending > doing) and generate tasks
     '''
@@ -136,7 +137,7 @@ def create_tasks(priority: str, asc: bool=True):
 
     q = dict(priority=priority, status='pending')
     tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=asc,
-                            limit=celery.conf['TASK_NUMBER_PER_BEAT'])
+                            limit=limit)
 
     logger.debug(f'priority {priority}, len {len(tml)}')
     if len(tml) == 0:
@@ -231,6 +232,7 @@ def prepare_task(task: dict):
             if domain_info.get('page', None) and domain_info['page'] != '':
 
                 if not celery.conf['RUN_XPATH_MULTI_CRAWLER']:
+                    tm = TaskMain()
                     tm.update(q, dict(status='done'))
                     return
                 # preparing for multipage crawler
@@ -382,6 +384,10 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
         logger.error(e)
         bypass_crawler.delay(url_hash)
         return
+    except requests.exceptions.ConnectionError as e:
+        logger.error(e)
+        bypass_crawler.delay(url_hash)
+        return
 
     logger.debug(f'url_hash {url_hash}, a_wpx from xpath_a_crawler(): {a_wpx}')
 
@@ -430,7 +436,8 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
     logger.debug(f'url_hash {url_hash}, inform_ac_data {inform_ac_data}')
 
     ts.update(q, dict(status_xpath='ready'))
-    tm.update(q, dict(status='ready', zi_sync=inform_ac.zi_sync))
+    tm.update(q, dict(status='ready', zi_sync=inform_ac.zi_sync,
+                      inform_ac_status=inform_ac.status))
 
     logger.debug(
         f'url_hash {url_hash} status {ts.status_xpath}')
@@ -517,9 +524,15 @@ def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, d
                 f'url_hash {url_hash}, i_url {i_url} site take too long to response, quit waiting!')
             logger.error(e)
             if page_num == 1:
-                # cat_wpx = a_wpx  # reference replacement
-                cat_inform_ac.status = False
-            break
+                bypass_crawler.delay(url_hash)
+                return
+            continue
+        except requests.exceptions.ConnectionError as e:
+            logger.error(e)
+            if page_num == 1:
+                bypass_crawler.delay(url_hash)
+                return
+            continue
 
         if not inform_ac.status:
             logger.debug(f'failed to crawl {i_url}')
@@ -540,8 +553,8 @@ def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, d
 
             if not inform_ac.status:
                 # only if failed at first page, it is a total failure
-                cat_inform_ac.status = False
-                break
+                bypass_crawler.delay(url_hash)
+                return
 
             # break  # Lance debug
         else:
@@ -560,6 +573,8 @@ def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, d
     cat_inform_ac.check_content_hash(cat_wpx)
 
     if cat_inform_ac.status and cat_wpx.len_img < 2 and cat_wpx.len_char < 100:
+        cat_inform_ac.zi_sync = False
+        cat_inform_ac.zi_defy.add('quality')
         cat_inform_ac.quality = False
 
     if cat_inform_ac.skip_crawler:
@@ -574,7 +589,8 @@ def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, d
         wpx.update(q, cat_wpx_data)
 
     ts.update(q, dict(status_xpath='ready'))
-    tm.update(q, dict(status='ready', zi_sync=cat_inform_ac.zi_sync))
+    tm.update(q, dict(status='ready', zi_sync=cat_inform_ac.zi_sync,
+                      inform_ac_status=cat_inform_ac.status))
 
     if not ac_content_status_api:
         return
@@ -793,6 +809,7 @@ def bypass_crawler(url_hash: str, status: str='done'):
     iac.url = tm.url
     iac.url_hash = tm.url_hash
     iac.request_id = tm.request_id
+    # iac.zi_sync = False
     iac.status = False
     iac_data = iac.to_dict()
 

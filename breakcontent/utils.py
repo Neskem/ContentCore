@@ -113,52 +113,52 @@ class InformAC():
         3. if exists, update
         4. delete the old_url_hash related docs in db
         '''
-        if not self.url_hash or not wp.content_hash:
+        logger.debug(f'run check_content_hash() on url_hash {wp.url_hash}')
+        if not wp.url_hash or not wp.content_hash:
+            logger.debug(f'wp.url_hash {wp.url_hash}, wp.content_hash {wp.content_hash}')
             return
 
         q = {
-            'url_hash': self.url_hash,
+            'url_hash': wp.url_hash,
             'content_hash': wp.content_hash
         }
         idata = {
             'request_id': self.request_id,
-            'url_hash': self.url_hash,
+            'url_hash': wp.url_hash,
             'domain': wp.domain,
-            'url': self.url,
+            'url': wp.url,
             'content_hash': wp.content_hash,
             'replaced': False,
         }
-        doc = UrlToContent().select(q)
-        logger.debug(f'doc {doc}')
-        if doc:
-            logger.debug('do update')
-            # update
-            # db_session_update(UrlToContent, q, idata)
-            doc.update(q, idata)
-        else:
-            logger.debug('do insert')
-            # insert
-            doc = UrlToContent()
-            # db_session_insert(u2c)
-            doc.upsert(q, idata)
+        uc = UrlToContent()
+        uc.upsert(q, idata)
+        # doc = UrlToContent().select(q)
+        # logger.debug(f'doc {doc}')
+        # if doc:
+        #     logger.debug('do update')
+        #     # update
+        #     # db_session_update(UrlToContent, q, idata)
+        #     doc.update(q, idata)
+        # else:
+        #     logger.debug('do insert')
+        #     # insert
+        #     doc = UrlToContent()
+        #     # db_session_insert(u2c)
+        #     doc.upsert(q, idata)
 
-        q = {
-            'content_hash': wp.content_hash
-        }
+        q = dict(content_hash=wp.content_hash)
+        # query out the previous url_hash with the same content_hash
+        doc_list = UrlToContent.query.options(load_only('url_hash', 'replaced')).filter_by(**q).filter(
+            UrlToContent.url_hash != self.url_hash).order_by(UrlToContent._mtime.desc()).all()
 
-        # search out the old one
-        u2c = UrlToContent.query.options(load_only('url_hash', 'replaced')).filter_by(**q).filter(
-            UrlToContent.url_hash != self.url_hash).order_by(UrlToContent._mtime.desc()).first()
+        for i,doc in enumerate(doc_list):
+            logger.debug(f'doc.url_hash {doc.url_hash}')
+            if i == 0 and doc.replaced is False:
+                self.old_url_hash = doc.url_hash
 
-        if u2c and not u2c.replaced:
-            logger.debug(f'u2c {u2c}')
-            logger.debug(f'inform ac with this url_hash {u2c.url_hash}')
-            # u2c.replaced = True
-            self.old_url_hash = u2c.url_hash
-            # big bug here! only the old url_hash record should be removed, not the new one.
-
-            # db.session.delete(wp.task_service.task_main)
-            # db.session.commit()
+            if i > 0:
+                # only keep 2 url_hash for each content_hash
+                doc.delete(doc)
 
 
 class DomainSetting():
@@ -693,12 +693,12 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
     else:
         check_rule = ds.checkSyncRule(url)
     logger.debug(f'check_rule {check_rule}')
-    iac.zi_sync = check_rule if check_rule else False
+    iac.zi_sync = check_rule if iac.zi_sync else False
     if check_rule is False:
         iac.zi_defy.add('regex')
-        if multipaged:
-            iac.status = False
-            return a_wpx, iac
+        # if multipaged:
+        #     iac.status = False
+        #     return a_wpx, iac
 
 
     # this should be done before requesting
@@ -737,6 +737,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             return doc, iac # Lance debug
         else:
             iac.skip_crawler = True
+            iac.zi_sync = False
             iac.status = False
             return a_wpx, iac
 
@@ -773,28 +774,18 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 r = requests.get(url, allow_redirects=True, headers=headers, timeout=timeout)
         else:
             logger.debug('use LOCAL to request')
-            try:
-                r = requests.get(url, allow_redirects=True, headers=headers, timeout=timeout)
-            except requests.exceptions.ConnectionError as e:
-                logger.error(e)
-                iac.status = False
-                # db.session.commit()
-                return a_wpx, iac
+            r = requests.get(url, allow_redirects=True, headers=headers, timeout=timeout)
 
         logger.info(f'url {url}, returned url {r.url}')
         if url != r.url:
             logger.warning(f'url {url} != r.url {r.url}, exit crawler.')
+            # iac.zi_sync = False
             iac.status = False
             return a_wpx, iac
 
     else:
-        try:
-            r = requests.get(url, verify=False, allow_redirects=True, headers=headers, timeout=timeout)
-            # raise requests.exceptions.ConnectionError # Lance debug
-        except requests.exceptions.ConnectionError as e:
-            logger.error(e)
-            iac.status = False
-            return a_wpx, iac
+        r = requests.get(url, verify=False, allow_redirects=True, headers=headers, timeout=timeout)
+        # raise requests.exceptions.ConnectionError # Lance debug
 
 
 
@@ -832,6 +823,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             tree = lxml.html.fromstring(html)
         except ValueError as e:
             logger.error(e)
+            # iac.zi_sync = False
             iac.status = False
             return a_wpx, iac
 
@@ -1512,6 +1504,8 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     f'secrt.bsp {secrt.bsp}, secrt.secret {secrt.secret}')
                 logger.debug(f'secrt.to_dict() {secrt.to_dict()}')
                 iac.secret = True
+                iac.zi_sync = False
+
 
             iac.status = False
             # should I update db in this condition?
@@ -1519,6 +1513,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
 
     else:
         logger.error(f'requesting {url} failed!')
+        # iac.zi_sync = False
         iac.status = False
         return a_wpx, iac
 

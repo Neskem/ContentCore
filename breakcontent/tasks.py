@@ -401,7 +401,8 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
         retry = ts.retry_xpath
         status_code = ts.status_code
         candidate = [406, 426]
-        if retry < 2 and (status_code in candidate or status_code != 200):
+        retry_limit = 2
+        if retry < retry_limit and (status_code in candidate or status_code != 200):
             logger.warning(
                 f'url_hash {url_hash}, status_code {status_code}, retry {retry} times')
             retry += 1
@@ -419,7 +420,7 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
                 xpath_single_crawler(
                     url_hash, url, partner_id, domain, domain_info)
             return  # exit this func
-        elif retry >= 5:
+        elif retry >= retry_limit:
             logger.critical(
                 f'url_hash {url_hash}, status_code {status_code}, stop after retry {retry} times!')
             ts.update(q, dict(status_xpath='failed'))

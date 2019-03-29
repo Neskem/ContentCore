@@ -798,7 +798,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         content = None
         cd = None
         category = None
-        url = None
+        # url = None
         wp_url = None
 
         tStart = time.time()
@@ -829,24 +829,28 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
 
         match_xpath = None
 
+        # ----- check if content_xpath can be matched, parsing canonical url ----
         for xpath in ds.xpath:
             xpath = unquote(xpath)
             cd = tree.xpath(xpath)  # content directory
             if len(cd) > 0:
-                logger.debug("match xpath")
                 match_xpath = xpath
-                logger.info("match xpath: {}".format(xpath))
-                x_canonical_url = tree.xpath(
-                    '/html/head/link[@rel="canonical"]')
-                if len(x_canonical_url) > 0:
-                    url = x_canonical_url[0].get('href')
-                else:
-                    x_og_url = tree.xpath(
-                        '/html/head/meta[@property="og:url"]')
-                    if len(x_og_url):
-                        url = x_og_url[0].get('content')
+                logger.info(f'match xpath: {xpath}')
+
+                if 0:
+                    # this block ready to be deprecated
+                    x_canonical_url = tree.xpath(
+                        '/html/head/link[@rel="canonical"]')
+                    if len(x_canonical_url) > 0:
+                        url = x_canonical_url[0].get('href')
                     else:
-                        url = wpx['url']
+                        x_og_url = tree.xpath(
+                            '/html/head/meta[@property="og:url"]')
+                        if len(x_og_url):
+                            url = x_og_url[0].get('content')
+                        else:
+                            # url = a_wpx['url']
+                            pass
                 break
 
         # ----- parsing content ----
@@ -900,8 +904,13 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                         # raise e
                     content_image += f'<img src=\"{src}\" alt=\"{alt}\">'
             # domain specifc logic
-            if "www.iphonetaiwan.org" in url and len(ximage) > 0:
-                present_image = ximage[0].get('src')
+            try:
+                if "www.iphonetaiwan.org" in url and len(ximage) > 0:
+                    present_image = ximage[0].get('src')
+            except TypeError as e:
+                logger.error(e)
+                logger.error(f'url {url} ximage {ximage}')
+                raise e
 
             a_wpx.content_image = content_image
             a_wpx.len_img = len_img
@@ -1028,6 +1037,8 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 logger.debug('this is a secret article w/ password lock')
                 secrt.secret = True
                 iac.secret = True
+                iac.zi_sync = False
+                iac.zi_defy.add('secret')
             logger.debug(f'secrt.to_dict() {secrt.to_dict()}')
             # ----- parsing href (what for?) ----
             # reformating href?
@@ -1505,6 +1516,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 logger.debug(f'secrt.to_dict() {secrt.to_dict()}')
                 iac.secret = True
                 iac.zi_sync = False
+                iac.zi_defy.add('secret')
 
 
             iac.status = False

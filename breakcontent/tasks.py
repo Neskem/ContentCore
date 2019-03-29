@@ -537,7 +537,7 @@ def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, d
 
         if not inform_ac.status:
             logger.debug(f'failed to crawl {i_url}')
-            cat_inform_ac.status = False
+            # cat_inform_ac.status = False
             break
 
         logger.debug(f'inform_ac.skip_crawler {inform_ac.skip_crawler}')
@@ -822,11 +822,13 @@ def bypass_crawler(url_hash: str, status: str='done'):
     resp_data = request_api(ac_content_status_api, 'put', iac_data)
     if resp_data:
         logger.debug(f'url_hash {url_hash} inform AC successful')
-        data = dict(status=status, done_time=datetime.utcnow())
+        data = dict(status=status, done_time=datetime.utcnow(),
+                    zi_sync=False, inform_ac_status=False)
         tm.update(q, data)
     else:
         logger.error(f'url_hash {url_hash} inform AC failed')
-        data = dict(status='failed', done_time=datetime.utcnow())
+        data = dict(status='failed', done_time=datetime.utcnow(),
+                    zi_sync=False, inform_ac_status=False)
         tm.update(q, data)
 
 

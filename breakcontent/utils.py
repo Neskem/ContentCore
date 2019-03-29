@@ -763,7 +763,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
             }
-            r = requests.get(url, allow_redirects=True,
+            r = requests.get(url, allow_redirects=False,
                              headers=headers, proxies=proxies, verify=False, timeout=timeout)
 
             if check_r(r):
@@ -771,10 +771,10 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             else:
                 logger.warning('CRAWLERA request failed, try LOCAL')
                 # don't use crawlera if failed at once
-                r = requests.get(url, allow_redirects=True, headers=headers, timeout=timeout)
+                r = requests.get(url, allow_redirects=False, headers=headers, timeout=timeout)
         else:
             logger.debug('use LOCAL to request')
-            r = requests.get(url, allow_redirects=True, headers=headers, timeout=timeout)
+            r = requests.get(url, allow_redirects=False, headers=headers, timeout=timeout)
 
         logger.info(f'url {url}, returned url {r.url}')
         if url != r.url:
@@ -784,7 +784,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             return a_wpx, iac
 
     else:
-        r = requests.get(url, verify=False, allow_redirects=True, headers=headers, timeout=timeout)
+        r = requests.get(url, verify=False, allow_redirects=False, headers=headers, timeout=timeout)
         # raise requests.exceptions.ConnectionError # Lance debug
 
 
@@ -1766,7 +1766,7 @@ def getWpRealLink(url, shortlink):
 
 
 def getMediumIframeSource(url):
-    r = requests.get(url, verify=False, allow_redirects=True)
+    r = requests.get(url, verify=False, allow_redirects=False)
     if r.status_code == 200:
         r.encoding = 'utf-8'
         html = r.text

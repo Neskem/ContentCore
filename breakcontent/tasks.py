@@ -225,7 +225,7 @@ def prepare_task(task: dict):
             f'url_hash {url_hash}, domain {domain}, partner_id {partner_id}')
 
         domain_info = get_domain_info(domain, partner_id)
-        q = dict(id=task['id'])
+        # q = dict(id=task['id'])
         ts = TaskService()
 
         if domain_info:
@@ -270,7 +270,7 @@ def prepare_task(task: dict):
 
                     if resp_data:
                         logger.debug(f'resp_data {resp_data}')
-                        q = dict(url_hash=url_hash)
+                        # q = dict(url_hash=url_hash)
                         tm = TaskMain()
                         doc = tm.select(q)
                         tm.delete(doc)
@@ -331,7 +331,7 @@ def prepare_task(task: dict):
 
     else:
         # not partner goes here
-        q = dict(id=task['id'])
+        # q = dict(id=task['id'])
         data = {
             'status': 'doing',
             'domain': domain

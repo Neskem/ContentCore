@@ -341,32 +341,36 @@ ssh-copy-id user@remote_ip
 
 ### HOWTO monitor psql
 * Run this SQL to see postgresql max connections allowed:
-```sh
+```sql
 show max_connections;
 ```
 * Take a look at exactly who/what/when/where is holding open your connections:
-```shell
+```sql
 SELECT * FROM pg_stat_activity;
 ```
 * The number of connections currently used is
-```shell
+```sql
 SELECT COUNT(*) from pg_stat_activity;
 ```
 * check client conn count
-```shell
+```sql
 SELECT client_addr,count(*) from pg_stat_activity group by client_addr order by count desc;
 ```
 * check task status 
-```shell
+```sql
 select status,count(id) from task_main group by status order by count desc;
 ```
 * check tasks status by priority
-```shell
+```sql
 select priority,status,count(id) from task_main group by priority,status;
 ```
 * check single/multi-page status
-```shell
+```sql
 select b.is_multipage,a.status,count(a.id) from task_main as a, task_service as b where b.task_main_id = a.id group by b.is_multipage,a.status;
+```
+* group by if partner or not
+```sql
+select case when partner_id is null then false else true end as pbool,priority,status,count(id) from task_main group by pbool,priority,status order by pbool desc,priority,status;
 ```
 
 ### HOWTO monitor celery

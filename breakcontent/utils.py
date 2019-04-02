@@ -25,7 +25,10 @@ import calendar
 import os
 import json
 import requests
+import sendgrid
 
+from sendgrid.helpers.mail import Email, Content, Mail, Attachment, Personalization
+import base64
 
 from breakcontent import mylogging
 import logging
@@ -1827,3 +1830,59 @@ def remove_html_tags(text):
     # import re
     clean = re.compile('<.*?>')
     return re.sub(clean, '', text)
+
+
+def to_csvstr(data: 'list of tuples'):
+  '''list of tuples turn into csv str'''
+  datastr = ''
+  for tp in data:
+    ilist = [str(i) for i in tp]
+    datastr += '\t'.join(ilist) + '\n'
+  return datastr
+
+
+def construct_email(mailfrom: str, mailto: list, subject: str, content: str, attfilename: str, data: str):
+  '''
+  still intake one mailfrom and one mailto for now
+
+  params:
+  mailfrom: an email,
+  mailto: an email,
+  subject: str,
+  data: csv-ready string
+  attfilename: filename for attachment
+  '''
+  mail = Mail()
+
+  mail.from_email = Email(mailfrom)
+
+  mail.subject = subject
+
+  mail.add_content(Content("text/html", content))
+
+  personalization = Personalization()
+  for i in mailto:
+    personalization.add_to(Email(i))
+  mail.add_personalization(personalization)
+
+  attachment = Attachment()
+  attachment.content = str(base64.b64encode(data.encode('utf-8')), 'utf-8')
+  attachment.type = 'text/csv'
+  attachment.filename = attfilename
+  attachment.disposition = 'attachment'
+  mail.add_attachment(attachment)
+  return mail
+
+
+def send_email(mail):
+  # dangerous
+  SENDGRIDAPIKEY = "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"
+  sg = sendgrid.SendGridAPIClient(apikey=SENDGRIDAPIKEY)
+  response = sg.client.mail.send.post(request_body=mail.get())
+  # print(response)
+  print(response.status_code)
+  print(response.body)
+  print(response.headers)
+
+
+

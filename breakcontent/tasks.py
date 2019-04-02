@@ -3,6 +3,7 @@ from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler,
 
 
 from breakcontent.utils import mercuryContent, prepare_crawler, ai_a_crawler
+from breakcontent.utils import construct_email, send_email, to_csvstr
 
 import re
 import os
@@ -876,39 +877,6 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
 
 
 @celery.task()
-def stats_cc(itype: str='day'):
-    '''
-    summarize the daily statistics of CC
-    '''
-
-    if itype not in ['day', 'hour']:
-        return
-
-    start_dt_str = None
-    end_dt_str = None
-
-    if itype == 'day':
-        start_dt_str = (datetime.utcnow() - timedelta(days=2)
-                        ).strftime("%Y-%m-%d 16:00:00")
-        end_dt_str = (datetime.utcnow() - timedelta(days=1)
-                      ).strftime("%Y-%m-%d 16:00:00")
-
-    logger.debug(
-        f'start_dt_str \'{start_dt_str}\' ~ end_dt_str \'{end_dt_str}\'')
-    # under construction
-    sql_str = f'select priority,status,count(id) from task_main where _mtime > \'{start_dt_str}\' and _mtime < \'{end_dt_str}\' group by priority,status;'
-    logger.debug(f'sql_str {sql_str}')
-
-    ret = db.engine.execute(sql_str)
-    logger.debug(f'ret {ret}')
-
-    rows = []
-    for irow in ret:
-        pass
-        # todo
-
-
-@celery.task()
 def patch_mimic_aujs(limit: int=10000, file: str=None, itype: str='url_hash'):
     '''
     [queue name] default
@@ -923,7 +891,8 @@ def patch_mimic_aujs(limit: int=10000, file: str=None, itype: str='url_hash'):
 
     tasks.patch_mimic_aujs.delay('/usr/src/app/tmp/test.csv')
 
-    tasks.patch_mimic_aujs.delay('/usr/src/app/tmp/url_pageid_2019-03-05T00~2019-03-07T00_v2.csv', 'url')
+    tasks.patch_mimic_aujs.delay(
+        '/usr/src/app/tmp/url_pageid_2019-03-05T00~2019-03-07T00_v2.csv', 'url')
 
 
 
@@ -1032,3 +1001,81 @@ def mimic_aujs_request_ac(url_hash: str, url: str, partner_id: str, generator: s
         tm.update(q, dict(status='failed'))
         logger.error(
             f'mimic_aujs_request_ac() url_hash {url_hash} inform AC failed')
+
+
+@celery.task()
+def stats_cc(itype: str=None):
+    '''
+    summarize the daily statistics of CC
+
+    be triggered every 7:00AM TW
+
+    itype:
+
+    day => for yesterday
+    hour => for last hour
+    all => for all record
+    '''
+
+    if itype and itype not in ['day', 'hour', 'all']:
+        return
+
+    start_dt_str = None
+    end_dt_str = None
+
+    if itype == 'day':
+        # converting to TW time range
+        start_dt_str = (datetime.utcnow() - timedelta(days=1)
+                        ).strftime("%Y-%m-%d 16:00:00")
+        end_dt_str = (datetime.utcnow() - timedelta(days=0)
+                      ).strftime("%Y-%m-%d 16:00:00")
+    elif itype == 'hour':
+        start_dt_str = (datetime.utcnow() - timedelta(hours=1)
+                        ).strftime("%Y-%m-%d %H:%M:%S")
+        end_dt_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        itype = 'all'
+        start_dt_str = '2019-01-01 00:00:00'  # CC released date: 2019-03-05
+        end_dt_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    logger.debug(
+        f'start_dt_str \'{start_dt_str}\' ~ end_dt_str \'{end_dt_str}\'')
+    # under construction
+    sql_str = f'select case when partner_id is null then false else true end as pbool,priority,status,count(id) from task_main where _mtime > \'{start_dt_str}\' and _mtime < \'{end_dt_str}\' group by pbool,priority,status order by pbool desc,priority,status;'
+    logger.debug(f'sql_str {sql_str}')
+
+    ret = db.engine.execute(sql_str)
+    logger.debug(f'ret {ret}')
+
+    rows = []
+    outdata = {}
+
+    rows.append(['partner', 'priority', 'status', 'count'])
+    for row in ret:
+        tmp = []
+        partner = row['pbool']
+        priority = row['priority']
+        status = row['status']
+        count = row['count']
+        tmp = [partner, priority, status, count]
+        rows.append(tmp)
+        logger.debug(f'tmp row {tmp}')
+
+    outdata[f'stats_cc_{itype}'] = rows
+
+    # send email
+    datastr = to_csvstr(rows)
+    # construct_email(mailfrom, mailto, subject, content, attfilename, data)
+
+    conf = (
+        'rd@breaktime.com.tw',
+        ['rd@breaktime.com.tw', 'data-service@breaktime.com.tw'],
+        f'[CC] {itype} stats',
+        f'Dear all,<br>Please find the {itype} report in the attached file.<br>',
+        f'CC_{itype}_report',
+        datastr
+    )
+    mail = construct_email(*conf)
+    send_email(mail)
+
+    return outdata

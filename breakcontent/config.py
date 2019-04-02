@@ -115,6 +115,12 @@ CELERYBEAT_SCHEDULE = {
         'schedule': crontab(minute='*/2'),
         'args': ([10000]),
     },
+    'stats_cc': {
+        'task': 'breakcontent.tasks.stats_cc',
+        'schedule': crontab(minute=0, hour=23),
+        # this is 7:00AM TW time
+        'args': (['day']),
+    },
 }
 
 # CC

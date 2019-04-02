@@ -204,6 +204,42 @@ def partner_setting_add_update(partner_id, domain):
     res = {'msg': 'ok', 'status': True}
     return jsonify(res), 200
 
+
+@bp.route('/hc/<itype>', methods=['GET'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def health_check(itype: str=None):
+    '''
+    this is a sync function
+
+    daily health check
+
+    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/hc/all'
+
+    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/hc/day'
+
+    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/hc/hour'
+
+    '''
+    current_app.logger.debug('run health_check()...')
+    res = {'msg': '', 'status': False}
+
+    if itype not in ['all', 'day', 'hour']:
+        abort(500)
+
+    from breakcontent.tasks import stats_cc
+    data = stats_cc(itype)
+
+    current_app.logger.debug(f'data {data}')
+
+    res.update({
+        'msg': 'ok',
+        'status': True,
+        'data': data
+    })
+    return jsonify(res), 200
+
+
 # ===== Below are for debug use =====
 
 

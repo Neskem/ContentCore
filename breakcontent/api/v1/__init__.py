@@ -25,6 +25,13 @@ def error_404(e):
     return jsonify(response), 404
 
 
+@bp.errorhandler(500)
+def error_500(e):
+    # current_app.logger.error(f'this is a 404 error')
+    response = dict(status=0, message="500 Error from CC")
+    return jsonify(response), 500
+
+
 @bp.errorhandler(OperationalError)
 def handle_operationalerror(e):
     response = dict(status=0, message="DB OperationalError from CC")

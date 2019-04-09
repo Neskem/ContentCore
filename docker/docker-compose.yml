@@ -1,4 +1,4 @@
-version: '3'
+version: '3.4'
 services:
     redis:
         container_name: redis
@@ -22,17 +22,22 @@ services:
     psql:
         container_name: psql
         image: postgres
-        # command: psql -U postgres -h localhost < init.sql
-        # volumes:
-        #     - ./postgresql/init.sql:init.sql
+        # image: psql_cc
+        volumes:
+            # - ./postgresql/init.sql:init.sql
+            - data:/var/lib/postgresql
+        # failed to run cmd pre-defined in dockerfile
         # build:
-        #     context: .
-        #     dockerfile: ./Dockerfile_psql
+        #     context: postgresql/
+        #     dockerfile: Dockerfile_psql
         ports:
             - "5432:5432"
         restart: always
     web:
         container_name: web
+        build:
+            context: ../
+            dockerfile: Dockerfile
         image: cc
         # image: breaktimeinc/breaktime.contentcore
         # command: uwsgi --ini uwsgi.ini
@@ -55,6 +60,13 @@ services:
             options:
                 max-size: "50m"
         restart: always
+        healthcheck:
+            # test: ["CMD", "curl", "-f", "-X", "GET", "http://localhost:8100/v1/create_tasks/1"]
+            test: ["CMD-SHELL", "curl -f http://localhost:8100/v1/create_tasks/1 && echo 'OK'"]
+            interval: 1m30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
     beat:
         container_name: beat
         image: cc
@@ -128,7 +140,7 @@ services:
         container_name: worker-bypass
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
+        command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker-bypass.%%h
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -256,4 +268,6 @@ services:
     #         #volumes:
     #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
 
-
+volumes:
+    data:
+        external: true

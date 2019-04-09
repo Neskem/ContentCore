@@ -302,20 +302,32 @@ docker-compose down -v
 * @ prd psql machine(192.168.18.123)
 ```shell
 ssh ubuntu@192.168.18.123
-PASSWORD=ContentBreak_psql1qaz psql -U postgres -h localhost
+psql -U postgres -h localhost
+psql -U postgres -h localhost -d break_content
 #pw: ContentBreak_psql1qaz
 #pw: ArticleBreak_psql1qaz
 ```
+* recreate db (enter psql shell)
 ```sql
 SELECT pg_terminate_backend(pg_stat_activity.pid)
     FROM pg_stat_activity
     WHERE pg_stat_activity.datname = 'break_content'
       AND pid <> pg_backend_pid();
-
 DROP DATABASE break_content;
 CREATE DATABASE break_content;
 # \q
 ```
+* recreate db (w/o entering psql shell)
+```sql
+psql -h localhost -U postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'break_content' AND pid <> pg_backend_pid()"
+psql -h localhost -U postgres -c 'DROP DATABASE break_content'
+psql -h localhost -U postgres -c 'CREATE DATABASE break_content'
+```
+* run sql syntax from psql cmdline (w/ password attached)
+```sql
+PGPASSWORD=ContentBreak_psql1qaz psql -h localhost -U postgres -d break_content -c 'SELECT count(id) FROM task_main'
+```
+
 * db operation
 ```sql
 \c break_content
@@ -372,7 +384,10 @@ select b.is_multipage,a.status,count(a.id) from task_main as a, task_service as 
 ```sql
 select case when partner_id is null then false else true end as pbool,priority,status,count(id) from task_main group by pbool,priority,status order by pbool desc,priority,status;
 ```
-
+* group by time interval
+```sql
+SELECT COUNT(*) cnt, to_timestamp(floor((extract('epoch' from _ctime) / 600 )) * 600) AT TIME ZONE 'UTC' as interval_alias FROM task_main GROUP BY interval_alias order by interval_alias;
+```
 ### HOWTO monitor celery
 
 

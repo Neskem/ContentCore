@@ -1749,18 +1749,32 @@ def request_api(api: str, method: str, payload: dict=None, headers: dict=None):
 
 
 def getWpRealLink(url, shortlink):
+    '''
+    shortlink might not be valid, like:
+    //wp.me/p7zK7N-5lY
+
+    which should be:
+    http://wp.me/p7zK7N-5lY
+    '''
     logger.info(url + " .... " + shortlink)
     if re.search(r'\?p\=\d+', url, re.I):
         return url
     if re.search(r'\?p\=\d+', shortlink, re.I):
         return shortlink
 
-    r = requests.get(shortlink, allow_redirects=False)
+    try:
+        r = requests.get(shortlink, allow_redirects=False)
+    except requests.exceptions.MissingSchema as e:
+        logger.error(e)
+        shortlink = 'http:'+shortlink
+        r = requests.get(shortlink, allow_redirects=False)
+
     if r.status_code == 301:
         wpRealLink = r.headers['Location']
         wp_o = urlparse(wpRealLink)
         o = urlparse(url)
         if wp_o.netloc == o.netloc and re.search(r'\?p\=\d+', wpRealLink, re.I):
+            logger.debug(f'wpRealLink {wpRealLink}')
             return wpRealLink
         else:
             return None

@@ -4,6 +4,7 @@
 
 docker-compose down -v
 # docker build -t cc -f ../Dockerfile ../
+docker-compose build
 docker-compose up -d
 # manual garbage collection
 docker rmi $(docker images -f "dangling=true" -q)

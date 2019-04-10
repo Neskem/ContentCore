@@ -303,7 +303,7 @@ docker-compose down -v
 ```shell
 ssh ubuntu@192.168.18.123
 psql -U postgres -h localhost
-psql -U postgres -h localhost -d break_content
+PGPASSWORD=ContentBreak_psql1qaz psql -U postgres -h localhost -d break_content
 #pw: ContentBreak_psql1qaz
 #pw: ArticleBreak_psql1qaz
 ```

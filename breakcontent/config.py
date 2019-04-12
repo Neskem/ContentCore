@@ -12,10 +12,10 @@ OUTBOUND_PROXY = None  # for both http/https e.g.'http://127.0.0.1:8080'
 # SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
-SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', None))
-SQLALCHEMY_POOL_TIMEOUT = int(os.environ.get('SQLALCHEMY_POOL_TIMEOUT', None))
-SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', None))
-SQLALCHEMY_MAX_OVERFLOW = int(os.environ.get('SQLALCHEMY_MAX_OVERFLOW', None))
+SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', 10))
+SQLALCHEMY_POOL_TIMEOUT = int(os.environ.get('SQLALCHEMY_POOL_TIMEOUT', 30))
+SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', 30))
+SQLALCHEMY_MAX_OVERFLOW = int(os.environ.get('SQLALCHEMY_MAX_OVERFLOW', 15))
 CLEAN_TABLE = True if os.environ.get('CLEAN_TABLE') == 'True' else False
 
 # Redis
@@ -151,3 +151,6 @@ PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in [
 
 # Article Center
 AC_CONTENT_STATUS_API = os.environ.get('AC_CONTENT_STATUS_API', None)
+
+GOOGLE_APPLICATION_CREDENTIALS = os.environ.get(
+    'GOOGLE_APPLICATION_CREDENTIALS', '/home/lance/breaktime.ContentCore/data-alchemy-181502-3e950935b524.json')

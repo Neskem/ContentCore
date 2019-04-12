@@ -1,10 +1,17 @@
-from breakcontent.config import CONTAINER_TAG
+from breakcontent.config import *
+# from breakcontent.config import CONTAINER_TAG
 import logging.config
 import logging
 import uuid
 import flask
+import google.cloud.logging
+from google.cloud.logging.handlers import CloudLoggingHandler
 
-# Custom logging filter class
+
+client = google.cloud.logging.Client()
+cloud_handler = CloudLoggingHandler(client, name="cloud_handler")
+
+# ValueError: Couldn't import 'breakcontent.tasks': Unable to configure handler 'cloud': 'CloudLoggingHandler' object has no attribute 'split'
 
 
 class RequestIdFilter(logging.Filter):
@@ -51,6 +58,7 @@ class RequestIdFilter(logging.Filter):
 
 MY_LOGGINGS = {
     "version": 1,
+    "disable_existing_loggers": False,
     "filters": {
         "request_id": {
             "()": RequestIdFilter
@@ -81,24 +89,44 @@ MY_LOGGINGS = {
             "delay": False,
             "utc": False,
             "atTime": None
-        }
+        },
+        # "cloud": {
+        #     "class": "cloud_handler",
+        #     "level": "DEBUG",
+        # }
     },
-    "root": {
-        'level': 'DEBUG',  # change to higher level when switching to prd
-        'handlers': ['console', 'file']
-    },
+    # "root": {
+    #     'level': 'DEBUG',  # change to higher level when switching to prd
+    #     'handlers': ['console', 'file', 'cloud']
+    # },
     "loggers": {
+        '': {  # root logger
+            'level': 'DEBUG',  # change to higher level when switching to prd
+            # 'handlers': ['console', 'file', 'cloud'],
+            'handlers': ['console', 'file']
+        },
         "default": {  # this is for celery logger
             "level": "DEBUG",  # change to higher level when switching to prd
-            "handlers": ['console', 'file']
+            # "handlers": ['console', 'file']
+            "propagate": True
+        },
+        "cloud_logger": {
+            "level": "DEBUG",
+            # "handlers": ['cloud']
+            "propagate": True
         }
     },
-    "disable_existing_loggers": False,
 }
+cloud_logger = logging.getLogger('cloudLogger')
+cloud_logger.setLevel(logging.INFO)
+cloud_logger.addHandler(cloud_handler)
 
 logging.config.dictConfig(MY_LOGGINGS)
 
 '''
+
+If you attach a handler to a logger and one or more of its ancestors, it may emit the same record multiple times.
+
 * further study
 
 1. https://docs.python.org/3/library/logging.config.html#user-defined-objects

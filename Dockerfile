@@ -5,7 +5,7 @@ WORKDIR /usr/src/app
 
 COPY requirements.txt /usr/src/app/
 RUN pip install -r requirements.txt
-#RUN pip install uwsgi
+RUN pip install --upgrade google-cloud-logging
 
 # maybe not all are necessary
 COPY . /usr/src/app

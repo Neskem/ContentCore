@@ -411,3 +411,58 @@ redis-cli -a ContentBreak_1qaz -n 4
 DBSIZE
 flushall
 ```
+
+### HOWTO logging
+* [google-cloud-logging](https://googleapis.github.io/google-cloud-python/latest/logging/stdlib-usage.html)
+* err msg
+```
+google.auth.exceptions.DefaultCredentialsError: Could not automatically determine credentials. Please set GOOGLE_APPLICATION_CREDENTIALS or explicitly create credentials and re-run the application. For more information, please see https://cloud.google.com/docs/authentication/getting-started
+```
+
+* [logging to kadka](https://github.com/openstack/monasca-analytics/blob/master/monasca_analytics/util/common_util.py)
+
+* test credential
+```shell
+pipenv shell
+
+export GOOGLE_APPLICATION_CREDENTIALS="/home/lance/breaktime.ContentCore/data-alchemy-181502-3e950935b524.json"
+
+# enter python interactive mode
+python 
+```
+```python
+# def implicit():
+from google.cloud import storage
+# If you don't specify credentials when constructing the client, the
+# client library will look for credentials in the environment.
+storage_client = storage.Client()
+# Make an authenticated API request
+buckets = list(storage_client.list_buckets())
+print(buckets)
+# implicit()
+```
+* output
+```
+[<Bucket: artifacts.data-alchemy-181502.appspot.com>, <Bucket: prd_catalyst_bucket>, <Bucket: prd_catalyst_file>, <Bucket: prd_catalyst_log_bucket>]
+```
+
+### HOWTO implement JWT token
+```python
+def create_zi_token():
+    payload = {
+        "iss": "breaktime.com.tw",
+        "aud": "zi.media",
+        "username": "article_center",
+    }
+    token = jwt.encode(payload, 'secret', algorithm='HS256')
+    return token
+def verify_zi_token(token):
+    #  如果在生成token的时候使用了aud参数，那么校验的时候也需要添加此参数
+    payload = jwt.decode(token, 'secret', audience='zi.media', algorithms=['HS256'])
+    if payload:
+        return True, payload
+    return False, token
+    
+# PS: JWT 實作範例：https://segmentfault.com/a/1190000010312468
+# PS: JWT 預設payload 說明：https://www.jianshu.com/p/3d4a1a124ef5
+```

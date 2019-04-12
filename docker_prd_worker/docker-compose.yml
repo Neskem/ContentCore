@@ -1,41 +1,15 @@
 version: '2'
-services:
-    redis:
-        container_name: redis
-        image: redis:4.0
-        ports:
-            - "6379:6379"
-        restart: always
-    beat:
-        container_name: beat
+    worker-p1:
+        container_name: worker-p1
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        command: single-beat celery beat -A breakcontent.tasks -l info
-        # depends_on:
-        #     - redis
+        command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=50,1 -n worker-p1.%%h -P gevent --purge --prefetch-multiplier 4
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
-            - CONTAINER_TAG=beat
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
-    worker:
-        container_name: worker
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=20,5 -n worker.%%h -E
-        volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=worker
+            - CONTAINER_TAG=worker-p1
         logging:
             driver: "json-file"
             options:
@@ -45,10 +19,7 @@ services:
         container_name: worker-xpcrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=40,10 -n worker-xpcrawler.%%h -E
-        depends_on:
-            - redis
+        command: celery worker -A breakcontent.tasks -Q xpcrawler --loglevel=DEBUG --autoscale=100,16 -n worker-xpcrawler.%%h --purge --prefetch-multiplier 4
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -63,10 +34,7 @@ services:
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
         image: cc
-        # command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=20,4 -n worker-xpmcrawler.%%h -E
-        depends_on:
-            - redis
+        command: celery worker -A breakcontent.tasks -Q xpmcrawler --loglevel=DEBUG --autoscale=40,2 -n worker-xpmcrawler.%%h -P gevent --purge --prefetch-multiplier 4
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -82,33 +50,13 @@ services:
         container_name: worker-aicrawler
         image: cc
         # image: breaktimeinc/breaktime.contentcore
-        # command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E -P gevent
-        command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,5 -n worker-aicrawler.%%h -E
-        depends_on:
-            - redis
+        command: celery worker -A breakcontent.tasks -Q aicrawler --loglevel=DEBUG --autoscale=8,1 -n worker-aicrawler.%%h -P gevent --purge --prefetch-multiplier 4
         volumes:
            # - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-aicrawler
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
-    flower:
-        container_name: flower
-        image: cc
-        command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
-        ports:
-            - "5555:5555"
-        volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=flower
         logging:
             driver: "json-file"
             options:

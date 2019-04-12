@@ -2,7 +2,6 @@
 
 # psql client wasn't installed on psql
 # refresh the db in postgresql
-PASSWORD=ContentBreak_psql1qaz psql -U postgres -h 10.140.15.248 < postgresql/init.sql
 
 docker-compose down -v
 # docker-compose won't automatically pull when image already exists

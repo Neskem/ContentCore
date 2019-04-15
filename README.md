@@ -418,8 +418,56 @@ flushall
 ```
 google.auth.exceptions.DefaultCredentialsError: Could not automatically determine credentials. Please set GOOGLE_APPLICATION_CREDENTIALS or explicitly create credentials and re-run the application. For more information, please see https://cloud.google.com/docs/authentication/getting-started
 ```
+* [Python Logging Module Handler](https://google-cloud.readthedocs.io/en/latest/logging/handlers.html)
+* [Integration with Python logging module](https://googleapis.github.io/google-cloud-python/latest/logging/stdlib-usage.html)
+* [logging to kafka](https://github.com/openstack/monasca-analytics/blob/master/monasca_analytics/util/common_util.py)
+* [install logging agent](https://cloud.google.com/logging/docs/agent/installation#joint-install)
+```shell
+curl -sSO https://dl.google.com/cloudagents/install-logging-agent.sh
 
-* [logging to kadka](https://github.com/openstack/monasca-analytics/blob/master/monasca_analytics/util/common_util.py)
+sudo bash install-logging-agent.sh
+
+==============================================================================
+Starting installation of google-fluentd
+==============================================================================
+
+Installing agents for Debian or Ubuntu.
+OK
+
+Selecting previously unselected package google-fluentd.
+(Reading database ... 136954 files and directories currently installed.)
+Preparing to unpack .../google-fluentd_1.6.7-1_amd64.deb ...
+Unpacking google-fluentd (1.6.7-1) ...
+Selecting previously unselected package google-fluentd-catch-all-config.
+Preparing to unpack .../google-fluentd-catch-all-config_0.7_all.deb ...
+Unpacking google-fluentd-catch-all-config (0.7) ...
+Setting up google-fluentd (1.6.7-1) ...
+Adding system user `google-fluentd' (UID 112) ...
+Adding new group `google-fluentd' (GID 116) ...
+Adding new user `google-fluentd' (UID 112) with group `google-fluentd' ...
+Not creating home directory `/home/google-fluentd'.
+Installing default conffile /etc/google-fluentd/google-fluentd.conf ...
+Setting up google-fluentd-catch-all-config (0.7) ...
+Processing triggers for libc-bin (2.27-3ubuntu1) ...
+
+==============================================================================
+Installation of google-fluentd complete.
+
+Logs from this machine should be visible in the log viewer at:
+  https://console.cloud.google.com/logs/viewer?project=data-alchemy-181502&resource=gce_instance/instance_id/8293460702628472917
+
+A test message has been sent to syslog to help verify proper operation.
+
+Please consult the documentation for troubleshooting advice:
+  https://cloud.google.com/logging/docs/agent
+
+You can monitor the logging agent's logfile at:
+  /var/log/google-fluentd/google-fluentd.log
+==============================================================================
+
+# not what i want 
+```
+
 
 * test credential
 ```shell

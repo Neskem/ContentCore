@@ -19,7 +19,7 @@ from sqlalchemy import or_
 
 from breakcontent import db
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
-from breakcontent import mylogging
+from breakcontent.mylogging import *
 from urllib.parse import urlencode, quote_plus, unquote, quote, unquote_plus, parse_qs
 from urllib.parse import urlparse, urljoin
 # import datetime
@@ -27,8 +27,12 @@ from datetime import timedelta, datetime
 import csv
 
 celery = create_celery_app()
-logger = get_task_logger('default')
+logger = get_task_logger('cc.tasks')
+# logger = get_task_logger('') # root
 
+# logger = logging.getLogger('')
+
+print('print log to stdout')
 
 ac_content_status_api = os.environ.get('AC_CONTENT_STATUS_API', None)
 ac_content_multipage_api = os.environ.get('AC_CONTENT_MULTIPAGE_API', None)
@@ -64,6 +68,9 @@ def upsert_main_task(task, data: dict):
     '''
 
     logger.debug(
+        f"url_hash {data['url_hash']}, task.request.id {task.request.id}")
+
+    print(
         f"url_hash {data['url_hash']}, task.request.id {task.request.id}")
 
     logger.debug(f'data: {data}')

@@ -5,13 +5,7 @@ import logging
 import uuid
 import flask
 import google.cloud.logging
-from google.cloud.logging.handlers import CloudLoggingHandler
-
-
-client = google.cloud.logging.Client()
-cloud_handler = CloudLoggingHandler(client, name="cloud_handler")
-
-# ValueError: Couldn't import 'breakcontent.tasks': Unable to configure handler 'cloud': 'CloudLoggingHandler' object has no attribute 'split'
+from google.cloud.logging.handlers import CloudLoggingHandler, setup_logging
 
 
 class RequestIdFilter(logging.Filter):
@@ -72,7 +66,7 @@ MY_LOGGINGS = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "level": "WARNING",
+            "level": "DEBUG",
             "formatter": "default",
             "filters": ["request_id"]
         },
@@ -95,33 +89,54 @@ MY_LOGGINGS = {
         #     "level": "DEBUG",
         # }
     },
-    # "root": {
-    #     'level': 'DEBUG',  # change to higher level when switching to prd
-    #     'handlers': ['console', 'file', 'cloud']
-    # },
+    "root": {
+        'level': 'DEBUG',  # change to higher level when switching to prd
+        # 'handlers': ['console', 'file', 'cloud']
+        'handlers': ['console', 'file']
+    },
     "loggers": {
-        '': {  # root logger
-            'level': 'DEBUG',  # change to higher level when switching to prd
-            # 'handlers': ['console', 'file', 'cloud'],
-            'handlers': ['console', 'file']
+        # '': {  # root logger
+        #     'level': 'DEBUG',  # change to higher level when switching to prd
+        #     # 'handlers': ['console', 'file', 'cloud'],
+        #     'handlers': ['console', 'file']
+        # },
+        "cc": {  # this is for celery logger
+            "level": "DEBUG",  # change to higher level when switching to prd
+            "handlers": ['console', 'file']
+            # "propagate": True
         },
-        "default": {  # this is for celery logger
+        "cc.tasks": {  # this is for celery logger
             "level": "DEBUG",  # change to higher level when switching to prd
             # "handlers": ['console', 'file']
             "propagate": True
         },
-        "cloud_logger": {
-            "level": "DEBUG",
-            # "handlers": ['cloud']
+        "cc.utils": {  # this is for celery logger
+            "level": "DEBUG",  # change to higher level when switching to prd
+            # "handlers": ['console', 'file']
             "propagate": True
-        }
+        },
+        "cc.models": {  # this is for celery logger
+            "level": "DEBUG",  # change to higher level when switching to prd
+            # "handlers": ['console', 'file']
+            "propagate": True
+        },
+        # "cloud_logger": {
+        #     "level": "DEBUG",
+        #     # "handlers": ['cloud']
+        #     "propagate": True
+        # }
     },
 }
-cloud_logger = logging.getLogger('cloudLogger')
-cloud_logger.setLevel(logging.INFO)
-cloud_logger.addHandler(cloud_handler)
+# this has to be after logging.config.dictConfig()
 
 logging.config.dictConfig(MY_LOGGINGS)
+
+client = google.cloud.logging.Client()
+handler = CloudLoggingHandler(client, name='cloud')
+setup_logging(handler)
+# logging.getLogger().setLevel(logging.DEBUG)
+# logging.error('bad news')
+
 
 '''
 

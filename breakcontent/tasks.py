@@ -653,9 +653,9 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
 
     if partner_id:
 
-        wp_dict = prepare_crawler(url_hash, partner=True, xpath=False)
-        url_hash = wp_dict['url_hash']
-        a_wp = ai_a_crawler(wp_dict, partner_id)
+        prepare_crawler(url_hash, partner=True, xpath=False)
+        # url_hash = wp_dict['url_hash']
+        a_wp = ai_a_crawler(url_hash, url, partner_id, domain, domain_info)
 
         q = dict(url_hash=url_hash)
 
@@ -675,11 +675,11 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
         # do not notify AC here
     else:
         # only non-partner should inform AC
-        wp_dict = prepare_crawler(url_hash, partner=False, xpath=False)
-        url_hash = wp_dict['url_hash']
-        a_wp = ai_a_crawler(wp_dict)
+        prepare_crawler(url_hash, partner=False, xpath=False)
+        # url_hash = wp_dict['url_hash']
+        a_wp = ai_a_crawler(url_hash, url)
 
-        q = dict(url_hash=wp_dict['url_hash'])
+        q = dict(url_hash=url_hash)
 
         wpns = WebpagesNoService()
         tns = TaskNoService()
@@ -690,8 +690,8 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
 
         if a_wp:
             udata = {
-                'url_hash': wp_dict['url_hash'],
-                'url': wp_dict['url'],
+                'url_hash': url_hash,
+                'url': url,
                 'request_id': a_wp.task_noservice.request_id,
                 # 'status': True # default value
             }

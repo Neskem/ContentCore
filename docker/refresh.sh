@@ -1,7 +1,12 @@
 #!/bin/bash
 
+dropdb=$2
+echo "dropdb $dropdb"
+
 docker-compose down -v
 docker-compose build
+# create external volumn
+docker volume create --name=data
 docker-compose up -d
 docker rmi $(docker images -f "dangling=true" -q)
 # ------------------ START init DB ------------------

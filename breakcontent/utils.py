@@ -562,7 +562,7 @@ def db_session_query(table: object, query: dict, order_by: 'column name'=None, a
                 raise
 
 
-def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False) -> dict:
+def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False):
     '''
     init record in WebpagesPartnerXpath for singlepage or multipage crawler, so the fk will be linked to TaskService and the pk will be created.
 
@@ -1487,6 +1487,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 logger.debug(
                     f'url_hash {url_hash}, use utcnow() if failed to parse publish_date')
                 a_wpx.publish_date = datetime.utcnow()
+                iac.publish_date = a_wpx.publish_date
             # ----- check if publish_date changed -----
             # todo
 
@@ -1565,7 +1566,7 @@ def mercuryContent(url):
         return None
 
 
-def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> object:
+def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None, domain_info: str=None, multipaged: bool=False) -> object:
     '''
     use mercury to crawl a page
 
@@ -1574,9 +1575,9 @@ def ai_a_crawler(wp: dict, partner_id: str=None, multipaged: bool=False) -> obje
     '''
 
     # logger.debug(f'wp {wp}')
-    url_hash = wp['url_hash']
-    url = wp['url']
-    domain = wp['domain']
+    # url_hash = wp['url_hash']
+    # url = wp['url']
+    # domain = wp['domain']
     logger.debug(f'run ai_a_crawler() on url_hash {url_hash}')
 
     if partner_id:

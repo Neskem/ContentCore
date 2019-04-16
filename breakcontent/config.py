@@ -98,12 +98,12 @@ CELERYBEAT_SCHEDULE = {
         'args': ([5]),
         # 'options': {'queue': 'postman'}
     },
-    'create_tasks_6': {  # Update task (including daily and monthly)
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([6]),
-        # 'options': {'queue': 'postman'}
-    },
+    # 'create_tasks_6': {  # Update task (including daily and monthly)
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([6]),
+    #     # 'options': {'queue': 'postman'}
+    # },
     'reset_doing_task': {  # Update task (including daily and monthly)
         'task': 'breakcontent.tasks.reset_doing_tasks',
         'schedule': crontab(minute=0, hour='*'),  # trigger at midnight

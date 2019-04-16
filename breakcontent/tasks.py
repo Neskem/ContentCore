@@ -297,11 +297,11 @@ def prepare_task(task: dict):
                     else:
                         xpath_multi_crawler.delay(
                             url_hash, url, partner_id, domain, domain_info)
-                    if celery.conf['PARTNER_AI_CRAWLER']:
-                        ai_multi_crawler.delay(
-                            url_hash, partner_id, domain, domain_info)
-                    else:
-                        pass
+                    # if celery.conf['PARTNER_AI_CRAWLER']:
+                    #     ai_multi_crawler.delay(
+                    #         url_hash, partner_id, domain, domain_info)
+                    # else:
+                    #     pass
 
             else:
                 # preparing for singlepage crawler
@@ -322,15 +322,15 @@ def prepare_task(task: dict):
                         f'url_hash {url_hash} sent task to xpath_single_crawler.delay()')
                     xpath_single_crawler.delay(
                         url_hash, url, partner_id, domain, domain_info)
-                logger.debug(
-                    f"celery.conf['PARTNER_AI_CRAWLER'] {celery.conf['PARTNER_AI_CRAWLER']}")
-                if celery.conf['PARTNER_AI_CRAWLER']:
-                    # even p1's aicrawler task will be sent to delay
-                    ai_single_crawler.delay(
-                        url_hash, url, partner_id, domain, domain_info)
-                    logger.debug(f'url_hash {url_hash} task sent')
-                else:
-                    pass
+                # logger.debug(
+                #     f"celery.conf['PARTNER_AI_CRAWLER'] {celery.conf['PARTNER_AI_CRAWLER']}")
+                # if celery.conf['PARTNER_AI_CRAWLER']:
+                #     # even p1's aicrawler task will be sent to delay
+                #     ai_single_crawler.delay(
+                #         url_hash, url, partner_id, domain, domain_info)
+                #     logger.debug(f'url_hash {url_hash} task sent')
+                # else:
+                #     pass
 
         else:
             logger.error(
@@ -652,7 +652,7 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
     logger.debug(f'run ai_single_crawler() on url_hash {url_hash}')
 
     if partner_id:
-
+        # this part deprecated
         prepare_crawler(url_hash, partner=True, xpath=False)
         # url_hash = wp_dict['url_hash']
         a_wp = ai_a_crawler(url_hash, url, partner_id, domain, domain_info)
@@ -677,7 +677,12 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
         # only non-partner should inform AC
         prepare_crawler(url_hash, partner=False, xpath=False)
         # url_hash = wp_dict['url_hash']
-        a_wp = ai_a_crawler(url_hash, url)
+        try:
+            a_wp = ai_a_crawler(url_hash, url)
+        except requests.exceptions.ConnectionError as e:
+            logger.error(e)
+            bypass_crawler.delay(url_hash)
+            return
 
         q = dict(url_hash=url_hash)
 

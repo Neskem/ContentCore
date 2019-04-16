@@ -371,7 +371,7 @@ class WebpagesPartnerXpath(Model):
         'task_service.id', ondelete='CASCADE'), index=True)
     task_service = relationship(
         'TaskService', foreign_keys=task_service_id, single_parent=True)
-    domain = Column(String(500), nullable=True)
+    domain = Column(String(500), nullable=True, index=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     content_hash = Column(String(256), nullable=True)
     multi_page_urls = Column(postgresql.ARRAY(Text, dimensions=1))

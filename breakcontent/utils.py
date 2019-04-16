@@ -1535,14 +1535,14 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         return a_wpx, iac
 
 
-def mercuryContent(url):
+def mercuryContent(url, retry: int=5, sleep_sec: int=1):
     if os.environ.get('MERCURY_TOKEN', None):
         headers = {"x-api-key": os.environ.get('MERCURY_TOKEN')}
         # logger.debug(f'headers {headers}')
         api = "https://mercury.postlight.com/parser?url=" + url
         logger.debug(f'api {api}')
-        retry = 5  # retry 5 times at most
-        sleep_sec = 1
+        # retry = 5  # retry 5 times at most
+        # sleep_sec = 1
         while retry:
             r = requests.get(api, headers=headers)
             if r.status_code == 200:
@@ -1573,23 +1573,17 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
     <return>
 
     '''
-
-    # logger.debug(f'wp {wp}')
-    # url_hash = wp['url_hash']
-    # url = wp['url']
-    # domain = wp['domain']
     logger.debug(f'run ai_a_crawler() on url_hash {url_hash}')
 
+    q = dict(url_hash=url_hash)
     if partner_id:
-        tid = wp['task_service_id']
-        ts = TaskService.query.filter_by(id=tid).first()
-        wp = ts.webpages_partner_ai
+        ts = TaskService.query.filter_by(**q).first()
+        wp = WebpagesPartnerAi()
     else:
-        tid = wp['task_noservice_id']
-        ts = TaskNoService.query.filter_by(id=tid).first()
-        wp = ts.webpages_noservice
+        ts = TaskNoService.query.filter_by(**q).first()
+        wp = WebpagesNoService()
 
-    logger.debug(f'wp {wp}')
+    # logger.debug(f'wp {wp}')
     # logger.debug(f'parseData {parseData}')
 
     headers = {

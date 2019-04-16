@@ -5,6 +5,7 @@ from breakcontent import db
 import json
 from breakcontent.api import errors
 import datetime
+from sqlalchemy.orm import load_only
 
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 from breakcontent.utils import db_session_insert, db_session_update, db_session_query, parse_domain_info, bp_test_logger
@@ -239,6 +240,41 @@ def health_check(itype: str=None):
     })
     return jsonify(res), 200
 
+
+@bp.route('/content/<partner_id>/<domain>/pd', methods=['GET'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def get_pd(partner_id, domain):
+    '''
+    a sync function
+
+    too much request might halt my system
+
+    return url_hash, publish_date to AC
+    '''
+    current_app.logger.debug('run get_pd()...')
+    res = {'msg': '', 'status': False}
+
+    if 1:
+        q = dict(domain=domain)
+        wp_list = WebpagesPartnerXpath.query.options(
+            load_only('url_hash', 'publish_date')).filter_by(**q).all()
+
+    if 0:
+        q = dict(partner_id=partner_id, domain=domain)
+        wp_list = db.session.query(TaskMain, WebpagesPartnerXpath).options(load_only('webpages_partner_xpath.url_hash', 'webpages_partner_xpath.publish_date')).join(
+            WebpagesPartnerXpath, TaskMain.domain == WebpagesPartnerXpath.domain).filter(TaskMain.partner_id == partner_id, TaskMain.domain == domain).all()
+
+    print(f'wp_list {wp_list}')
+    data = []
+    for i in wp_list:
+        adict = {}
+        adict['url_hash'] = i.url_hash
+        adict['publish_date'] = i.publish_date
+        data.append(adict)
+
+    res.update({'data': data})
+    return jsonify(res), 200
 
 # ===== Below are for debug use =====
 

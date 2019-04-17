@@ -208,6 +208,7 @@ class TaskMain(Model):
         "TaskService", back_populates="task_main", uselist=False, foreign_keys='TaskService.task_main_id', cascade="all, delete-orphan", passive_deletes=True)
     task_noservice = relationship(
         "TaskNoService", back_populates="task_main", uselist=False, foreign_keys='TaskNoService.task_main_id', cascade="all, delete-orphan", passive_deletes=True)
+    # wpx = relationship('WebpagesPartnerXpath', backref='tm')  # alpha testing
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     url = Column(String(1000), nullable=False, index=True)
     domain = Column(String(500), index=True, nullable=True)
@@ -367,6 +368,7 @@ class WebpagesPartnerXpath(Model):
     __tablename__ = 'webpages_partner_xpath'
 
     id = Column(Integer, primary_key=True)
+    # task_main_id = Column(Integer, ForeignKey('task_main.id')) # alpha testing
     task_service_id = Column(Integer, ForeignKey(
         'task_service.id', ondelete='CASCADE'), index=True)
     task_service = relationship(

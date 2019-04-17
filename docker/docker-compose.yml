@@ -25,7 +25,8 @@ services:
         # image: psql_cc
         volumes:
             # - ./postgresql/init.sql:init.sql
-            - data:/var/lib/postgresql
+            # - pgdata:/var/lib/postgresql
+            - pgdata:/var/lib/postgresql/data
         # failed to run cmd pre-defined in dockerfile
         # build:
         #     context: postgresql/
@@ -45,7 +46,7 @@ services:
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
+           - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -63,7 +64,7 @@ services:
         healthcheck:
             # test: ["CMD", "curl", "-f", "-X", "GET", "http://localhost:8100/v1/create_tasks/1"]
             test: ["CMD-SHELL", "curl -f http://localhost:8100/v1/create_tasks/1 && echo 'OK'"]
-            interval: 1m30s
+            interval: 30m30s
             timeout: 10s
             retries: 3
             start_period: 40s
@@ -269,5 +270,5 @@ services:
     #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
 
 volumes:
-    data:
+    pgdata:
         external: true

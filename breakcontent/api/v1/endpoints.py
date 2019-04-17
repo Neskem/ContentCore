@@ -5,7 +5,7 @@ from breakcontent import db
 import json
 from breakcontent.api import errors
 import datetime
-from sqlalchemy.orm import load_only
+from sqlalchemy.orm import joinedload, Load, load_only
 
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 from breakcontent.utils import db_session_insert, db_session_update, db_session_query, parse_domain_info, bp_test_logger
@@ -255,23 +255,52 @@ def get_pd(partner_id, domain):
     current_app.logger.debug('run get_pd()...')
     res = {'msg': '', 'status': False}
 
-    if 1:
+    if 0:
+        # query only with domain, should be fastest
         q = dict(domain=domain)
         wp_list = WebpagesPartnerXpath.query.options(
             load_only('url_hash', 'publish_date')).filter_by(**q).all()
+        current_app.logger.debug(f'len wp_list {len(wp_list)}')
+        data = []
+        for i in wp_list:
+            adict = {}
+            adict['url_hash'] = i.url_hash
+            adict['publish_date'] = i.publish_date
+            data.append(adict)
 
     if 0:
+        # orm join works but painful
         q = dict(partner_id=partner_id, domain=domain)
-        wp_list = db.session.query(TaskMain, WebpagesPartnerXpath).options(load_only('webpages_partner_xpath.url_hash', 'webpages_partner_xpath.publish_date')).join(
-            WebpagesPartnerXpath, TaskMain.domain == WebpagesPartnerXpath.domain).filter(TaskMain.partner_id == partner_id, TaskMain.domain == domain).all()
+        wp_list = db.session.query(TaskMain).options(joinedload('wpx', innerjoin=True).load_only(
+            'publish_date'), Load(TaskMain).load_only('url_hash')).all()
 
-    print(f'wp_list {wp_list}')
-    data = []
-    for i in wp_list:
-        adict = {}
-        adict['url_hash'] = i.url_hash
-        adict['publish_date'] = i.publish_date
-        data.append(adict)
+        current_app.logger.debug(f'len wp_list {len(wp_list)}')
+        data = []
+
+        for i in wp_list:
+            # i is object of TaskMain
+            adict = {}
+            adict['url_hash'] = i.url_hash
+            adict['publish_date'] = i.wpx[0].publish_date
+            data.append(adict)
+
+    if 1:
+        # raw sql
+        sql_str = f'select a.url_hash, b.publish_date from task_main as a join webpages_partner_xpath as b on a.domain = b.domain where a.partner_id = \'{partner_id}\' and a.domain = \'{domain}\';'
+
+        current_app.logger.debug(f'sql_str {sql_str}')
+
+        wp_list = db.engine.execute(sql_str)
+        current_app.logger.debug(f'wp_list {wp_list}')
+        data = []
+        for i in wp_list:
+            # i is object of TaskMain
+            adict = {}
+            adict['url_hash'] = i['url_hash']
+            adict['publish_date'] = i['publish_date']
+            data.append(adict)
+
+    # current_app.logger.debug(f'wp_list {wp_list}')
 
     res.update({'data': data})
     return jsonify(res), 200

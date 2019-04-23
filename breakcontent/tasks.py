@@ -27,7 +27,8 @@ from datetime import timedelta, datetime
 import csv
 
 celery = create_celery_app()
-logger = get_task_logger('cc.tasks')
+logger = get_task_logger('cc')
+# logger = get_task_logger('cc.tasks')
 # logger = get_task_logger('') # root
 
 # logger = logging.getLogger('')

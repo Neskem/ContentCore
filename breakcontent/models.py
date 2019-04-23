@@ -10,7 +10,8 @@ from sqlalchemy.orm import relationship, backref
 import logging
 from breakcontent import mylogging
 # failed to make root logger function normally
-logger = logging.getLogger('cc.models')
+logger = logging.getLogger('cc')
+# logger = logging.getLogger('cc.models')
 
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError

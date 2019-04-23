@@ -32,8 +32,9 @@ import base64
 
 from breakcontent import mylogging
 import logging
+logger = logging.getLogger('cc')
 # logger = logging.getLogger('cc.utils')
-logger = logging.getLogger('root')
+# logger = logging.getLogger('root')
 
 # from breakcontent import logger
 

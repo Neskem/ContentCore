@@ -133,10 +133,14 @@ logging.config.dictConfig(MY_LOGGINGS)
 
 # bind root logger with cloud handler
 client = google.cloud.logging.Client()
-cloud_handler = CloudLoggingHandler(client, name='cloud')
+cloud_handler = CloudLoggingHandler(client, name='cc_cloud')
 logging.getLogger('cc').addHandler(cloud_handler)
-# setup_logging(cloud_handler)  # default log_level=20 (INFO)
-# logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger('cc').setLevel(logging.DEBUG)
+# logger = logging.getLogger('cc')
+# logger.addHandler(cloud_handler)
+# logger.info('Hello World!')
+setup_logging(cloud_handler)  # default log_level=20 (INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 # logging.error('bad news')
 
 

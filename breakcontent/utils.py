@@ -660,8 +660,6 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
     obj2, an InformAC instance
 
     '''
-    # url_hash = wpx['url_hash']
-    # url = wpx['url']
     logger.debug(f'run the basic unit of xpath crawler on url_hash {url_hash}')
     q = dict(url_hash=url_hash)
     tm = TaskMain().select(q)
@@ -679,7 +677,6 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         a_wpx = WebpagesPartnerXpath.query.options(load_only('url_hash', 'content_hash')).filter_by(**q).first()
         a_wpx.task_service_id = ts.id
     a_wpx.domain = domain
-    # url_hash = wpx['url_hash']
 
     iac = InformAC()
     iac.url_hash = url_hash

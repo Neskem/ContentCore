@@ -286,7 +286,7 @@ def get_pd(partner_id, domain):
 
     if 1:
         # raw sql
-        sql_str = f'select a.url_hash, b.publish_date from task_main as a join webpages_partner_xpath as b on a.domain = b.domain where a.partner_id = \'{partner_id}\' and a.domain = \'{domain}\';'
+        sql_str = f'select a.url_hash, b.publish_date from task_main as a join webpages_partner_xpath as b on a.url_hash = b.url_hash where a.partner_id = \'{partner_id}\' and a.domain = \'{domain}\';'
 
         current_app.logger.debug(f'sql_str {sql_str}')
 
@@ -302,7 +302,11 @@ def get_pd(partner_id, domain):
 
     # current_app.logger.debug(f'wp_list {wp_list}')
 
-    res.update({'data': data})
+    res.update({
+        'msg': 'ok',
+        'status': True,
+        'data': data
+    })
     return jsonify(res), 200
 
 # ===== Below are for debug use =====

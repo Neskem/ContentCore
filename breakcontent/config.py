@@ -153,4 +153,4 @@ PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in [
 AC_CONTENT_STATUS_API = os.environ.get('AC_CONTENT_STATUS_API', None)
 
 GOOGLE_APPLICATION_CREDENTIALS = os.environ.get(
-    'GOOGLE_APPLICATION_CREDENTIALS', '/home/lance/breaktime.ContentCore/data-alchemy-181502-3e950935b524.json')
+    'GOOGLE_APPLICATION_CREDENTIALS', None)

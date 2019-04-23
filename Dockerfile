@@ -5,6 +5,7 @@ WORKDIR /usr/src/app
 
 COPY requirements.txt /usr/src/app/
 RUN pip install -r requirements.txt
+# for logging to stackdriver logging, not yet successful
 RUN pip install --upgrade google-cloud-logging
 
 # maybe not all are necessary

@@ -28,12 +28,6 @@ import csv
 
 celery = create_celery_app()
 logger = get_task_logger('cc')
-# logger = get_task_logger('cc.tasks')
-# logger = get_task_logger('') # root
-
-# logger = logging.getLogger('')
-
-print('print log to stdout')
 
 ac_content_status_api = os.environ.get('AC_CONTENT_STATUS_API', None)
 ac_content_multipage_api = os.environ.get('AC_CONTENT_MULTIPAGE_API', None)

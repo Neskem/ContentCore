@@ -14,25 +14,9 @@ services:
             - worker
         ports:
             - "80:80"
-            # - "443:443"
         volumes:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf
             - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-        restart: always
-    psql:
-        container_name: psql
-        image: postgres
-        # image: psql_cc
-        volumes:
-            # - ./postgresql/init.sql:init.sql
-            # - pgdata:/var/lib/postgresql
-            - pgdata:/var/lib/postgresql/data
-        # failed to run cmd pre-defined in dockerfile
-        # build:
-        #     context: postgresql/
-        #     dockerfile: Dockerfile_psql
-        ports:
-            - "5432:5432"
         restart: always
     web:
         container_name: web
@@ -47,7 +31,6 @@ services:
             - redis
         volumes:
            - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=web
@@ -76,8 +59,7 @@ services:
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=beat
@@ -94,9 +76,7 @@ services:
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - ../tmp:/usr/src/app/tmp
-           - /var/log/contentcore:/var/log/contentcore
+           - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker
@@ -111,8 +91,7 @@ services:
         # image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q upsert_tm --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-upsert
@@ -127,8 +106,7 @@ services:
         # image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q prepare --loglevel=DEBUG --autoscale=50,1 -n worker-prep.%%h
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-prep
@@ -143,8 +121,7 @@ services:
         # image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker-bypass.%%h
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-bypass
@@ -161,8 +138,7 @@ services:
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-p1
@@ -179,8 +155,7 @@ services:
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-xpcrawler
@@ -196,8 +171,7 @@ services:
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-xpmcrawler
@@ -214,8 +188,7 @@ services:
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-aicrawler

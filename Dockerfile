@@ -1,15 +1,15 @@
 FROM            python:3.6
-MAINTAINER BreakTime Inc. <lance@breaktime.com.tw>
+MAINTAINER BreakTime Inc.
 
 WORKDIR /usr/src/app
 
 COPY requirements.txt /usr/src/app/
-RUN pip install -r requirements.txt
-# for logging to stackdriver logging, not yet successful
-RUN pip install --upgrade google-cloud-logging
+RUN \
+    pip install -r requirements.txt && \
+    pip install --upgrade google-cloud-logging && \
+    mkdir -p /var/log/contentcore/ && \
+    echo Done
 
-# maybe not all are necessary
 COPY . /usr/src/app
-
 COPY    entrypoint.sh /
 RUN     chmod +x /entrypoint.sh

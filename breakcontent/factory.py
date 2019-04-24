@@ -3,9 +3,6 @@ from breakcontent import config
 # import os
 from breakcontent import db
 from celery import Celery
-import logging
-import logging.config
-from breakcontent import mylogging
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration

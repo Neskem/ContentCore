@@ -6,9 +6,7 @@ from sqlalchemy import Integer, Boolean, Enum, DateTime, String, Text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import relationship, backref
 
-# from breakcontent import logger
 import logging
-from breakcontent import mylogging
 # failed to make root logger function normally
 logger = logging.getLogger('cc')
 # logger = logging.getLogger('cc.models')

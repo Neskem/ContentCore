@@ -30,7 +30,6 @@ import sendgrid
 from sendgrid.helpers.mail import Email, Content, Mail, Attachment, Personalization
 import base64
 
-from breakcontent import mylogging
 import logging
 logger = logging.getLogger('cc')
 # logger = logging.getLogger('cc.utils')

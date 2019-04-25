@@ -35,18 +35,7 @@ ac_content_async = os.environ.get('AC_CONTENT_ASYNC', None)
 
 
 @celery.task()
-def test_task():
-    '''
-    for testing logging only
-    '''
-    logger.info('[celery] run test_task')
-
-
-@celery.task()
 def delete_main_task(data: dict):
-    '''
-    for dev use
-    '''
     logger.debug(
         f'run delete_main_task(), down stream records will also be deleted...')
     tmd = TaskMain.query.filter_by(**data).first()
@@ -56,19 +45,10 @@ def delete_main_task(data: dict):
     logger.debug('done delete_main_task()')
 
 
-@celery.task(bind=True)
-def upsert_main_task(task, data: dict):
-    '''
-    upsert doc in TaskMain, TaskService and TaskNoService
-    '''
+@celery.task()
+def upsert_main_task(data: dict):
 
-    logger.debug(
-        f"url_hash {data['url_hash']}, task.request.id {task.request.id}")
-
-    print(
-        f"url_hash {data['url_hash']}, task.request.id {task.request.id}")
-
-    logger.debug(f'data: {data}')
+    logger.debug(f'org_data: {data}')
     task_required = [
         'url_hash',
         'url',
@@ -97,11 +77,10 @@ def upsert_main_task(task, data: dict):
         'inform_ac_status': None
     }
     data.update(udata)
+    logger.debug(f'new_data: {data}, after append to udata.')
     tm = TaskMain()
     tm.upsert(q, data)
 
-    # tm = tm.select(q)
-    logger.debug(f'tm.id {tm.id}')
     if data.get('partner_id', None):
         udata = {
             'task_main_id': tm.id,  # for insert use
@@ -127,7 +106,7 @@ def upsert_main_task(task, data: dict):
         tns = TaskNoService()
         tns.upsert(q, task_data)
 
-    logger.debug('upsert successful')
+    logger.debug(f"url_hash: {data['url_hash']} that to upsert was finished.")
 
 
 @celery.task()
@@ -842,14 +821,14 @@ def bypass_crawler(url_hash: str, status: str='done'):
 
 @celery.task()
 def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
-    '''
+    """
     query the hanging task (status = doing) from TaskMain() with _mtime at least a hour before now
 
     status = doing
     _mtime < now - 1 hour
 
     Caution: do not use sql syntax to update status 'doing' back to 'pending'
-    '''
+    """
     # q = {
     #     'status': 'doing',
     # }

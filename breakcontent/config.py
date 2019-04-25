@@ -7,9 +7,6 @@ DEBUG = os.environ.get('DEBUG', False)
 CONTAINER_TAG = os.environ.get('CONTAINER_TAG', '')
 
 OUTBOUND_PROXY = None  # for both http/https e.g.'http://127.0.0.1:8080'
-
-# ALEMBIC_DATABASE_URI = 'sqlite:///:memory:'
-# SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', 10))

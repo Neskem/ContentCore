@@ -6,7 +6,7 @@ WORKDIR /usr/src/app
 COPY requirements.txt /usr/src/app/
 RUN \
     pip install -r requirements.txt && \
-    pip install --upgrade google-cloud-logging && \
+    # pip install --upgrade google-cloud-logging && \
     mkdir -p /var/log/contentcore/ && \
     echo Done
 

@@ -3,44 +3,22 @@ import datetime
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import func, Index, Column, ForeignKey
 from sqlalchemy import Integer, Boolean, Enum, DateTime, String, Text
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship
 
 import logging
-# failed to make root logger function normally
 logger = logging.getLogger('cc')
-# logger = logging.getLogger('cc.models')
 
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
-'''
-ref
-* cascade delete
-https://stackoverflow.com/questions/5033547/sqlalchemy-cascade-delete
-* cascade
-https://docs.sqlalchemy.org/en/latest/orm/cascades.html
-'''
 
 
 class Model(db.Model):
-    '''
-    some common instance function that will be used by all model
-
-    use upsert or update w/ care, they have different behavior
-
-    - upsert, try insert first if failed then update (don't forget about the foreign key!)
-    - update, update immediately
-
-
-    '''
 
     __abstract__ = True
 
     def upsert(self, query: dict=None, data: dict=None):
-        '''
-        inspired by Eric's save() function in MongoEngine Models
-        '''
         if not query:
+            # don't using in this project
             query = dict(id=self.id)
 
         # update self attr by data
@@ -148,9 +126,6 @@ class Model(db.Model):
 
     # @classmethod
     def select(self, query: dict, order_by: 'column name'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
-        '''
-        return a table record object
-        '''
         retry = 0
         while 1:
             try:
@@ -166,8 +141,7 @@ class Model(db.Model):
                 else:
                     doc = self.__class__.query.filter_by(**query).first()
                     if doc:
-                        logger.debug(f'doc {doc}')
-                        logger.debug('query a record successful')
+                        logger.debug(f'query {query} on {self.__tablename__} found successfully')
                         return doc
                     else:
                         logger.warning(
@@ -234,7 +208,7 @@ class TaskMain(Model):
 
     def __init__(self, *args, **kwargs):
         super(TaskMain, self).__init__(*args, **kwargs)
-        # do custom stuff
+        # wasn't used, but EX: tm = TaskMain(bt_key) for inserting dynamic.
 
     def __repr__(self):
         return f'<TaskMain(id={self.id}, url_hash={self.url_hash}, url={self.url}, request_id={self.request_id})>'

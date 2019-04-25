@@ -32,18 +32,6 @@ import base64
 
 import logging
 logger = logging.getLogger('cc')
-# logger = logging.getLogger('cc.utils')
-# logger = logging.getLogger('root')
-
-# from breakcontent import logger
-
-
-def bp_test_logger():
-    logger.debug('run bp_test_logger()...')
-    logger.info('run bp_test_logger()...')
-    logger.error('run bp_test_logger()...')
-    logger.critical('run bp_test_logger()...')
-
 
 class Secret():
 

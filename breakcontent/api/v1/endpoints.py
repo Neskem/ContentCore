@@ -8,8 +8,6 @@ import datetime
 from sqlalchemy.orm import joinedload, Load, load_only
 
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
-from breakcontent.utils import db_session_insert, db_session_update, db_session_query, parse_domain_info, bp_test_logger
-
 
 bp = Blueprint('endpoints', __name__)
 
@@ -49,15 +47,12 @@ def init_task():
 
     current_app.logger.debug(f'request.json {request.json}')
     request_id = request.headers.get("X-REQUEST-ID", None)
-    current_app.logger.debug(f'request_id {request_id}')
-
     data = request.json
 
     required = [
         'url',
         'url_hash',
         'priority',
-        # 'domain'
     ]
 
     optional = [
@@ -310,31 +305,6 @@ def get_pd(partner_id, domain):
     return jsonify(res), 200
 
 # ===== Below are for debug use =====
-
-
-@bp.route('/test', methods=['GET'])
-@headers({'Cache-Control': 's-maxage=0, max-age=0'})
-@cross_origin()
-def test():
-    '''
-    <purpose> test endpoint triggered logging
-
-    curl -v -X POST 'http://localhost:80/v1/test' -H 'Content-Type: application/json'
-
-    '''
-    res = {'msg': '', 'status': False}
-
-    from breakcontent.tasks import test_task
-    test_task.delay()
-
-    current_app.logger.debug('run bp_test_logger()...')
-    bp_test_logger()
-
-    res.update({
-        'msg': 'ok',
-        'status': True
-    })
-    return jsonify(res), 200
 
 
 @bp.route('/error/<etype>', methods=['GET'])

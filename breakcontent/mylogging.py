@@ -71,29 +71,13 @@ MY_LOGGINGS = {
     },
     "root": {
         'level': 'DEBUG',  # change to higher level when switching to prd
-        # 'handlers': ['console', 'file', 'cloud']
         'handlers': ['console', 'file']
     },
     "loggers": {
-        "cc": {  # this is for celery logger
+        "cc": {
             "level": "DEBUG",  # change to higher level when switching to prd
             "handlers": ['console', 'file']
             # "propagate": True
-        },
-        "cc.tasks": {  # this is for celery logger
-            "level": "DEBUG",  # change to higher level when switching to prd
-            # "handlers": ['console', 'file']
-            "propagate": True
-        },
-        "cc.utils": {  # this is for celery logger
-            "level": "DEBUG",  # change to higher level when switching to prd
-            # "handlers": ['console', 'file']
-            "propagate": True
-        },
-        "cc.models": {  # this is for celery logger
-            "level": "DEBUG",  # change to higher level when switching to prd
-            # "handlers": ['console', 'file']
-            "propagate": True
         }
     },
 }

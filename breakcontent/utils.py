@@ -632,7 +632,7 @@ def check_r(r: 'response', ts: object=None):
 
 def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False, timeout: int=6) -> (object, object):
     '''
-    note: this is not a celey task function
+    note: this is not a celery task function
 
     use xpath to crawl a page
 

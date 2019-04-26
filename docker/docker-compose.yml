@@ -31,6 +31,7 @@ services:
             - redis
         volumes:
            - ..:/usr/src/app
+           - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=web
@@ -60,6 +61,7 @@ services:
             - redis
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=beat
@@ -77,6 +79,7 @@ services:
             - redis
         volumes:
            - ..:/usr/src/app
+           - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker
@@ -92,6 +95,7 @@ services:
         command: celery worker -A breakcontent.tasks -Q upsert_tm --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-upsert
@@ -107,6 +111,7 @@ services:
         command: celery worker -A breakcontent.tasks -Q prepare --loglevel=DEBUG --autoscale=50,1 -n worker-prep.%%h
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-prep
@@ -122,6 +127,7 @@ services:
         command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker-bypass.%%h
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-bypass
@@ -139,6 +145,7 @@ services:
             - redis
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-p1
@@ -156,6 +163,7 @@ services:
             - redis
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-xpcrawler
@@ -172,6 +180,7 @@ services:
             - redis
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-xpmcrawler
@@ -189,6 +198,7 @@ services:
             - redis
         volumes:
             - ..:/usr/src/app
+            - /tmp/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-aicrawler
@@ -197,28 +207,6 @@ services:
             options:
                 max-size: "50m"
         restart: always
-    # flower:
-    #     container_name: flower
-    #     image: cc
-    #     command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
-    #     # command: celery -A breakcontent.tasks flower --port=5555 --auth_provider=flower.views.auth.GithubLoginHandler --auth=.*
-    #     ports:
-    #         - "5555:5555"
-    #     volumes:
-    #        # - ..:/usr/src/app
-    #        - /var/log/contentcore:/var/log/contentcore
-    #     env_file: breakcontent.env
-    #     environment:
-    #         - CONTAINER_TAG=flower
-    #         # - FLOWER_OAUTH2_KEY=03b470c69baa3a2a67e6
-    #         # - FLOWER_OAUTH2_SECRET=c75bb1795e31dededcdd1d2e085e0fa970d174a5
-    #         # - FLOWER_OAUTH2_REDIRECT_URI=http://192.168.18.111:5555/login
-    #     logging:
-    #         driver: "json-file"
-    #         options:
-    #             max-size: "50m"
-    #     restart: always
-
     # hub:
     #     container_name: hub
     #     image: selenium/hub:3.13.0-argon
@@ -241,7 +229,7 @@ services:
 
     #         #volumes:
     #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
-
-volumes:
-    pgdata:
-        external: true
+#
+#volumes:
+#    pgdata:
+#        external: true

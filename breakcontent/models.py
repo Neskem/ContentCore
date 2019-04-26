@@ -49,7 +49,7 @@ class Model(db.Model):
                         if ret and getattr(ret, 'to_dict', None):
                             for k, v in ret.to_dict().items():
                                 setattr(self, k, v)
-                        logger.debug(f'insert {self.__tablename__} successful')
+                        logger.debug(f'insert {query} in {self.__tablename__} table successfully.')
                     else:
                         self.update(query, data)
                 if 0:  # deprecated
@@ -69,11 +69,8 @@ class Model(db.Model):
                     raise
             except IntegrityError as e:
                 logger.error(e)
-                # logger.debug(
-                # f'insert failed, start updating {self.__tablename__}')
                 db.session.rollback()
                 # self.update(query, data)
-                # logger.debug('upsert successful')
                 break
 
     def commit(self, query: dict=None, data: dict=None):
@@ -121,7 +118,6 @@ class Model(db.Model):
                     logger.error(f'{e}: retry {retry}')
                     logger.debug('usually this should not happen')
                     raise
-                    # break
                 retry += 1
 
     # @classmethod

@@ -111,86 +111,55 @@ def upsert_main_task(data: dict):
 
 @celery.task()
 def create_tasks(priority: str, limit: int=4000, asc: bool=True):
-    '''
-    update status (pending > doing) and generate tasks
-    '''
-    logger.debug(f"run create_tasks() on priority {priority}")
-    # with db.session.no_autoflush:
-
     q = dict(priority=priority, status='pending')
     tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=asc,
                             limit=limit)
-
-    logger.debug(f'priority {priority}, len {len(tml)}')
     if len(tml) == 0:
-        logger.debug(f'no result, quit')
         return
 
     for tm in tml:
         request_id = tm.request_id
         url_hash = tm.url_hash
-        logger.debug(f'sent task for url_hash {url_hash}')
+        logger.debug(f'url_hash {url_hash}, in task list')
 
         if tm.task_service and tm.partner_id:
-            logger.debug(
-                f'sent task for tm.task_service {tm.task_service} with priority {priority}')
             data = tm.task_service.to_dict()
             data['priority'] = int(priority)
             data['request_id'] = request_id
             if int(priority) == 1:
                 logger.debug(
-                    f'url_hash {url_hash} sent to high_speed_p1.delay()')
+                    f'url_hash {url_hash}, sent to high_speed_p1.delay()')
                 high_speed_p1.delay(data)
-                # return
             else:
                 prepare_task.delay(data)
-
         elif tm.task_noservice and not tm.partner_id:
             logger.debug(
-                f'sent task for tm.task_noservice {tm.task_noservice}')
+                f'url_hash {url_hash}, sent task for tm.task_noservice {tm.task_noservice}')
             data = tm.task_noservice.to_dict()
             data['priority'] = int(priority)
             data['request_id'] = request_id
             prepare_task.delay(data)
-
         else:
             # this might happen if you use sql to change doing back to pending
             # plz use reset_doing_tasks() instead
             bypass_crawler.delay(url_hash)
 
-    logger.debug(f'done sending {len(tml)} tasks to broker')
-
 
 @celery.task()
 def high_speed_p1(task: dict):
-    '''
-    1 task, 1 queue, 1 worker exclusively for priority=1 tasks
-
-    that's it, this function will do all the rest
-    '''
-    logger.debug(f'task {task} in high_speed_p1()')
+    logger.debug(f'url_hash {url_hash}, in high_speed_p1()')
     prepare_task(task)
 
 
 @celery.task()
 def prepare_task(task: dict):
-    '''
-    fetch settings from partner system through api
-
-    argument:
-    task: could be a TaskService or TaskNoService dict
-
-    '''
-    # logger.debug(f'task {task}')
-    logger.debug(f'task {task} in prepare_task()')
     priority = task['priority'] if task.get('priority', None) else None
     url_hash = task['url_hash']
     url = task['url']
     request_id = task['request_id']
-    logger.debug(
-        f'url_hash {url_hash}, run prepare_task() with priority {priority}')
     url = task['url']
     domain = task['domain']
+    logger.debug(f'url_hash {url_hash}, with priority {priority}, task {task} in prepare_task()')
 
     q = dict(url_hash=task['url_hash'])
     data = {
@@ -207,7 +176,6 @@ def prepare_task(task: dict):
             f'url_hash {url_hash}, domain {domain}, partner_id {partner_id}')
 
         domain_info = get_domain_info(domain, partner_id)
-        # q = dict(id=task['id'])
         ts = TaskService()
 
         if domain_info:
@@ -237,7 +205,7 @@ def prepare_task(task: dict):
                         # mp_url.replace(r'\?(page|p)=\d+', '')
                         mp_url = re.sub(r'\?(page|p)=\d+', '', url)
                 logger.debug(
-                    f'url_hash {url_hash}, url {url}, mp_url {mp_url}')
+                    f'url_hash {url_hash}, multipage: url {url}, mp_url {mp_url}')
 
                 if mp_url != url and ac_content_multipage_api:
                     headers = {'Content-Type': "application/json"}
@@ -251,20 +219,17 @@ def prepare_task(task: dict):
                         ac_content_multipage_api, 'post', data)
 
                     if resp_data:
-                        logger.debug(f'resp_data {resp_data}')
-                        # q = dict(url_hash=url_hash)
+                        logger.debug(f'url_hash {url_hash}, mp_url != url: resp_data {resp_data}, inform AC successful')
                         tm = TaskMain()
                         doc = tm.select(q)
                         tm.delete(doc)
-                        logger.debug(
-                            f'url_hash {url_hash}, inform AC successful')
+                        logger.debug(f'url_hash {url_hash}, mp_url != url: after delete tm.')
                     else:
-                        logger.error(f'url_hash {url_hash}, inform AC failed')
+                        logger.error(f'url_hash {url_hash}, mp_url != url: resp_data {resp_data}, inform AC failed')
 
                 else:
-                    logger.info('mp_url = url')
                     logger.debug(
-                        f"task['id'] {task['id']}, partner_id {partner_id}, domain {domain}, domain_info {domain_info}")
+                        f"url_hash {url_hash}, mp_url = url: partner_id {partner_id}, domain {domain}")
                     if priority and int(priority) == 1:
                         xpath_multi_crawler(
                             url_hash, url, partner_id, domain, domain_info)
@@ -288,12 +253,12 @@ def prepare_task(task: dict):
 
                 if priority and int(priority) == 1:
                     logger.debug(
-                        f'url_hash {url_hash} run xpath_single_crawler() in high_speed_p1 task func')
+                        f'url_hash {url_hash}, run xpath_single_crawler() in high_speed_p1 task func')
                     xpath_single_crawler(
                         url_hash, url, partner_id, domain, domain_info)
                 else:
                     logger.debug(
-                        f'url_hash {url_hash} sent task to xpath_single_crawler.delay()')
+                        f'url_hash {url_hash}, sent task to xpath_single_crawler.delay()')
                     xpath_single_crawler.delay(
                         url_hash, url, partner_id, domain, domain_info)
                 # logger.debug(
@@ -313,7 +278,6 @@ def prepare_task(task: dict):
 
     else:
         # not partner goes here
-        # q = dict(id=task['id'])
         data = {
             'status': 'doing',
             'domain': domain
@@ -333,22 +297,14 @@ def prepare_task(task: dict):
 
 @celery.task()
 def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict):
-    '''
+    """
     <purpose>
     use the domain config from Partner System to crawl through the entire page, then inform AC with request
 
     <notice>
     partner only
-
-    <arguments>
-    url_hash,
-    partner_id,
-    domain,
-    domain_info,
-
-    <return>
-    '''
-    logger.debug(f'start to crawl single-paged url on url_hash {url_hash}')
+    """
+    logger.debug(f'url_hash {url_hash}, start to crawl single-paged url.')
 
     prepare_crawler(url_hash, partner=True, xpath=True)
 
@@ -362,7 +318,7 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
             url_hash, url, partner_id, domain, domain_info)
     except requests.exceptions.ReadTimeout as e:
         logger.error(
-            f'url_hash {url_hash} site task too long to response, quit waiting!')
+            f'url_hash {url_hash}, site task too long to response, quit waiting!')
         logger.error(e)
         bypass_crawler.delay(url_hash)
         return
@@ -780,7 +736,7 @@ def ai_multi_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=
 
 @celery.task()
 def bypass_crawler(url_hash: str, status: str='done'):
-    '''
+    """
     this url need not to crawl
 
     do two things:
@@ -788,7 +744,7 @@ def bypass_crawler(url_hash: str, status: str='done'):
     2. if (1) succeed, change db TaskMain() status to done
 
     data should have keys: url_hash, url, request_id
-    '''
+    """
 
     q = dict(url_hash=url_hash)
     tm = TaskMain().select(q)

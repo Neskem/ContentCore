@@ -6,7 +6,7 @@ DEBUG = os.environ.get('DEBUG', False)
 
 CONTAINER_TAG = os.environ.get('CONTAINER_TAG', '')
 
-OUTBOUND_PROXY = None  # for both http/https e.g.'http://127.0.0.1:8080'
+OUTBOUND_PROXY = None
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', 10))
@@ -31,69 +31,51 @@ CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
 CELERY_TIMEZONE = os.environ.get('CELERY_TIMEZONE')
 CELERY_TASK_RESULT_EXPIRES = os.environ.get('CELERY_TASK_RESULT_EXPIRES', 3600)
 CELERY_ENABLE_UTC = True
-# CELERY_ACCEPT_CONTENT = os.environ.get('CELERY_ACCEPT_CONTENT')
-# copy the syntax from Eric
 CELERY_ACCEPT_CONTENT = (os.environ.get(
     'CELERY_ACCEPT_CONTENT') or ' '.join(['msgpack'])).split()
 SINGLE_BEAT_REDIS_SERVER = os.environ.get('SINGLE_BEAT_REDIS_SERVER')
 
 ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')
 
-# defines how tasks are sent into broker, which task to which queue
 CELERY_ROUTES = {
-    # upsert_tm
     'breakcontent.tasks.upsert_main_task': {'queue': 'upsert_tm'},
-    # prepare_task
     'breakcontent.tasks.prepare_task': {'queue': 'prepare'},
-    # mimic_aujs_request_ac
     'breakcontent.tasks.mimic_aujs_request_ac': {'queue': 'bypass_crawler'},
-    # bypass_crawler
     'breakcontent.tasks.bypass_crawler': {'queue': 'bypass_crawler'},
-    # aicrawler
     'breakcontent.tasks.ai_single_crawler': {'queue': 'aicrawler'},
     'breakcontent.tasks.ai_multi_crawler': {'queue': 'aicrawler'},
-    # xpcrawler
     'breakcontent.tasks.xpath_single_crawler': {'queue': 'xpcrawler'},
-    # cpmcrawler
     'breakcontent.tasks.xpath_multi_crawler': {'queue': 'xpmcrawler'},
-    # p1 task
     'breakcontent.tasks.high_speed_p1': {'queue': 'priority_1'}
-    # # others will go to 'default' queue
 }
 
-# priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap), 6(main update/day)
-# task quantity: 1 = 3  > 6 > 2 > 5
+# priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap)
 CELERYBEAT_SCHEDULE = {
-    'create_tasks_1': {  # Partner system to sync/remove task
+    'create_tasks_1': {
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
-        'args': ([1]),
-        # 'options': {'queue': 'postman'}
+        'args': ([1])
     },
-    'create_tasks_2': {  # Au.js trigger url of partner
+    'create_tasks_2': {
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
-        'args': ([2, 4000]),
-        # 'options': {'queue': 'postman'}
+        'args': ([2, 4000])
     },
-    'create_tasks_3': {  # Au.js trigger url but was not partner
+    'create_tasks_3': {
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
-        'args': ([3]),
-        # 'options': {'queue': 'postman'}
+        'args': ([3])
     },
-    'create_tasks_4': {  # Scan index page (ex: conn.tw, medium.com)
+    'create_tasks_4': {
         # todo: selenium
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
-        'args': ([4]),
-        # 'options': {'queue': 'postman'}
+        'args': ([4])
     },
-    'create_tasks_5': {  # Sitemap
+    'create_tasks_5': {
         'task': 'breakcontent.tasks.create_tasks',
         'schedule': crontab(minute='*'),
-        'args': ([5]),
-        # 'options': {'queue': 'postman'}
+        'args': ([5])
     },
     # 'create_tasks_6': {  # Update task (including daily and monthly)
     #     'task': 'breakcontent.tasks.create_tasks',
@@ -104,13 +86,7 @@ CELERYBEAT_SCHEDULE = {
     'reset_doing_task': {  # Update task (including daily and monthly)
         'task': 'breakcontent.tasks.reset_doing_tasks',
         'schedule': crontab(minute=0, hour='*'),  # trigger at midnight
-        'args': ([1]),
-        # 'args': ([1,20000]),
-    },
-    'patch_mimic_aujs': {
-        'task': 'breakcontent.tasks.patch_mimic_aujs',
-        'schedule': crontab(minute='*/2'),
-        'args': ([10000]),
+        'args': ([1])
     },
     'stats_cc': {
         'task': 'breakcontent.tasks.stats_cc',

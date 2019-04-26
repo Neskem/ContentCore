@@ -2,6 +2,8 @@
 
 dropdb=$1
 echo "dropdb param: $dropdb"
+mkdir -p /tmp/contentcore
+
 docker-compose down -v
 # docker-compose build
 if [ "$dropdb" == "drop" ]; then

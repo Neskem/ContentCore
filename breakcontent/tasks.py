@@ -780,13 +780,8 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
 
     Caution: do not use sql syntax to update status 'doing' back to 'pending'
     """
-    # q = {
-    #     'status': 'doing',
-    # }
     hours_before_now = datetime.utcnow() - timedelta(hours=hour)
     logger.debug(f'hours_before_now {hours_before_now}')
-    # tml = TaskMain.query.options(load_only('url_hash')).filter_by(
-    #     **q).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime)).order_by(TaskMain._mtime.asc()).limit(limit).all()
 
     if priority and priority != 0:
         tml = TaskMain.query.options(load_only('url_hash')).filter_by(priority=priority).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(
@@ -811,133 +806,6 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
             data['partner_id'] = tm.partner_id
         upsert_main_task.delay(data)
         logger.debug(f'url_hash {tm.url_hash}, upsert_main_task.delay() sent')
-
-
-@celery.task()
-def patch_mimic_aujs(limit: int=10000, file: str=None, itype: str='url_hash'):
-    '''
-    [queue name] default
-
-    extract url_hash(page_id) from csv file provided by Lisa and use them to query TaskMain() table to get url, partner_id and generator and request AC with those payloads.
-
-    [example]
-    tasks.patch_mimic_aujs.delay(10000)
-
-    [old example]
-    file: /usr/src/app/tmp/test.csv
-
-    tasks.patch_mimic_aujs.delay('/usr/src/app/tmp/test.csv')
-
-    tasks.patch_mimic_aujs.delay(
-        '/usr/src/app/tmp/url_pageid_2019-03-05T00~2019-03-07T00_v2.csv', 'url')
-
-
-
-    [case 1: no generator]
-    http://localhost:80/v1/content/async?service\_name=Zi_C&&partner_id=9ZT4W18&url=http://tomchun.tw/tomchun/category/3c%e8%b3%87%e8%a8%8a/%e9%9b%bb%e8%85%a6/%e7%a1%ac%e7%a2%9f/page/3/
-
-    [case 2: w/ generator]
-    curl -X GET "http://localhost:80/v1/content/async?&partner_id=F7YWH18&url=https://yii.tw/blog/post/44832748&generator=WordPress 5.0.1"
-
-    total: ~1150000
-    '''
-
-    if itype not in ['url_hash', 'url']:
-        logger.error(f'patch_mimic_aujs() itype not correct: {itype}')
-        return
-
-    if not ac_content_async:
-        logger.debug(f'ac_content_async api url not set: {ac_content_async}')
-        return
-    dedup = {}
-
-    total_count = 0
-    map_count = 0
-    ac_yes_count = 0
-    if file:
-        with open(file) as f:
-            for i, line in enumerate(f):
-                total_count += 1
-                candit = line.split()[0]
-                logger.debug(f'{i}|||{candit}|||')
-                if candit not in dedup:
-                    dedup[candit] = 1
-                    if itype == 'url_hash':
-                        q = dict(url_hash=candit)
-                    elif itype == 'url':
-                        q = dict(url=candit)
-                    tm = TaskMain().select(q)
-                    if not tm or not tm.partner_id:
-                        logger.debug(
-                            f'no record for this {itype} {candit}, skip.')
-                        continue
-
-                    map_count += 1
-                    if not celery.conf['MIMIC_AUJS']:
-                        logger.info(
-                            f'patch_mimic_aujs() no need to inform AC, total_count {total_count}, map_count {map_count}, ac_yes_count {ac_yes_count}')
-                        continue
-
-                    if tm.generator:
-                        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={tm.partner_id}&url={tm.url}&generator={tm.generator}'
-                    else:
-                        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={tm.partner_id}&url={tm.url}'
-
-                    resp_data = request_api(ac_content_async_cat, 'GET')
-                    if resp_data:
-                        ac_yes_count += 1
-                        logger.info(
-                            f'patch_mimic_aujs() inform AC successful, total_count {total_count}, map_count {map_count}, ac_yes_count {ac_yes_count}')
-                    else:
-                        logger.error(f'patch_mimic_aujs() imform AC failed')
-                else:
-                    pass  # skip this url_hash
-        logger.info(
-            f'patch_mimic_aujs(): total_count {total_count}, map_count {map_count}, ac_yes_count {ac_yes_count}')
-
-    else:
-        if not celery.conf['MIMIC_AUJS']:
-            logger.info(
-                f'patch_mimic_aujs() no need to inform AC, total_count {total_count}')
-            return
-
-        # not from file
-        tml = TaskMain.query.options(load_only('url_hash', 'url', 'partner_id', 'generator')).filter(
-            TaskMain.partner_id != None, TaskMain.status == 'failed', TaskMain.done_time == None).limit(limit).all()
-
-        if not len(tml):
-            logger.debug(f'patch_mimic_aujs() no record found!')
-        else:
-            for tm in tml:
-                total_count += 1
-                mimic_aujs_request_ac.delay(
-                    tm.url_hash, tm.url, tm.partner_id, tm.generator)
-                logger.debug(
-                    f'patch_mimic_aujs() url_hash {tm.url_hash} mimic_aujs_request_ac.delay() task sent. total_count {total_count}')
-
-
-@celery.task()
-def mimic_aujs_request_ac(url_hash: str, url: str, partner_id: str, generator: str):
-    '''
-    [queue name]: bypass_crawler
-    '''
-    tm = TaskMain()
-    q = dict(url_hash=url_hash)
-
-    if generator and generator != '':
-        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={partner_id}&url={url}&generator={generator}'
-    else:
-        ac_content_async_cat = f'{ac_content_async}?service_name=Zi_C&partner_id={partner_id}&url={url}'
-
-    resp_data = request_api(ac_content_async_cat, 'GET')
-    if resp_data:
-        tm.update(q, dict(status='debug'))
-        logger.info(
-            f'mimic_aujs_request_ac() url_hash {url_hash} inform AC successful')
-    else:
-        tm.update(q, dict(status='failed'))
-        logger.error(
-            f'mimic_aujs_request_ac() url_hash {url_hash} inform AC failed')
 
 
 @celery.task()

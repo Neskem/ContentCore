@@ -5,7 +5,7 @@ echo "dropdb param: $dropdb"
 
 mkdir -p /tmp/contentcore
 docker-compose down -v
-# docker-compose build
+# docker-compose build ## When use local cc image, and need to execute this command.
 if [ "$dropdb" == "drop" ]; then
     docker volume rm pgdata
     # create external volumn

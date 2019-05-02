@@ -8,7 +8,7 @@ services:
         restart: always
     nginx:
         container_name: nginx
-        image: nginx:1.12
+        image: nginx:1.10.3-alpine
         depends_on:
             - web
             - worker
@@ -20,7 +20,7 @@ services:
         restart: always
     psql:
         container_name: psql
-        image: postgres
+        image: postgres:9.5
         volumes:
         - pgdata:/var/lib/postgresql/data
         ports:
@@ -31,8 +31,8 @@ services:
         build:
             context: ../
             dockerfile: Dockerfile
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         # command: uwsgi --ini uwsgi.ini
         command: python manage.py runserver --debug
         depends_on:
@@ -54,7 +54,6 @@ services:
                 max-size: "50m"
         restart: always
         healthcheck:
-            # test: ["CMD", "curl", "-f", "-X", "GET", "http://localhost:8100/v1/create_tasks/1"]
             test: ["CMD-SHELL", "curl -f http://localhost:8100/v1/create_tasks/1 && echo 'OK'"]
             interval: 30m30s
             timeout: 10s
@@ -62,8 +61,8 @@ services:
             start_period: 40s
     beat:
         container_name: beat
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: single-beat celery beat -A breakcontent.tasks -l info
         depends_on:
             - redis
@@ -80,8 +79,8 @@ services:
         restart: always
     worker:
         container_name: worker
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
         depends_on:
             - redis
@@ -98,8 +97,8 @@ services:
         restart: always
     worker-upsert:
         container_name: worker-upsert
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks -Q upsert_tm --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
         volumes:
             - ..:/usr/src/app
@@ -114,8 +113,8 @@ services:
         restart: always
     worker-prep:
         container_name: worker-prep
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks -Q prepare --loglevel=DEBUG --autoscale=50,1 -n worker-prep.%%h
         volumes:
             - ..:/usr/src/app
@@ -130,8 +129,8 @@ services:
         restart: always
     worker-bypass:
         container_name: worker-bypass
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker-bypass.%%h
         volumes:
             - ..:/usr/src/app
@@ -146,8 +145,8 @@ services:
         restart: always
     worker-p1:
         container_name: worker-p1
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=20,2 -n worker-p1.%%h -E -P gevent --purge
         depends_on:
             - redis
@@ -164,8 +163,8 @@ services:
         restart: always
     worker-xpcrawler:
         container_name: worker-xpcrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=100,4 -n worker-xpcrawler.%%h -E -P gevent
         depends_on:
             - redis
@@ -182,7 +181,8 @@ services:
         restart: always
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
-        image: cc
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=100,4 -n worker-xpmcrawler.%%h -E -P gevent
         depends_on:
             - redis
@@ -199,8 +199,8 @@ services:
         restart: always
     worker-aicrawler:
         container_name: worker-aicrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        # image: cc
+        image: breaktimeinc/breaktime.contentcore:develop
         command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,2 -n worker-aicrawler.%%h -E -P gevent
         depends_on:
             - redis

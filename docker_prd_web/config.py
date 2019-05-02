@@ -110,11 +110,6 @@ CELERYBEAT_SCHEDULE = {
         'args': ([1]),
         # 'args': ([1,20000]),
     },
-    'patch_mimic_aujs': {
-        'task': 'breakcontent.tasks.patch_mimic_aujs',
-        'schedule': crontab(minute='*/2'),
-        'args': ([10000]),
-    },
     'stats_cc': {
         'task': 'breakcontent.tasks.stats_cc',
         'schedule': crontab(minute=0, hour=7),

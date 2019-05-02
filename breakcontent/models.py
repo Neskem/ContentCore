@@ -100,23 +100,20 @@ class Model(db.Model):
         retry = 0
         while 1:
             try:
-                logger.debug(f'data {data}')
                 self.__class__.query.filter_by(**query).update(data)
                 db.session.commit()
                 ret = self.__class__.query.filter_by(**query).first()
                 if ret and getattr(ret, 'to_dict', None):
                     for k, v in ret.to_dict().items():
                         setattr(self, k, v)
-                    logger.debug(f'update {self.__tablename__} successful')
+                    # logger.debug(f'update {self.__tablename__} successful')
                 else:
                     logger.debug(f'update {self.__tablename__} failed')
                 break
             except OperationalError as e:
-                logger.error(e)
                 db.session.rollback()
                 if retry > 5:
-                    logger.error(f'{e}: retry {retry}')
-                    logger.debug('usually this should not happen')
+                    logger.error(f'update(): query: {query}, OperationalError: {e}, retry: {retry}')
                     raise
                 retry += 1
 
@@ -132,16 +129,13 @@ class Model(db.Model):
                     else:
                         docs = self.__class__.query.filter_by(
                             **query).order_by(order_by.desc()).limit(limit).all()
-                    logger.debug('query many record successful')
                     return docs
                 else:
                     doc = self.__class__.query.filter_by(**query).first()
                     if doc:
-                        logger.debug(f'query {query} on {self.__tablename__} found successfully')
                         return doc
                     else:
-                        logger.warning(
-                            f'query {query} on {self.__tablename__} found nothing!')
+                        # logger.warning(f'query {query} on {self.__tablename__} found nothing!')
                         break
 
             except OperationalError as e:

@@ -147,7 +147,7 @@ def create_tasks(priority: str, limit: int=4000, asc: bool=True):
 
 @celery.task()
 def high_speed_p1(task: dict):
-    logger.debug(f'url_hash {url_hash}, in high_speed_p1()')
+    logger.debug(f"url_hash {task['url_hash']}, in high_speed_p1()")
     prepare_task(task)
 
 
@@ -182,6 +182,7 @@ def prepare_task(task: dict):
             if domain_info.get('page', None) and domain_info['page'] != '':
 
                 if not celery.conf['RUN_XPATH_MULTI_CRAWLER']:
+                    logger.debug(f"url_hash {url_hash}, multipage: RUN_XPATH_MULTI_CRAWLER: {celery.conf['RUN_XPATH_MULTI_CRAWLER']}")
                     tm = TaskMain()
                     tm.update(q, dict(status='done'))
                     return
@@ -204,8 +205,7 @@ def prepare_task(task: dict):
                     else:
                         # mp_url.replace(r'\?(page|p)=\d+', '')
                         mp_url = re.sub(r'\?(page|p)=\d+', '', url)
-                logger.debug(
-                    f'url_hash {url_hash}, multipage: url {url}, mp_url {mp_url}')
+                logger.debug(f'url_hash {url_hash}, multipage: url {url}, mp_url {mp_url}')
 
                 if mp_url != url and ac_content_multipage_api:
                     headers = {'Content-Type': "application/json"}
@@ -319,11 +319,11 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
     except requests.exceptions.ReadTimeout as e:
         logger.error(
             f'url_hash {url_hash}, site task too long to response, quit waiting!')
-        logger.error(e)
+        logger.error(f'url_hash {url_hash}, task ReadTimeout exception: {e}')
         bypass_crawler.delay(url_hash)
         return
     except requests.exceptions.ConnectionError as e:
-        logger.error(e)
+        logger.error(f'url_hash {url_hash}, task ConnectionError exception: {e}')
         bypass_crawler.delay(url_hash)
         return
 
@@ -333,9 +333,8 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
         logger.debug(
             f'url_hash {url_hash}, inform_ac.skip_crawler {inform_ac.skip_crawler} no need to update WebpagesPartnerXpath() table')
     else:
-
         # check crawler status code, if 406/426 retry 5 time at most
-        # retry stretagy: seny task into broker again
+        # retry stretagy: send task into broker again
         retry = ts.retry_xpath
         status_code = ts.status_code
         candidate = [406, 426]
@@ -349,12 +348,10 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
             time.sleep(0.5)
             if int(priority) == 1:
                 logger.debug(
-                    f'url_hash {url_hash} run xpath_single_crawler() in high_speed_p1 task func')
+                    f'url_hash {url_hash}, run xpath_single_crawler() in high_speed_p1 task func')
                 xpath_single_crawler(
                     url_hash, url, partner_id, domain, domain_info)
             else:
-                # xpath_single_crawler.delay(
-                    # url_hash, partner_id, domain, domain_info)
                 xpath_single_crawler(
                     url_hash, url, partner_id, domain, domain_info)
             return  # exit this func
@@ -378,8 +375,7 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
     tm.update(q, dict(status='ready', zi_sync=inform_ac.zi_sync,
                       inform_ac_status=inform_ac.status))
 
-    logger.debug(
-        f'url_hash {url_hash} status {ts.status_xpath}')
+    logger.debug(f'url_hash {url_hash}, status {ts.status_xpath}')
 
     if not ac_content_status_api:
         return
@@ -524,7 +520,6 @@ def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, d
         cat_wpx.multi_page_urls = sorted(multi_page_urls)
         cat_wpx.task_service_id = ts.id
         cat_wpx_data = cat_wpx.to_dict()
-        logger.debug(f'cat_wpx_data {cat_wpx_data}')
         wpx.update(q, cat_wpx_data)
 
     ts.update(q, dict(status_xpath='ready'))

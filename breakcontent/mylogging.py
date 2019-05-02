@@ -1,5 +1,4 @@
 from breakcontent.config import *
-# from breakcontent.config import CONTAINER_TAG
 import logging.config
 import logging
 import uuid

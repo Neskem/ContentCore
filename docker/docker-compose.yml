@@ -18,6 +18,14 @@ services:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf
             - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
         restart: always
+    psql:
+        container_name: psql
+        image: postgres
+        volumes:
+        - pgdata:/var/lib/postgresql/data
+        ports:
+        - "5432:5432"
+        restart: always
     web:
         container_name: web
         build:
@@ -229,7 +237,7 @@ services:
 
     #         #volumes:
     #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
-#
-#volumes:
-#    pgdata:
-#        external: true
+
+volumes:
+    pgdata:
+        external: true

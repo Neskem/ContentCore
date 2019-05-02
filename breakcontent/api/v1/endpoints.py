@@ -16,35 +16,7 @@ bp = Blueprint('endpoints', __name__)
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 @cross_origin()
 def init_task():
-    '''
-    # insert singlepage partner
-    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
-
-    # only url_hash changed
-    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.kocpc.com.tw/archives/693", "url_hash": "aaaa2aaef4856b23d7d8016e4e77409001d999fa", "priority": 1, "partner_id": "3WYST18", "generator": "WordPress2", "notexpected": "blablabla"}'
-
-    # insert multipage partner
-    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "bbbb619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932?page=1", "url_hash": "5532f49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
-
-    # insert multipage parent page
-    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "eeee619f-576c-4473-add2-e53d08b74ac7", "url": "https://www.top1health.com/Article/55932", "url_hash": "eeeef49157b55651c8ab313cd91e5d93eee1ce75", "priority": 2, "partner_id": "VM22718", "generator": "WordPress2", "notexpected": "deadline is 1/31"}'
-
-    # insert not partner
-    curl -v -X POST 'http://localhost:80/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "ffff619f-576c-4473-add2-e53d08b74ac7", "url": "https://news.sina.com.tw/article/20190215/30068464.html?fbclid=IwAR25e4TpKc9rTsKN2tUt-4PQZoYJCmoBgfj7xmWr22j2bBGuTkQyQ5oQVEo", "url_hash": "f19535b1374ef771502d8fe488fbc57e77d2c96d", "priority": 3, "domain": "news.sina.com.tw", "generator": ""}'
-
-    if {"500": "blablabla"} exists return 500
-
-    # Rule check should be False
-    curl -v -X POST 'http://localhost:8100/v1/task' -H 'Content-Type: application/json' -d '{"request_id": "aaaa619f-576c-4473-add2-e53d08b74ac7", "url": "https://ez3c.tw/tag/powercfg%20batteryreport-1", "url_hash": "9039f44873d8d2e0fef8c53a8f58fe5244be8c07", "priority": 2, "partner_id": "PPY6H18", "generator": "", "notexpected": "blablabla"}'
-
-    # 20190123 update
-    get request_id from header
-
-    '''
-
-    # current_app.logger.error(f'use current_app and sentry to log')
     res = {'msg': '', 'status': False}
-
     current_app.logger.debug(f'request.json {request.json}')
     request_id = request.headers.get("X-REQUEST-ID", None)
     data = request.json
@@ -92,13 +64,13 @@ def init_task():
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 @cross_origin()
 def delete_task():
-    '''
+    """
     # delete partner from maintask
     curl -v -X DELETE 'http://localhost:80/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa"}'
 
     # delete nopartner from maintask
     curl -v -X DELETE 'http://localhost:80/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "test2"}'
-    '''
+    """
 
     res = {'msg': '', 'status': False}
     data = request.json

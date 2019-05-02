@@ -717,7 +717,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
 
     if multipaged or priority == 5:
-        timeout = 20
+        timeout = 12
 
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
         candidate = [

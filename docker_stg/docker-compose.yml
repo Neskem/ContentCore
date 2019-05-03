@@ -1,4 +1,4 @@
-version: '3'
+version: '3.5'
 services:
     redis:
         container_name: redis
@@ -14,19 +14,21 @@ services:
             - worker
         ports:
             - "80:80"
-            # - "443:443"
         volumes:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf
             - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
         restart: always
     web:
         container_name: web
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        build:
+            context: ../
+            dockerfile: Dockerfile
+        image: breaktimeinc/breaktime.contentcore
         command: uwsgi --ini uwsgi.ini
-        # command: python wsgi.py runserver --debug
+        depends_on:
+            - redis
         volumes:
-           # - ..:/usr/src/app
+           - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -43,12 +45,13 @@ services:
         restart: always
     beat:
         container_name: beat
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
+        depends_on:
+            - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=beat
@@ -59,13 +62,12 @@ services:
         restart: always
     worker:
         container_name: worker
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
+           - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
@@ -77,12 +79,11 @@ services:
         restart: always
     worker-upsert:
         container_name: worker-upsert
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q upsert_tm --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-upsert
@@ -91,14 +92,28 @@ services:
             options:
                 max-size: "50m"
         restart: always
+    worker-prep:
+        container_name: worker-prep
+        image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q prepare --loglevel=DEBUG --autoscale=50,1 -n worker-prep.%%h
+        volumes:
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=worker-prep
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always
     worker-bypass:
         container_name: worker-bypass
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
-        command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
+        image: breaktimeinc/breaktime.contentcore
+        command: celery worker -A breakcontent.tasks -Q bypass_crawler --loglevel=DEBUG --autoscale=50,2 -n worker-bypass.%%h
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-bypass
@@ -109,14 +124,13 @@ services:
         restart: always
     worker-p1:
         container_name: worker-p1
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=20,2 -n worker-p1.%%h -E -P gevent --purge
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-p1
@@ -127,14 +141,13 @@ services:
         restart: always
     worker-xpcrawler:
         container_name: worker-xpcrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=100,4 -n worker-xpcrawler.%%h -E -P gevent
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-xpcrawler
@@ -145,13 +158,13 @@ services:
         restart: always
     worker-xpmcrawler:
         container_name: worker-xpmcrawler
-        image: cc
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=100,4 -n worker-xpmcrawler.%%h -E -P gevent
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-xpmcrawler
@@ -162,35 +175,16 @@ services:
         restart: always
     worker-aicrawler:
         container_name: worker-aicrawler
-        image: cc
-        # image: breaktimeinc/breaktime.contentcore
+        image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,2 -n worker-aicrawler.%%h -E -P gevent
         depends_on:
             - redis
         volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
+            - ..:/usr/src/app
+            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
             - CONTAINER_TAG=worker-aicrawler
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
-    flower:
-        container_name: flower
-        image: cc
-        command: celery -A breakcontent.tasks flower --port=5555 --basic_auth=cc:cc
-        # command: celery -A breakcontent.tasks flower --port=5555 --auth_provider=flower.views.auth.GithubLoginHandler --auth=.*
-        ports:
-            - "5555:5555"
-        volumes:
-           # - ..:/usr/src/app
-           - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=flower
         logging:
             driver: "json-file"
             options:

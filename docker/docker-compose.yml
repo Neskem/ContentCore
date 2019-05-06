@@ -28,9 +28,10 @@ services:
         restart: always
     web:
         container_name: web
-        build:
-            context: ../
-            dockerfile: Dockerfile
+        # if need to build image in local environment
+        # build:
+        #    context: ../
+        #    dockerfile: Dockerfile
         image: breaktimeinc/breaktime.contentcore:develop
         command: python manage.py runserver --debug
         depends_on:

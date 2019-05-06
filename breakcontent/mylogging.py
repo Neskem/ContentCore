@@ -1,20 +1,11 @@
 from breakcontent.config import *
-# from breakcontent.config import CONTAINER_TAG
 import logging.config
 import logging
 import uuid
 import flask
-import google.cloud.logging
-from google.cloud.logging.handlers import CloudLoggingHandler, setup_logging
 
 
 class RequestIdFilter(logging.Filter):
-    """
-    This is a logging filter that makes the request ID available for use in
-    the logging format. Note that we're checking if we're in a request
-    context, as we may want to log things before Flask is fully loaded.
-    """
-
     def filter(self, record):
         record.request_id = RequestIdFilter.request_id(
         ) if flask.has_request_context() else '-'
@@ -22,14 +13,6 @@ class RequestIdFilter(logging.Filter):
 
     @classmethod
     def request_id(cls):
-        """
-        Returns the current request ID or a new one if there is none
-        In order of preference:
-          * If we've already created a request ID and stored it in the flask.g context local, use that
-          * If a client has passed in the X-Request-Id header, create a new ID with that prepended
-          * Otherwise, generate a request ID and store it in flask.g.request_id
-        :return:
-        """
         if getattr(flask.g, 'request_id', None):
             return flask.g.request_id
 
@@ -83,75 +66,25 @@ MY_LOGGINGS = {
             "delay": False,
             "utc": False,
             "atTime": None
-        },
-        # "cloud": {
-        #     "class": "cloud_handler",
-        #     "level": "DEBUG",
-        # }
+        }
     },
     "root": {
         'level': 'DEBUG',  # change to higher level when switching to prd
-        # 'handlers': ['console', 'file', 'cloud']
         'handlers': ['console', 'file']
     },
     "loggers": {
-        # '': {  # root logger
-        #     'level': 'DEBUG',  # change to higher level when switching to prd
-        #     # 'handlers': ['console', 'file', 'cloud'],
-        #     'handlers': ['console', 'file']
-        # },
-        "cc": {  # this is for celery logger
+        "cc": {
             "level": "DEBUG",  # change to higher level when switching to prd
             "handlers": ['console', 'file']
             # "propagate": True
-        },
-        "cc.tasks": {  # this is for celery logger
-            "level": "DEBUG",  # change to higher level when switching to prd
-            # "handlers": ['console', 'file']
-            "propagate": True
-        },
-        "cc.utils": {  # this is for celery logger
-            "level": "DEBUG",  # change to higher level when switching to prd
-            # "handlers": ['console', 'file']
-            "propagate": True
-        },
-        "cc.models": {  # this is for celery logger
-            "level": "DEBUG",  # change to higher level when switching to prd
-            # "handlers": ['console', 'file']
-            "propagate": True
-        },
-        # "cloud_logger": {
-        #     "level": "DEBUG",
-        #     # "handlers": ['cloud']
-        #     "propagate": True
-        # }
+        }
     },
 }
-# this has to be after logging.config.dictConfig()
 
 logging.config.dictConfig(MY_LOGGINGS)
 
-# bind root logger with cloud handler
-client = google.cloud.logging.Client()
-cloud_handler = CloudLoggingHandler(client, name='cc_cloud')
-logging.getLogger('cc').addHandler(cloud_handler)
-logging.getLogger('cc').setLevel(logging.DEBUG)
+# client = google.cloud.logging.Client()
+# cloud_handler = CloudLoggingHandler(client, name='cc_cloud')
 # logger = logging.getLogger('cc')
 # logger.addHandler(cloud_handler)
-# logger.info('Hello World!')
-setup_logging(cloud_handler)  # default log_level=20 (INFO)
-logging.getLogger().setLevel(logging.DEBUG)
-# logging.error('bad news')
-
-
-'''
-
-If you attach a handler to a logger and one or more of its ancestors, it may emit the same record multiple times.
-
-* further study
-
-1. https://docs.python.org/3/library/logging.config.html#user-defined-objects
-2. https://docs.python.org/3/howto/logging-cookbook.html
-
-
-'''
+# logger.info('CC Hello World!')

@@ -30,21 +30,8 @@ import sendgrid
 from sendgrid.helpers.mail import Email, Content, Mail, Attachment, Personalization
 import base64
 
-from breakcontent import mylogging
 import logging
 logger = logging.getLogger('cc')
-# logger = logging.getLogger('cc.utils')
-# logger = logging.getLogger('root')
-
-# from breakcontent import logger
-
-
-def bp_test_logger():
-    logger.debug('run bp_test_logger()...')
-    logger.info('run bp_test_logger()...')
-    logger.error('run bp_test_logger()...')
-    logger.critical('run bp_test_logger()...')
-
 
 class Secret():
 
@@ -80,7 +67,7 @@ class InformAC():
         'zi_sync': True,
         'zi_defy': set(),
         'status': True,
-        'skip_crawler': None # Lance added 3/22
+        'skip_crawler': None
     }
 
     def __init__(self):
@@ -156,7 +143,7 @@ class InformAC():
         doc_list = UrlToContent.query.options(load_only('url_hash', 'replaced')).filter_by(**q).filter(
             UrlToContent.url_hash != self.url_hash).order_by(UrlToContent._mtime.desc()).all()
 
-        for i,doc in enumerate(doc_list):
+        for i, doc in enumerate(doc_list):
             logger.debug(f'doc.url_hash {doc.url_hash}')
             if i == 0 and doc.replaced is False:
                 self.old_url_hash = doc.url_hash
@@ -249,8 +236,6 @@ class DomainSetting():
             return True
         if match_type == 'NOT_EQUALS' and match_string == url:
             return False
-        #my_regex = r"" + re.escape(match_string) + r""
-        # my_regex = r"" + match_string + r""
         my_regex = match_string
         if match_type == 'MATCH_REGEX' and re.search(my_regex, url) != None:
             return True
@@ -263,7 +248,7 @@ class DomainSetting():
         return None
 
     def checkSyncRule(self, url):
-        logger.debug(f'operate checkSyncRule() on url {url}')
+        logger.debug(f'url {url}, starting checkSyncRule()')
 
         # Paul reported that black list should has the highest priority
         black_rules = ['NOT_EQUALS', 'NOT_MATCH_REGEX', 'NOT_MATCH_REGEX_I']
@@ -274,14 +259,14 @@ class DomainSetting():
                 if rule['type'] in black_rules:
                     status = self.checkUrl(url, rule)
                     if status is False:
-                        logger.debug(f'rule {rule} status {status}')
+                        logger.debug(f'url {url}: rule {rule}, status {status}')
                         return False
             # 2. scan through white rules next
             for rule in self.regex:
                 if rule['type'] not in black_rules:
                     status = self.checkUrl(url, rule)
                     if status is True:
-                        logger.debug(f'rule {rule} status {status}')
+                        logger.debug(f'url {url}: rule {rule}, status {status}')
                         return True
 
         return False
@@ -440,36 +425,27 @@ def get_domain_info(domain: str, partner_id: str) -> dict:
     '''
     logger.debug('start get_domain_info()...')
     q = dict(domain=domain, partner_id=partner_id)
-    # di = DomainInfo.query.filter_by(**q).first()
     di = DomainInfo().select(q)
-    logger.debug(f'di {di}')
-    # di = db_session_query(DomainInfo, q)
     if di:
         # 1. get domain info from db
         domain_info = di.rules
-        # logger.debug(f'domain_info {domain_info}')
-        # logger.debug(f'type(domain_info) {type(domain_info)}')
         return domain_info
     elif not di:
         # 2. get domain info from api
         ps_domain_api_prefix = os.environ.get(
             'PS_DOMAIN_API') or 'https://partner.breaktime.com.tw/api/config/'
         ps_domain_api = ps_domain_api_prefix + f'{partner_id}/{domain}/'
-        logger.debug(f'ps_domain_api {ps_domain_api}')
         headers = {'Content-Type': "application/json"}
 
         r = requests.get(ps_domain_api, headers=headers)
         if r.status_code == 200:
             json_resp = json.loads(r.text)
             domain_info = parse_domain_info(json_resp) or None
-            logger.debug('done requesting partner setting api')
             # if not exist in DomainInfo insert
             idata = dict(domain=domain, partner_id=partner_id,
                          rules=domain_info)
             doc = DomainInfo()
             doc.upsert(q, idata)
-            # db_session_insert(doc)
-            logger.debug('done inserting DomainInfo db')
             return domain_info
         else:
             logger.error(f'request failed status {r.status_code}')
@@ -644,8 +620,8 @@ def check_r(r: 'response', ts: object=None):
 
 
 def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False, timeout: int=6) -> (object, object):
-    '''
-    note: this is not a celey task function
+    """
+    note: this is not a celery task function
 
     use xpath to crawl a page
 
@@ -660,8 +636,8 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
     obj1, a WebpagesPartnerXpath instance
     obj2, an InformAC instance
 
-    '''
-    logger.debug(f'run the basic unit of xpath crawler on url_hash {url_hash}')
+    """
+    logger.debug(f'url_hash {url_hash}, run the basic unit of xpath crawler.')
     q = dict(url_hash=url_hash)
     tm = TaskMain().select(q)
 
@@ -690,11 +666,11 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
 
     check_rule = None
     if priority == 1:
-        logger.info(f'url_hash {url_hash} sync rule check is skipped for p1 tasks')
+        logger.info(f'url_hash {url_hash}, sync rule check is skipped for p1 tasks')
         check_rule = True
     else:
         check_rule = ds.checkSyncRule(url)
-    logger.debug(f'check_rule {check_rule}')
+    logger.debug(f'url_hash {url_hash}, check_rule {check_rule}')
     iac.zi_sync = check_rule if iac.zi_sync else False
     if check_rule is False:
         iac.zi_defy.add('regex')
@@ -702,23 +678,15 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         #     iac.status = False
         #     return a_wpx, iac
 
-
     # this should be done before requesting
-    logger.debug(f"CRAWLER_SKIP_REQUEST {current_app.config['CRAWLER_SKIP_REQUEST']}")
+    # logger.debug(f"CRAWLER_SKIP_REQUEST {current_app.config['CRAWLER_SKIP_REQUEST']}")
     if current_app.config['CRAWLER_SKIP_REQUEST'] and priority != 1:
         doc = WebpagesPartnerXpath.query.options(load_only('title', 'category', 'publish_date', 'author', 'len_img', 'len_char')).filter_by(**q).first()
-
-        # WebpagesPartnerXpath().select(dict(url_hash=url_hash))
-        # logger.debug(f'doc {doc}')
-        # logger.debug(f'doc.title {doc.title}')
-        # logger.debug(f'doc.publish_date {doc.publish_date}')
         # check webpages_partner_xpath
         if doc.title and doc.publish_date:
             logger.debug(f'url_hash {url_hash} exists in WebpagesPartnerXpath() table')
             iac.skip_crawler = True
             # if exist, meant this record has been crawled before
-            # a_wpx_data = a_wpx.to_dict()
-            # logger.debug(f'a_wpx_data {a_wpx_data}')
             isc = ds.isSyncCategory(doc.categories)
             iac.zi_sync = isc if iac.zi_sync else False
             if not isc:
@@ -745,7 +713,6 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
 
     # below are prepartion for request
     html = None
-
     headers = {
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
 
@@ -753,9 +720,6 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         timeout = 12
 
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
-        # headers = {
-        #     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
-
         candidate = [
             'www.top1health.com'
         ]
@@ -769,34 +733,27 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                              headers=headers, proxies=proxies, verify=False, timeout=timeout)
 
             if check_r(r):
-                logger.debug('CRAWLERA reqeust successful')
+                logger.debug(f'url_hash {url_hash}, CRAWLERA reqeust successful')
             else:
-                logger.warning('CRAWLERA request failed, try LOCAL')
+                logger.warning(f'url_hash {url_hash}, CRAWLERA request failed, try local')
                 # don't use crawlera if failed at once
                 r = requests.get(url, allow_redirects=False, headers=headers, timeout=timeout)
         else:
-            logger.debug('use LOCAL to request')
+            logger.debug(f'url_hash {url_hash}, use local to request')
             r = requests.get(url, allow_redirects=False, headers=headers, timeout=timeout)
 
-        logger.info(f'url {url}, returned url {r.url}')
         if url != r.url:
-            logger.warning(f'url {url} != r.url {r.url}, exit crawler.')
-            # iac.zi_sync = False
+            logger.warning(f'url_hash {url_hash}, url {url} != r.url {r.url}, exit crawler.')
             iac.status = False
             return a_wpx, iac
 
     else:
         r = requests.get(url, verify=False, allow_redirects=False, headers=headers, timeout=timeout)
-        # raise requests.exceptions.ConnectionError # Lance debug
-
-
 
     ts = ts if not multipaged else None
     if check_r(r, ts):
         r.encoding = 'utf-8'
-        html = r.text  # full html here!
-        # logger.debug(f'html {html}')
-        # generator = None
+        html = r.text
         content = None
         cd = None
         category = None
@@ -809,23 +766,22 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
         except AttributeError as e:
             # AttributeError: 'NoneType' object has no attribute 'span'
-            logger.warning(e)
+            logger.warning(f'url_hash {url_hash}, aujs exception: {e}')
             aujs = False
 
-        logger.debug(f'aujs {aujs}')
+        logger.debug(f'url_hash {url_hash}, aujs {aujs}')
 
         if aujs:
             iac.has_page_code = True
         else:
             pass
         tEnd = time.time()
-        logger.debug(f"scanning aujs cost {tEnd - tStart} sec")
+        logger.debug(f"url_hash {url_hash}, scanning aujs cost {tEnd - tStart} sec")
 
         try:
             tree = lxml.html.fromstring(html)
         except ValueError as e:
-            logger.error(e)
-            # iac.zi_sync = False
+            logger.error(f'url_hash {url_hash}, tree xml exception: {e}')
             iac.status = False
             return a_wpx, iac
 
@@ -837,7 +793,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             cd = tree.xpath(xpath)  # content directory
             if len(cd) > 0:
                 match_xpath = xpath
-                logger.info(f'match xpath: {xpath}')
+                logger.info(f'url_hash {url_hash}, match xpath: {xpath}')
 
                 if 0:
                     # this block ready to be deprecated
@@ -858,7 +814,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         # ----- parsing content ----
         if match_xpath != None:
             a_wpx.content_xpath = match_xpath
-            logger.debug("xpath matched!")
+            logger.debug(f"url_hash {url_hash}, xpath matched!")
 
             # ----- parsing meta ----
             metas = tree.xpath('//meta')
@@ -895,23 +851,22 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 src = image.get('src')
                 if src != None and src.strip():
                     alt = image.get('alt')
-                    src = urljoin(url, src) # Lance test
+                    src = urljoin(url, src)
                     try:
                         image.set('src', src)
                     except ValueError as e:
                         logger.error(f'url {url}')
-                        logger.error(f'image {image}')
-                        logger.error(f'src {src}')
-                        logger.error(e)
-                        # raise e
+                        logger.error(f'url_hash {url_hash}, image: {image} ValueError.')
+                        logger.error(f'url_hash {url_hash}, src {src}')
+                        logger.error(f'url_hash {url_hash}, set image ValueError exception: {e}')
                     content_image += f'<img src=\"{src}\" alt=\"{alt}\">'
             # domain specifc logic
             try:
                 if "www.iphonetaiwan.org" in url and len(ximage) > 0:
                     present_image = ximage[0].get('src')
             except TypeError as e:
-                logger.error(e)
-                logger.error(f'url {url} ximage {ximage}')
+                logger.error(f'url_hash {url_hash}, ximage TypeError exception: {e}')
+                logger.error(f'url_hash {url_hash}, url {url} ximage {ximage}')
                 raise e
 
             a_wpx.content_image = content_image
@@ -922,7 +877,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             x_og_images = tree.xpath('/html/head/meta[@property="og:image"]')
             if len(x_og_images) > 0:
                 present_image = x_og_images[0].get('content')
-                logger.debug(f'present_image: {present_image}')
+                logger.debug(f'url_hash {url_hash}, present_image: {present_image}')
 
             if present_image:
                 present_image = urljoin(url, present_image)
@@ -930,14 +885,14 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
 
             if present_image:
                 if len_img == 0 or "thebetteraging.businesstoday.com.tw" in url:
-                    logger.debug('code block here is weird!')
+                    logger.debug(f'url_hash {url_hash}, code block here is weird!')
                     h_img = etree.Element('img', src=present_image)
                     cd[0].insert(0, h_img)
 
             a_wpx.cover = cover
             # ----- removing script ----
             for script in cd[0].xpath("//noscript"):
-                logger.debug(f'script.text {script.text}')
+                logger.debug(f'url_hash {url_hash}, script.text {script.text}')
                 script.getparent().remove(script)
 
             # ----- parsing generator ----
@@ -966,9 +921,8 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 g_x_categories = tree.xpath(
                     '//ul[@class="refer"]/li[1]/a/text()')
 
-                logger.debug(f'g_x_categories {g_x_categories}')
-
-                logger.debug(f'type(g_x_categories) {type(g_x_categories)}')
+                logger.debug(f'url_hash {url_hash}, g_x_categories {g_x_categories}')
+                logger.debug(f'url_hash {url_hash}, type(g_x_categories) {type(g_x_categories)}')
                 # if len(g_x_categories)
                 if len(g_x_categories) > 0:
                     category = g_x_categories[0]
@@ -976,11 +930,11 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     x_categories = tree.xpath(
                         '//ul[@class="refer"]/li[2]/a/text()')
                     if len(x_categories) > 0:
-                        logger.debug(f'x_categories[0] {x_categories[0]}')
+                        logger.debug(f'url_hash {url_hash}, x_categories[0] {x_categories[0]}')
                         logger.debug(
-                            f'type(x_categories[0]) {type(x_categories[0])}')
+                            f'url_hash {url_hash}, type(x_categories[0]) {type(x_categories[0])}')
                         logger.debug(
-                            f'dir(x_categories[0]) {dir(x_categories[0])}')
+                            f'url_hash {url_hash}, dir(x_categories[0]) {dir(x_categories[0])}')
 
             # universal logic
             if category == None:
@@ -1041,7 +995,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 iac.secret = True
                 iac.zi_sync = False
                 iac.zi_defy.add('secret')
-            logger.debug(f'secrt.to_dict() {secrt.to_dict()}')
+            logger.debug(f'url_hash {url_hash}, secrt.to_dict() {secrt.to_dict()}')
             # ----- parsing href (what for?) ----
             # reformating href?
             xarch = cd[0].xpath('.//a')
@@ -1049,12 +1003,11 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 href = a.get('href')
                 if href != None and href.strip():
                     href = urljoin(url, href)
-                    logger.debug(f'href {href}')
                     try:
                         a.set('href', str(href))
                     except:
                         pass
-            logger.debug(f'xarch {xarch}')
+            logger.debug(f'url_hash {url_hash}, xarch {xarch}')
             # ----- parsing iframe ----
             # reformating
             xiframe = cd[0].xpath('//iframe')
@@ -1078,7 +1031,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             else:
                 data_blocks = tree.xpath(
                     '//script[@type="application/ld+json"]/text()')
-                logger.debug(f'data_blocks {data_blocks}')
+                logger.debug(f'url_hash {url_hash}, data_blocks {data_blocks}')
                 for data_block in data_blocks:
                     try:
                         data = json.loads(data_block)
@@ -1086,17 +1039,17 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                             publish_date = data.get("datePublished")
                             break
                     except Exception as e:
-                        logger.error(e)
+                        logger.error(f'url_hash {url_hash}, datePublished data_block exception: {e}')
                         data_block = str(data_block).replace(
                             '[', '').replace(',]', '')
-                        logger.debug(f'data_block {data_block}')
+                        logger.debug(f'url_hash {url_hash}, data_block {data_block}')
                         data = json.dumps(data_block)
                         data = json.loads(data)
                         if "datePublished" in data:
                             try:
                                 publish_date = data.get("datePublished")
                             except AttributeError as e:
-                                logger.error(e)
+                                logger.error(f'url_hash {url_hash}, datePublished AttributeError exception: {e}')
                                 logger.debug(
                                     f'url_hash {url_hash}, data {data}')
                                 publish_date = None
@@ -1259,18 +1212,14 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                         int(groups[1]), int(groups[2]), int(groups[3]))
 
             if not publish_date and ds.delayday:
-                logger.critical(f'failed to parse publish_date for {url}')
+                logger.critical(f'url_hash {url_hash}, failed to parse publish_date for {url}')
 
             # assume all the parsed publish_date is in TW format, must convert them to utc before storing them in psql db
 
-            # logger.debug(f'before {publish_date}')
-            # ignore the time zone str if any
             if publish_date:
                 if isinstance(publish_date, str):
-                    logger.debug(f'publish_date str type {publish_date}')
+                    logger.debug(f'url_hash {url_hash}, publish_date str type {publish_date}')
                     publish_date = publish_date.split('+')[0]
-                    # publish_date = dateparser.parse(publish_date, date_formats=[
-                    #                             '%Y-%d-%m', '%Y-%d-%mT%H:%M:%S', '%Y-%d-%m %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
                     publish_date = dateparser.parse(publish_date, date_formats=[
                                                 '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
                 a_wpx.publish_date = publish_date
@@ -1398,24 +1347,21 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 if script.get('type', '') == "application/ld+json":
                     continue
                 srcScript = script.get('src', "")
-                """ keep 360 js, but remove others """
+                # keep 360 js, but remove others
                 if srcScript not in ["https://theta360.com/widgets.js", "//www.instagram.com/embed.js"]:
-                    logger.debug("tail: {}".format(script.tail))
+                    logger.debug(f"url_hash {url_hash}, tail: {script.tail}")
                     if script.tail != None and script.tail.strip() != "":
-                        logger.debug("drop tag")
-                        # if script.text:
-                        # remove_text.append(remove_html_tags(script.text))
+                        logger.debug(f"url_hash {url_hash}, drop tag")
                         script.drop_tag()
                     else:
-                        logger.debug("remove tag")
-                        logger.debug(script.text)
+                        logger.debug(f"url_hash {url_hash}, remove tag text: {script.text}")
                         script.getparent().remove(script)
 
             # ----- removing excluded xpath ----
             if getattr(ds, 'e_xpath', None) and len(ds.e_xpath) > 0:
                 for badnode in ds.e_xpath:
                     exclude_xpath = unquote(badnode)
-                    logger.debug("exclude xpath: {}".format(exclude_xpath))
+                    logger.debug(f"url_hash {url_hash}, exclude xpath: {exclude_xpath}")
                     for bad in cd[0].xpath(exclude_xpath):
                         bad.getparent().remove(bad)
 
@@ -1432,7 +1378,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             content = unescape(content)
             len_char = len(content)
             a_wpx.len_char = len_char
-            logger.info(f"chars: {len_char}, p count: {len_p}, img count: {len_img}")
+            logger.info(f"url_hash {url_hash}, chars: {len_char}, p count: {len_p}, img count: {len_img}")
             ckquality = a_wpx.checkQuality()
             iac.zi_sync = ckquality if iac.zi_sync else False
             if not ckquality:
@@ -1472,10 +1418,9 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     content_hash += publish_date
                     publish_date = dateparser.parse(publish_date)
 
-            logger.debug(f'content_hash: {content_hash}')
             m = hashlib.sha1(content_hash.encode('utf-8'))
             content_hash = partner_id + '_' + m.hexdigest()
-            logger.debug(f'content_hash: {content_hash}')
+            logger.debug(f'url_hash {url_hash}, content_hash: {content_hash}')
 
             if a_wpx.content_hash and a_wpx.content_hash != content_hash:
                 iac.content_update = True
@@ -1489,13 +1434,12 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             # ----- check if publish_date changed -----
             # todo
 
-            logger.debug(f'a_wpx {a_wpx}')
-            # logger.debug(f'a_wpx.to_dict() {a_wpx.to_dict()}')
+            logger.debug(f'url_hash {url_hash}, a_wpx {a_wpx}')
             iac.status = True
-            logger.info('crawling successful')
+            logger.info(f'url_hash {url_hash}, crawling successful')
             return a_wpx, iac
         else:
-            logger.debug('xpath not matched')
+            logger.debug(f'url_hash {url_hash}, xpath not matched')
 
             secret = None
             # BSP specific: Pixnet 痞客邦
@@ -1515,20 +1459,18 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
 
             if secrt.secret:  # this obj is not yet used
                 logger.debug(
-                    f'secrt.bsp {secrt.bsp}, secrt.secret {secrt.secret}')
-                logger.debug(f'secrt.to_dict() {secrt.to_dict()}')
+                    f'url_hash {url_hash}, secrt.bsp: {secrt.bsp}, secrt.secret: {secrt.secret}')
+                logger.debug(f'url_hash {url_hash}, secrt.to_dict(): {secrt.to_dict()}')
                 iac.secret = True
                 iac.zi_sync = False
                 iac.zi_defy.add('secret')
 
 
             iac.status = False
-            # should I update db in this condition?
             return a_wpx, iac
 
     else:
-        logger.error(f'requesting {url} failed!')
-        # iac.zi_sync = False
+        logger.error(f'url_hash {url_hash}, requesting {url} failed!')
         iac.status = False
         return a_wpx, iac
 
@@ -1538,7 +1480,7 @@ def mercuryContent(url, retry: int=5, sleep_sec: int=1):
         headers = {"x-api-key": os.environ.get('MERCURY_TOKEN')}
         # logger.debug(f'headers {headers}')
         api = "https://mercury.postlight.com/parser?url=" + url
-        logger.debug(f'api {api}')
+        logger.debug(f'url_hash {url_hash}, mercury api {api}')
         # retry = 5  # retry 5 times at most
         # sleep_sec = 1
         while retry:
@@ -1552,15 +1494,15 @@ def mercuryContent(url, retry: int=5, sleep_sec: int=1):
                     retry -= 1
                     if retry == 0:
                         break
-                    logger.error(e)
+                    logger.error(f'url_hash {url_hash}, mercury r.json exception: {e}')
                     sleep_sec = sleep_sec * 2
                     time.sleep(sleep_sec)
 
             else:
-                logger.error('failed request')
+                logger.error(f'url_hash {url_hash}, failed mercury request')
                 return None
     else:
-        logger.error('MERCURY_TOKEN env variable not set')
+        logger.error(f'url_hash {url_hash}, MERCURY_TOKEN env variable not set')
         return None
 
 

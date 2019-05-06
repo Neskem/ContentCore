@@ -3,9 +3,6 @@ from breakcontent import config
 # import os
 from breakcontent import db
 from celery import Celery
-import logging
-import logging.config
-from breakcontent import mylogging
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
@@ -13,8 +10,6 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 
 def create_app(config_obj=None):
     app = Flask(__name__)
-    app.logger.info(f'flask app is up by Lance!')
-    # app.logger.error(f'error from create_app')
     app.config.from_object(config)
     if app.config['SENTRY_DSN']:
         sentry_sdk.init(
@@ -27,10 +22,9 @@ def create_app(config_obj=None):
 
     with app.app_context():
         db.init_app(app)
-        app.logger.debug(f"app.config['CLEAN_TABLE'] {app.config['CLEAN_TABLE']}")
         if app.config['CLEAN_TABLE']:
             db.drop_all()
-            app.logger.debug('drop all tables')
+            app.logger.debug(f"Becasue app.config['CLEAN_TABLE']: {app.config['CLEAN_TABLE']} while drop all tables")
         db.create_all()
         db.session.commit()
         from breakcontent.api.v1.endpoints import bp as endpoints_bp
@@ -59,9 +53,6 @@ def create_celery_app(app=None):
                 return TaskBase.__call__(self, *args, **kwargs)
 
     celery.Task = ContextTask
-
-    # celery.autodiscover_tasks(['breakcontent'], related_name='tasks')
-
     celery.app = app
-    app.logger.info(f'Celery is up by Lance!')
+
     return celery

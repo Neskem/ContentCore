@@ -3,46 +3,22 @@ import datetime
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import func, Index, Column, ForeignKey
 from sqlalchemy import Integer, Boolean, Enum, DateTime, String, Text
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship
 
-# from breakcontent import logger
 import logging
-from breakcontent import mylogging
-# failed to make root logger function normally
 logger = logging.getLogger('cc')
-# logger = logging.getLogger('cc.models')
 
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
-'''
-ref
-* cascade delete
-https://stackoverflow.com/questions/5033547/sqlalchemy-cascade-delete
-* cascade
-https://docs.sqlalchemy.org/en/latest/orm/cascades.html
-'''
 
 
 class Model(db.Model):
-    '''
-    some common instance function that will be used by all model
-
-    use upsert or update w/ care, they have different behavior
-
-    - upsert, try insert first if failed then update (don't forget about the foreign key!)
-    - update, update immediately
-
-
-    '''
 
     __abstract__ = True
 
     def upsert(self, query: dict=None, data: dict=None):
-        '''
-        inspired by Eric's save() function in MongoEngine Models
-        '''
         if not query:
+            # don't using in this project
             query = dict(id=self.id)
 
         # update self attr by data
@@ -73,7 +49,7 @@ class Model(db.Model):
                         if ret and getattr(ret, 'to_dict', None):
                             for k, v in ret.to_dict().items():
                                 setattr(self, k, v)
-                        logger.debug(f'insert {self.__tablename__} successful')
+                        logger.debug(f'insert {query} in {self.__tablename__} table successfully.')
                     else:
                         self.update(query, data)
                 if 0:  # deprecated
@@ -93,11 +69,8 @@ class Model(db.Model):
                     raise
             except IntegrityError as e:
                 logger.error(e)
-                # logger.debug(
-                # f'insert failed, start updating {self.__tablename__}')
                 db.session.rollback()
                 # self.update(query, data)
-                # logger.debug('upsert successful')
                 break
 
     def commit(self, query: dict=None, data: dict=None):
@@ -127,32 +100,25 @@ class Model(db.Model):
         retry = 0
         while 1:
             try:
-                logger.debug(f'data {data}')
                 self.__class__.query.filter_by(**query).update(data)
                 db.session.commit()
                 ret = self.__class__.query.filter_by(**query).first()
                 if ret and getattr(ret, 'to_dict', None):
                     for k, v in ret.to_dict().items():
                         setattr(self, k, v)
-                    logger.debug(f'update {self.__tablename__} successful')
+                    # logger.debug(f'update {self.__tablename__} successful')
                 else:
                     logger.debug(f'update {self.__tablename__} failed')
                 break
             except OperationalError as e:
-                logger.error(e)
                 db.session.rollback()
                 if retry > 5:
-                    logger.error(f'{e}: retry {retry}')
-                    logger.debug('usually this should not happen')
+                    logger.error(f'update(): query: {query}, OperationalError: {e}, retry: {retry}')
                     raise
-                    # break
                 retry += 1
 
     # @classmethod
     def select(self, query: dict, order_by: 'column name'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
-        '''
-        return a table record object
-        '''
         retry = 0
         while 1:
             try:
@@ -163,17 +129,13 @@ class Model(db.Model):
                     else:
                         docs = self.__class__.query.filter_by(
                             **query).order_by(order_by.desc()).limit(limit).all()
-                    logger.debug('query many record successful')
                     return docs
                 else:
                     doc = self.__class__.query.filter_by(**query).first()
                     if doc:
-                        logger.debug(f'doc {doc}')
-                        logger.debug('query a record successful')
                         return doc
                     else:
-                        logger.warning(
-                            f'query {query} on {self.__tablename__} found nothing!')
+                        # logger.warning(f'query {query} on {self.__tablename__} found nothing!')
                         break
 
             except OperationalError as e:
@@ -236,7 +198,7 @@ class TaskMain(Model):
 
     def __init__(self, *args, **kwargs):
         super(TaskMain, self).__init__(*args, **kwargs)
-        # do custom stuff
+        # wasn't used, but EX: tm = TaskMain(bt_key) for inserting dynamic.
 
     def __repr__(self):
         return f'<TaskMain(id={self.id}, url_hash={self.url_hash}, url={self.url}, request_id={self.request_id})>'

@@ -1,11 +1,5 @@
 version: '3.5'
 services:
-    redis:
-        container_name: redis
-        image: redis:4.0
-        ports:
-            - "6379:6379"
-        restart: always
     nginx:
         container_name: nginx
         image: nginx:1.12
@@ -25,8 +19,6 @@ services:
             dockerfile: Dockerfile
         image: breaktimeinc/breaktime.contentcore
         command: uwsgi --ini uwsgi.ini
-        depends_on:
-            - redis
         volumes:
            - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -47,8 +39,6 @@ services:
         container_name: beat
         image: breaktimeinc/breaktime.contentcore
         command: single-beat celery beat -A breakcontent.tasks -l info
-        depends_on:
-            - redis
         volumes:
             - ..:/usr/src/app
             - /var/log/contentcore:/var/log/contentcore
@@ -64,8 +54,6 @@ services:
         container_name: worker
         image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks --loglevel=DEBUG --autoscale=50,2 -n worker.%%h
-        depends_on:
-            - redis
         volumes:
            - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
@@ -126,8 +114,6 @@ services:
         container_name: worker-p1
         image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q priority_1 --loglevel=DEBUG --autoscale=20,2 -n worker-p1.%%h -E -P gevent --purge
-        depends_on:
-            - redis
         volumes:
             - ..:/usr/src/app
             - /var/log/contentcore:/var/log/contentcore
@@ -143,8 +129,6 @@ services:
         container_name: worker-xpcrawler
         image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q xpcrawler --autoscale=100,4 -n worker-xpcrawler.%%h -E -P gevent
-        depends_on:
-            - redis
         volumes:
             - ..:/usr/src/app
             - /var/log/contentcore:/var/log/contentcore
@@ -160,8 +144,6 @@ services:
         container_name: worker-xpmcrawler
         image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q xpmcrawler --autoscale=100,4 -n worker-xpmcrawler.%%h -E -P gevent
-        depends_on:
-            - redis
         volumes:
             - ..:/usr/src/app
             - /var/log/contentcore:/var/log/contentcore
@@ -177,8 +159,6 @@ services:
         container_name: worker-aicrawler
         image: breaktimeinc/breaktime.contentcore
         command: celery worker -A breakcontent.tasks -Q aicrawler --autoscale=20,2 -n worker-aicrawler.%%h -E -P gevent
-        depends_on:
-            - redis
         volumes:
             - ..:/usr/src/app
             - /var/log/contentcore:/var/log/contentcore

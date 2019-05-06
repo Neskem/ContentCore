@@ -1,8 +1,9 @@
 #!/bin/bash
 
 dropDB=$1
-echo "dropdb param: dropDB"
+echo "dropDB param: dropDB"
 initBeat=$1
+echo "initBeat param: initBeat"
 
 mkdir -p /tmp/contentcore
 docker-compose down -v

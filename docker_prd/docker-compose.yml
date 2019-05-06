@@ -14,9 +14,6 @@ services:
         restart: always
     web:
         container_name: web
-        build:
-            context: ../
-            dockerfile: Dockerfile
         image: breaktimeinc/breaktime.contentcore
         command: uwsgi --ini uwsgi.ini
         volumes:
@@ -35,21 +32,21 @@ services:
             options:
                 max-size: "50m"
         restart: always
-    beat:
-        container_name: beat
-        image: breaktimeinc/breaktime.contentcore
-        command: single-beat celery beat -A breakcontent.tasks -l info
-        volumes:
-            - ..:/usr/src/app
-            - /var/log/contentcore:/var/log/contentcore
-        env_file: breakcontent.env
-        environment:
-            - CONTAINER_TAG=beat
-        logging:
-            driver: "json-file"
-            options:
-                max-size: "50m"
-        restart: always
+#    beat:
+#        container_name: beat
+#        image: breaktimeinc/breaktime.contentcore
+#        command: single-beat celery beat -A breakcontent.tasks -l info
+#        volumes:
+#            - ..:/usr/src/app
+#            - /var/log/contentcore:/var/log/contentcore
+#        env_file: breakcontent.env
+#        environment:
+#            - CONTAINER_TAG=beat
+#        logging:
+#            driver: "json-file"
+#            options:
+#                max-size: "50m"
+#        restart: always
     worker:
         container_name: worker
         image: breaktimeinc/breaktime.contentcore

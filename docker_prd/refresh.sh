@@ -9,7 +9,7 @@ mkdir -p /tmp/contentcore
 docker-compose down -v
 # docker-compose build ## When use local cc image, and need to execute this command.
 
-if [ "dropDB" == "drop" ]; then
+if [ "$dropDB" == "drop" ]; then
     docker-compose up -d
     sleep 5 # takes time for containter be ready
     if [ -e "/etc/os-release" ]; then
@@ -25,7 +25,7 @@ if [ "dropDB" == "drop" ]; then
     fi
 fi
 
-if [ "initBeat" == "beat" ]; then
+if [ "$initBeat" == "beat" ]; then
     docker-compose -f /home/alan/breaktime.ContentCore/docker_prd/docker_beat/docker-compose.yml start
 fi
 

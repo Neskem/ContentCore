@@ -6,7 +6,8 @@ echo "dropdb param: $dropdb"
 mkdir -p /tmp/contentcore
 docker-compose down -v
 # docker-compose build ## When use local cc image, and need to execute this command.
-if [ "$dropdb" == "drop" ]; then
+
+if [ $dropDB = 'drop' ]; then
     docker volume rm pgdata
     # create external volumn
     docker volume create --name=pgdata
@@ -32,5 +33,6 @@ if [ "$dropdb" == "drop" ]; then
         # PGPASSWORD=admin /Applications/Postgres.app/Contents/Versions/10/bin/psql -U postgres -h 34.80.84.182 -c 'CREATE DATABASE break_content'
     fi
 fi
+
 docker-compose up -d
 docker-compose ps

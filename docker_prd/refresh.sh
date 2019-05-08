@@ -1,15 +1,13 @@
 #!/bin/bash
 
 dropDB=$1
-echo "dropDB param: dropDB"
-initBeat=$1
-echo "initBeat param: initBeat"
+echo "dropDB param: $dropDB"
 
 mkdir -p /tmp/contentcore
 docker-compose down -v
 # docker-compose build ## When use local cc image, and need to execute this command.
 
-if [ "$dropDB" == "drop" ]; then
+if [ $dropDB = 'drop' ]; then
     docker-compose up -d
     sleep 5 # takes time for containter be ready
     if [ -e "/etc/os-release" ]; then
@@ -23,10 +21,6 @@ if [ "$dropDB" == "drop" ]; then
         sleep 3
         PGPASSWORD=ContentBreak_psql1qaz /Applications/Postgres.app/Contents/Versions/10/bin/psql -U postgres -h 10.140.0.119 -c 'CREATE DATABASE break_content'
     fi
-fi
-
-if [ "$initBeat" == "beat" ]; then
-    docker-compose -f /home/alan/breaktime.ContentCore/docker_prd/docker_beat/docker-compose.yml start
 fi
 
 docker-compose up -d

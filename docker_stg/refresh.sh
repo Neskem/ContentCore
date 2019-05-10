@@ -7,7 +7,7 @@ mkdir -p /tmp/contentcore
 docker-compose down -v
 # docker-compose build ## When use local cc image, and need to execute this command.
 
-if [ $dropdb = 'drop' ]; then
+if [ "${dropdb}" = 'drop' ]; then
     docker-compose up -d
     sleep 5 # takes time for containter be ready
     if [ -e "/etc/os-release" ]; then

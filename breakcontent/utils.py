@@ -836,11 +836,10 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             a_wpx.meta_jdoc = meta_all
 
             if "webtest1.sanlih.com.tw" in url or "www.setn.com" in url:
+                iac.zi_sync = False
                 if 'auth' in meta_all.keys():
                     if meta_all['auth'][0] == "1":
                         iac.zi_sync = True
-                else:
-                    iac.zi_sync = False
 
             # ----- parsing images ----
             ximage = cd[0].xpath('.//img')

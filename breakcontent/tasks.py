@@ -29,7 +29,6 @@ logger = get_task_logger('cc')
 
 ac_content_status_api = os.environ.get('AC_CONTENT_STATUS_API', None)
 ac_content_multipage_api = os.environ.get('AC_CONTENT_MULTIPAGE_API', None)
-ac_content_async = os.environ.get('AC_CONTENT_ASYNC', None)
 
 
 @celery.task()

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dropdb=$1
-echo "dropDB param: $dropdb"
+echo "dropdb param: $dropdb"
 
 mkdir -p /tmp/contentcore
 docker-compose down -v

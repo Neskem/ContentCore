@@ -1,37 +1,34 @@
 from breakcontent.factory import create_celery_app
 from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request, request_api
-
-
 from breakcontent.utils import mercuryContent, prepare_crawler, ai_a_crawler
-from breakcontent.utils import construct_email, send_email, to_csvstr
-
-import re
-import os
-import json
-import requests
-import time
+from breakcontent.utils import construct_email, send_email, to_csvstr, remove_html_tags
 from flask import current_app
 from celery.utils.log import get_task_logger
-
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from sqlalchemy.orm import load_only
 from sqlalchemy import or_
-
 from breakcontent import db
-from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
-from breakcontent.mylogging import *
+from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi
+from breakcontent.models import WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 from urllib.parse import urlencode, quote_plus, unquote, quote, unquote_plus, parse_qs
 from urllib.parse import urlparse, urljoin
-# import datetime
 from datetime import timedelta, datetime
-import csv
+from lxml import etree
+from html import unescape
+import hashlib
+import dateparser
+import lxml.html
+import re
+import os
+import requests
+import time
+
 
 celery = create_celery_app()
 logger = get_task_logger('cc')
 
 ac_content_status_api = os.environ.get('AC_CONTENT_STATUS_API', None)
 ac_content_multipage_api = os.environ.get('AC_CONTENT_MULTIPAGE_API', None)
-ac_content_async = os.environ.get('AC_CONTENT_ASYNC', None)
 
 
 @celery.task()
@@ -43,6 +40,112 @@ def delete_main_task(data: dict):
     db.session.commit()
 
     logger.debug('done delete_main_task()')
+
+
+@celery.task()
+def init_external_task(odata: dict, wxp_data: dict):
+    upsert_main_task(odata)
+    q = dict(url_hash=odata['url_hash'])
+    logger.debug(f'url_hash: {q}, run init_external_task(), odata: {odata}, wxp_data: {wxp_data}')
+    sdata = {'status': 'doing', 'doing_time': datetime.utcnow()}
+    tm = TaskMain()
+    tm.update(q, sdata)
+
+    a_wpx = WebpagesPartnerXpath()
+    ts = TaskService().select(q)
+    a_wpx.task_service_id = ts.id
+    a_wpx.url = wxp_data['url']
+    a_wpx.url_hash = wxp_data['url_hash']
+    a_wpx.domain = wxp_data['domain']
+    a_wpx.title = wxp_data['title']
+    a_wpx.content = wxp_data['content']
+    a_wpx.author = wxp_data['author']
+    a_wpx.publish_date = wxp_data['publish_date']
+    a_wpx.cover = wxp_data['cover']
+    a_wpx.meta_description = wxp_data['description']
+
+    content_p = ''
+    len_p = 0
+    content = unquote(a_wpx.content)
+    content_html = lxml.html.fromstring(content)
+    xp = content_html.xpath('.//p')
+    for p in xp:
+        txt = remove_html_tags(etree.tostring(
+            p, pretty_print=True, method='html').decode("utf-8"))
+        s = unescape(txt.strip())
+        if s.strip():
+            content_p += '<p>{}</p>'.format(s)
+            len_p = len_p + 1
+    a_wpx.content_p = content_p
+    a_wpx.len_p = len_p
+
+    content = remove_html_tags(content)
+    pattern = re.compile(r'\s+')
+    content = re.sub(pattern, '', content)
+    content = unescape(content)
+    len_char = len(content)
+    a_wpx.len_char = len_char
+
+    content_hash = ''
+    if a_wpx.meta_description != None and a_wpx.meta_description != "":
+        content_hash += a_wpx.meta_description
+    else:
+        if a_wpx.title:
+            content_hash += a_wpx.title
+    # concat publish_date
+    if a_wpx.publish_date:
+        if isinstance(a_wpx.publish_date, datetime):
+            content_hash += a_wpx.publish_date.isoformat()
+        else:
+            content_hash += a_wpx.publish_date
+    m = hashlib.sha1(content_hash.encode('utf-8'))
+    content_hash = odata['partner_id'] + '_' + m.hexdigest()
+    a_wpx.content_hash = content_hash
+
+    ext_wpx_data = a_wpx.to_dict()
+    a_wpx.upsert(q, ext_wpx_data)
+
+    iac = InformAC()
+    iac.url_hash = odata['url_hash']
+    iac.url = odata['url']
+    iac.request_id = odata['request_id']
+    iac.publish_date = a_wpx.publish_date
+
+    if len_char < 100:
+        iac.quality = False
+        iac.status = False
+        iac.zi_sync = False
+        iac.zi_defy.add('quality')
+    else:
+        iac.quality = True
+        iac.zi_sync = True
+        iac.status = True
+
+    rdata = {'status': 'ready'}
+    tm.update(q, rdata)
+
+    inform_ac_data = iac.to_dict()
+    logger.debug(f'url_hash {iac.url_hash}, run init_external_task(), inform_ac_data {inform_ac_data}')
+
+    ts.update(q, dict(status_xpath='ready'))
+    tm.update(q, dict(status='ready', zi_sync=iac.zi_sync, inform_ac_status=iac.status))
+
+    headers = {'Content-Type': "application/json"}
+    resp_data = retry_request(
+        'put', ac_content_status_api, inform_ac_data, headers)
+
+    if resp_data:
+        q = dict(url_hash=iac.url_hash)
+        ts.update(q, dict(status_xpath='done'))
+        tm.update(q, dict(status='done', done_time=datetime.utcnow()))
+        logger.debug(f'url_hash {iac.url_hash}, inform AC successful')
+    else:
+        q = dict(url_hash=iac.url_hash)
+        ts.update(q, dict(status_xpath='failed'))
+        tm.update(q, dict(status='failed'))
+        logger.error(f'url_hash {iac.url_hash}, inform AC failed')
+
+    return True
 
 
 @celery.task()
@@ -794,8 +897,7 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
     # logger.debug(f'type(tml) {type(tml)}')
     logger.debug(f'len {len(tml)}')
     if not len(tml):
-        logger.debug(
-            f'too good to be true, no doing tasks left before an hour')
+        logger.debug(f'too good to be true, no doing tasks left before an hour')
         return
 
     for tm in tml:

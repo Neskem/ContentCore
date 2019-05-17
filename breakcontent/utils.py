@@ -834,6 +834,13 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                         meta_all[meta_name] = []
                     meta_all[meta_name].append(meta.get('content', None))
             a_wpx.meta_jdoc = meta_all
+
+            if "webtest1.sanlih.com.tw" in url or "www.setn.com" in url:
+                iac.zi_sync = False
+                if 'auth' in meta_all.keys():
+                    if meta_all['auth'][0] == "1":
+                        iac.zi_sync = True
+
             # ----- parsing images ----
             ximage = cd[0].xpath('.//img')
             len_img = len(ximage)
@@ -1246,6 +1253,11 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     '//*[@class="post"]/div[1]/h1/span/text()')
                 title = x_title[0]
 
+            if "webtest1.sanlih.com.tw" in url or "www.setn.com" in url:
+                if title:
+                    setn_title_list = title.split('|')
+                    title = setn_title_list[0]
+
             # domain specific: title exclude words
             if title and isinstance(title, str) and getattr(ds, 'e_title', None):
                 title = title.replace(ds.e_title[0], "")
@@ -1585,7 +1597,6 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
                     meta_all[meta_name] = []
                 meta_all[meta_name].append(meta.get('content', None))
         wp.meta_jdoc = meta_all
-        # logger.debug(f'meta_all {meta_all}')
     else:
         logger.error(f'failed to request {url}')
         return None

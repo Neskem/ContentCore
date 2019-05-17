@@ -7,7 +7,7 @@ mkdir -p /tmp/contentcore
 docker-compose down -v
 # docker-compose build ## When use local cc image, and need to execute this command.
 
-if [ $dropDB = 'drop' ]; then
+if [ "${dropdb}" = 'drop' ]; then
     docker volume rm pgdata
     # create external volumn
     docker volume create --name=pgdata

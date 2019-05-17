@@ -63,11 +63,6 @@ def init_task():
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 @cross_origin()
 def delete_task():
-    """
-    # delete record from maintask
-    curl -v -X DELETE 'http://localhost:80/v1/delete_task' -H 'Content-Type: application/json' -d '{"url_hash": "a6d62aaef4856b23d7d8016e4e77409001d999fa"}'
-    """
-
     res = {'msg': '', 'status': False}
     data = request.json
 
@@ -100,14 +95,7 @@ def create_tasks(priority):
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 @cross_origin()
 def get_content(url_hash):
-    """
-    AC requesting article
-    this is a sync function
-    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:80/v1/content/a6d62aaef4856b23d7d8016e4e77409001d999fa'
-    """
-
     res = {'msg': '', 'status': False}
-
     wpxf = WebpagesPartnerXpath.query.filter_by(url_hash=url_hash).first()
     data = {'data': wpxf.to_ac()}
     res.update(data)
@@ -146,13 +134,6 @@ def partner_setting_add_update(partner_id, domain):
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 @cross_origin()
 def health_check(itype: str=None):
-    """
-    this is a sync function
-    daily health check
-    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/hc/all'
-    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/hc/day'
-    curl -v -X GET -H 'Content-Type: application/json' 'http://localhost:8100/v1/hc/hour'
-    """
     current_app.logger.debug('run health_check()...')
     res = {'msg': '', 'status': False}
 
@@ -239,9 +220,6 @@ def get_pd(partner_id, domain):
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 @cross_origin()
 def error_handler(etype):
-    """
-    curl -v -X GET 'http://localhost:80/v1/error/2'
-    """
     res = {'msg': '', 'status': False}
 
     current_app.logger.debug(f'type {type(etype)}')
@@ -255,3 +233,48 @@ def error_handler(etype):
         raise errors.InvalidUsage('invalid usage', status_code=410)
     elif etype == 6:
         pass
+
+
+@bp.route('/content/extPage', methods=['POST'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def init_external_content():
+    res = {'msg': '', 'status': False}
+    current_app.logger.debug(f'init_external_content start: request.json {request.json}')
+    request_id = request.headers.get("X-REQUEST-ID", None)
+    data = request.json
+
+    required = ['url', 'url_hash', 'priority', 'partner_id']
+    task_optional = ['request_id', 'generator', 'domain']
+    wxp_optional = ['request_id', 'generator', 'domain', 'title', 'content', 'publish_date', 'cover', 'description', 'author']
+
+    odata = {}
+    wxp_data = {}
+    odata['request_id'] = request_id
+    for r in required:
+        if not data.get(r, None):
+            res['msg'] = f'{r} is required'
+            return jsonify(res), 401
+
+    for i in data.keys():
+        if i not in required + task_optional:
+            if i == '500':
+                return jsonify(res), 500
+        else:
+            odata[i] = data[i]
+
+    for i in data.keys():
+        if i not in required + wxp_optional:
+            if i == '500':
+                return jsonify(res), 500
+        else:
+            wxp_data[i] = data[i]
+
+    from breakcontent.tasks import init_external_task
+    init_external_task.delay(odata, wxp_data)
+
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
+    return jsonify(res), 200

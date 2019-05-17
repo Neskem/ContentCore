@@ -1,13 +1,13 @@
 #!/bin/bash
 
-dropDB=$1
-echo "dropDB param: $dropDB"
+dropdb=$1
+echo "dropdb param: $dropdb"
 
 mkdir -p /tmp/contentcore
 docker-compose down -v
 # docker-compose build ## When use local cc image, and need to execute this command.
 
-if [ $dropDB = 'drop' ]; then
+if [ "${dropdb}" = 'drop' ]; then
     docker-compose up -d
     sleep 5 # takes time for containter be ready
     if [ -e "/etc/os-release" ]; then

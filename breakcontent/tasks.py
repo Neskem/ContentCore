@@ -610,6 +610,8 @@ def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, d
     cat_wpx.url_hash = url_hash
     cat_inform_ac.check_content_hash(cat_wpx)
 
+    cat_wpx.len_img = 0 if cat_wpx.len_char is None else cat_wpx.len_img
+    cat_wpx.len_char = 0 if cat_wpx.len_char is None else cat_wpx.len_char
     if cat_inform_ac.status and cat_wpx.len_img < 2 and cat_wpx.len_char < 100:
         cat_inform_ac.zi_sync = False
         cat_inform_ac.zi_defy.add('quality')

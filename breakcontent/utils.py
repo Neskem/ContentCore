@@ -1007,13 +1007,16 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
             # reformating href?
             xarch = cd[0].xpath('.//a')
             for a in xarch:
-                href = a.get('href')
-                if href != None and href.strip():
-                    href = urljoin(url, href)
-                    try:
-                        a.set('href', str(href))
-                    except:
-                        pass
+                try:
+                    href = a.get('href')
+                    if href != None and href.strip():
+                        href = urljoin(url, href)
+                        try:
+                            a.set('href', str(href))
+                        except:
+                            pass
+                except:
+                    pass
             logger.debug(f'url_hash {url_hash}, xarch {xarch}')
             # ----- parsing iframe ----
             # reformating

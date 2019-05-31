@@ -60,7 +60,7 @@ def init_external_task(odata: dict, wxp_data: dict):
     a_wpx.title = wxp_data['title']
     a_wpx.content = wxp_data['content']
     a_wpx.author = wxp_data['author']
-    a_wpx.publish_date = wxp_data['publish_date']
+    a_wpx.publish_date = wxp_data.setdefault("publish_date", None)
     a_wpx.cover = wxp_data['cover']
     a_wpx.meta_description = wxp_data['description']
 

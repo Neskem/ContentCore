@@ -251,6 +251,7 @@ def init_external_content():
     odata = {}
     wxp_data = {}
     odata['request_id'] = request_id
+    ai_article = data['ai_article'] if data['ai_article'] else False
     for r in required:
         if not data.get(r, None):
             res['msg'] = f'{r} is required'
@@ -271,7 +272,7 @@ def init_external_content():
             wxp_data[i] = data[i]
 
     from breakcontent.tasks import init_external_task
-    init_external_task.delay(odata, wxp_data)
+    init_external_task.delay(odata, wxp_data, ai_article)
 
     res.update({
         'msg': 'ok',

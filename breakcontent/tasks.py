@@ -43,7 +43,7 @@ def delete_main_task(data: dict):
 
 
 @celery.task()
-def init_external_task(odata: dict, wxp_data: dict):
+def init_external_task(odata: dict, wxp_data: dict, ai_article: bool):
     upsert_main_task(odata)
     q = dict(url_hash=odata['url_hash'])
     logger.debug(f'url_hash: {q}, run init_external_task(), odata: {odata}, wxp_data: {wxp_data}')
@@ -125,6 +125,9 @@ def init_external_task(odata: dict, wxp_data: dict):
     tm.update(q, rdata)
 
     inform_ac_data = iac.to_dict()
+
+    inform_ac_data['ai_article'] = ai_article
+
     logger.debug(f'url_hash {iac.url_hash}, run init_external_task(), inform_ac_data {inform_ac_data}')
 
     ts.update(q, dict(status_xpath='ready'))

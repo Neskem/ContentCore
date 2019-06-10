@@ -1073,11 +1073,14 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     publish_date = published_dates[0].get("title")
 
             if publish_date == None and domain == "momo.foxpro.com.tw":
-                s = re.search(r'^(\d{4}).(\d{2}).(\d{2})', title)
-                year = s.group(1)
-                month = s.group(2)
-                day = s.group(3)
-                publish_date = f'{year}-{month}-{day}'
+                try:
+                    s = re.search(r'^(\d{4}).(\d{2}).(\d{2})', title)
+                    year = s.group(1)
+                    month = s.group(2)
+                    day = s.group(3)
+                    publish_date = f'{year}-{month}-{day}'
+                except:
+                    pass
 
             if publish_date == None and "blog.udn.com" in url:
                 publish_date = getUdnPublishTime(tree)

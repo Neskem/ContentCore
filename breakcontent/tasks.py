@@ -43,7 +43,7 @@ def delete_main_task(data: dict):
 
 
 @celery.task()
-def init_external_task(odata: dict, wxp_data: dict, ai_article: bool):
+def init_external_task(odata: dict, wxp_data: dict, ai_article: bool = False):
     upsert_main_task(odata)
     q = dict(url_hash=odata['url_hash'])
     logger.debug(f'url_hash: {q}, run init_external_task(), odata: {odata}, wxp_data: {wxp_data}')
@@ -103,6 +103,8 @@ def init_external_task(odata: dict, wxp_data: dict, ai_article: bool):
     a_wpx.content_hash = content_hash
 
     ext_wpx_data = a_wpx.to_dict()
+    if a_wpx.publish_date is None:
+        del ext_wpx_data['publish_date']
     a_wpx.upsert(q, ext_wpx_data)
 
     iac = InformAC()

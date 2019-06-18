@@ -83,7 +83,7 @@ class InformAC():
             'old_url_hash': self.old_url_hash,  # todo
             'content_update': self.content_update,  # done
             'request_id': self.request_id,
-            'publish_date': str(self.publish_date),  # for JSON transfer
+            'publish_date': str(self.publish_date) if self.publish_date is not None else None,  # for JSON transfer
             'url_structure_type': self.url_structure_type,  # yet
             'secret': self.secret,
             'has_page_code': self.has_page_code,
@@ -1073,11 +1073,14 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     publish_date = published_dates[0].get("title")
 
             if publish_date == None and domain == "momo.foxpro.com.tw":
-                s = re.search(r'^(\d{4}).(\d{2}).(\d{2})', title)
-                year = s.group(1)
-                month = s.group(2)
-                day = s.group(3)
-                publish_date = f'{year}-{month}-{day}'
+                try:
+                    s = re.search(r'^(\d{4}).(\d{2}).(\d{2})', title)
+                    year = s.group(1)
+                    month = s.group(2)
+                    day = s.group(3)
+                    publish_date = f'{year}-{month}-{day}'
+                except:
+                    pass
 
             if publish_date == None and "blog.udn.com" in url:
                 publish_date = getUdnPublishTime(tree)

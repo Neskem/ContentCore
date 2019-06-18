@@ -454,7 +454,7 @@ class WebpagesPartnerXpath(Model):
             'title': self.title,
             'cover': self.cover,
             'content': self.content,
-            'publishedAt': self.publish_date.isoformat(),
+            'publishedAt': self.publish_date.isoformat() if self.publish_date is not None else '',
         }
 
     def to_dict(self):

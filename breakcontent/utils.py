@@ -83,7 +83,7 @@ class InformAC():
             'old_url_hash': self.old_url_hash,  # todo
             'content_update': self.content_update,  # done
             'request_id': self.request_id,
-            'publish_date': str(self.publish_date),  # for JSON transfer
+            'publish_date': str(self.publish_date) if self.publish_date is not None else None,  # for JSON transfer
             'url_structure_type': self.url_structure_type,  # yet
             'secret': self.secret,
             'has_page_code': self.has_page_code,

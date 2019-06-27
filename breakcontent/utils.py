@@ -308,6 +308,7 @@ class DomainSetting():
 
 
 def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
+def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
 
     method = method.lower()
     while retry:
@@ -674,42 +675,6 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
     iac.zi_sync = check_rule if iac.zi_sync else False
     if check_rule is False:
         iac.zi_defy.add('regex')
-        # if multipaged:
-        #     iac.status = False
-        #     return a_wpx, iac
-
-    # this should be done before requesting
-    # logger.debug(f"CRAWLER_SKIP_REQUEST {current_app.config['CRAWLER_SKIP_REQUEST']}")
-    if current_app.config['CRAWLER_SKIP_REQUEST'] and priority != 1:
-        doc = WebpagesPartnerXpath.query.options(load_only('title', 'category', 'publish_date', 'author', 'len_img', 'len_char')).filter_by(**q).first()
-        # check webpages_partner_xpath
-        if doc.title and doc.publish_date:
-            logger.debug(f'url_hash {url_hash} exists in WebpagesPartnerXpath() table')
-            iac.skip_crawler = True
-            # if exist, meant this record has been crawled before
-            isc = ds.isSyncCategory(doc.categories)
-            iac.zi_sync = isc if iac.zi_sync else False
-            if not isc:
-                iac.zi_defy.add('category')
-            isd = ds.isSyncDay(doc.publish_date)
-            iac.zi_sync = isd if iac.zi_sync else False
-            if not isd:
-                iac.zi_defy.add('delayday')
-            isa = ds.isSyncAuthor(doc.author)
-            iac.zi_sync = isa if iac.zi_sync else False
-            if not isa:
-                iac.zi_defy.add('authorList')
-            ckquality = doc.checkQuality()
-            iac.zi_sync = ckquality if iac.zi_sync else False
-            if not ckquality:
-                iac.zi_defy.add('quality')
-            logger.debug(f'rule check with DB done')
-            return doc, iac # Lance debug
-        else:
-            iac.skip_crawler = True
-            iac.zi_sync = False
-            iac.status = False
-            return a_wpx, iac
 
     # below are prepartion for request
     html = None

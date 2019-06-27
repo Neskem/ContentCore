@@ -103,8 +103,6 @@ PARTNER_SYSTEM_API = os.environ.get('PARTNER_SYSTEM_API')
 # UPLOAD_BASELINE_LOCK_TIMEOUT = os.environ.get('UPLOAD_BASELINE_LOCK_TIMEOUT')
 # MAX_CONTENT_LENGTH = os.environ.get('MAX_CONTENT_LENGTH')
 SENTRY_DSN = os.environ.get('SENTRY_DSN', None)
-CRAWLER_SKIP_REQUEST = False if os.environ.get('CRAWLER_SKIP_REQUEST', False) in [
-    'False', 'false', False] else True
 MIMIC_AUJS = False if os.environ.get('MIMIC_AUJS', False) in [
     'False', 'false', False] else True
 RUN_XPATH_MULTI_CRAWLER = False if os.environ.get('RUN_XPATH_MULTI_CRAWLER', False) in [

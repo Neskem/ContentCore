@@ -308,7 +308,6 @@ class DomainSetting():
 
 
 def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
-def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
 
     method = method.lower()
     while retry:

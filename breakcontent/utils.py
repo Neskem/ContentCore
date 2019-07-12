@@ -1198,7 +1198,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     logger.debug(f'url_hash {url_hash}, publish_date str type {publish_date}')
                     publish_date = publish_date.split('+')[0]
                     publish_date = dateparser.parse(publish_date, date_formats=[
-                                                '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'], settings={'TIMEZONE': '+0800', 'TO_TIMEZONE': 'UTC'})
+                                                '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'], settings={'TIMEZONE': '+0000', 'TO_TIMEZONE': 'UTC'})
                 a_wpx.publish_date = publish_date
                 iac.publish_date = publish_date
 

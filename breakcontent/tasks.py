@@ -112,16 +112,15 @@ def init_external_task(odata: dict, wxp_data: dict, ai_article: bool = False):
     iac.url = odata['url']
     iac.request_id = odata['request_id']
     iac.publish_date = a_wpx.publish_date
+    iac.status = True
 
     if len_char < 100:
         iac.quality = False
-        iac.status = False
         iac.zi_sync = False
         iac.zi_defy.add('quality')
     else:
         iac.quality = True
         iac.zi_sync = True
-        iac.status = True
 
     rdata = {'status': 'ready'}
     tm.update(q, rdata)

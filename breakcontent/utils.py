@@ -19,6 +19,7 @@ import re
 import dateparser
 from html import unescape
 from datetime import datetime, timedelta
+import datetime as dt
 import hashlib
 import base64
 import calendar
@@ -281,7 +282,7 @@ class DomainSetting():
         delayday = int(self.delayday[0]) if self.delayday else 0
         logger.debug(f'delayday {delayday}')
         delaydt = publish_date + timedelta(days=delayday)
-        ddt = delaydt.replace(tzinfo=None)
+        ddt = delaydt.replace(tzinfo=dt.timezone(dt.timedelta(hours=0)))
         '''
         # TypeError: can't compare offset-naive and offset-aware datetimes
 
@@ -291,7 +292,8 @@ class DomainSetting():
         delaydt 2019-02-03 21:28:00+00:00
         datetime.utcnow() 2019-02-23 08:12:37.602162
         '''
-        now = datetime.utcnow().replace(microsecond=0)
+        now = datetime.utcnow() + timedelta(hours=8)
+        now = now.replace(tzinfo=dt.timezone(dt.timedelta(hours=0)))
         logger.debug(f'ddt {ddt}')
         logger.debug(f'now {now}')
 

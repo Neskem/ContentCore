@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload, Load, load_only
 from breakcontent.models import TaskMain, WebpagesPartnerXpath, DomainInfo
 import datetime
 
+from breakcontent.utils import verify_ac_token
 
 bp = Blueprint('endpoints', __name__)
 
@@ -19,6 +20,12 @@ def init_task():
     current_app.logger.debug(f'request.json {request.json}')
     request_id = request.headers.get("X-REQUEST-ID", None)
     data = request.json
+    jwt_token = request.headers.get("Authorization", None)
+    verify_successfully, token = verify_ac_token(jwt_token)
+    current_app.logger.debug('get the request from AC, verify: {}, token: {}'.format(verify_successfully, token))
+    if verify_successfully is False:
+        res['msg'] = f'Authorization is not correct.'
+        return jsonify(res), 401
 
     required = [
         'url',
@@ -65,7 +72,12 @@ def init_task():
 def delete_task():
     res = {'msg': '', 'status': False}
     data = request.json
+    jwt_token = request.headers.get("Authorization", None)
 
+    verify_successfully, token = verify_ac_token(jwt_token)
+    if verify_successfully is False:
+        res['msg'] = f'Authorization is not correct.'
+        return jsonify(res), 401
     from breakcontent.tasks import delete_main_task
     delete_main_task.delay(data)
     res.update({
@@ -96,6 +108,12 @@ def create_tasks(priority):
 @cross_origin()
 def get_content(url_hash):
     res = {'msg': '', 'status': False}
+    jwt_token = request.headers.get("Authorization", None)
+
+    verify_successfully, token = verify_ac_token(jwt_token)
+    if verify_successfully is False:
+        res['msg'] = f'Authorization is not correct.'
+        return jsonify(res), 401
     wpxf = WebpagesPartnerXpath.query.filter_by(url_hash=url_hash).first()
     data = {'data': wpxf.to_ac()}
     res.update(data)
@@ -164,7 +182,12 @@ def get_pd(partner_id, domain):
     """
     current_app.logger.debug('run get_pd()...')
     res = {'msg': '', 'status': False}
+    jwt_token = request.headers.get("Authorization", None)
 
+    verify_successfully, token = verify_ac_token(jwt_token)
+    if verify_successfully is False:
+        res['msg'] = f'Authorization is not correct.'
+        return jsonify(res), 401
     if 0:
         # query only with domain, should be fastest
         q = dict(domain=domain)
@@ -241,6 +264,13 @@ def error_handler(etype):
 def init_external_content():
     res = {'msg': '', 'status': False}
     current_app.logger.debug(f'init_external_content start: request.json {request.json}')
+    jwt_token = request.headers.get("Authorization", None)
+
+    verify_successfully, token = verify_ac_token(jwt_token)
+    if verify_successfully is False:
+        res['msg'] = f'Authorization is not correct.'
+        return jsonify(res), 401
+
     request_id = request.headers.get("X-REQUEST-ID", None)
     data = request.json
 

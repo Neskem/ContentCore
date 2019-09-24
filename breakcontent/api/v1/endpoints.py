@@ -279,3 +279,11 @@ def init_external_content():
         'status': True
     })
     return jsonify(res), 200
+
+
+@bp.route('/health', methods=['GET'])
+@headers({'Content-Type': 'text/json'})
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+def hc():
+    res = {'msg': 'This endpoint for GCP health check', 'status': True}
+    return jsonify(res), 200

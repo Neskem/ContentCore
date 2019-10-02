@@ -26,7 +26,7 @@ RUN \
 COPY . /usr/src/app
 COPY    entrypoint.sh /
 COPY supervisord.conf /etc/
-COPY supervisor-uwsgi.conf supervisor-beat.conf supervisor-worker.conf /etc/supervisor/conf.d/
+COPY supervisor-uwsgi.conf supervisor-worker.conf /etc/supervisor/conf.d/
 
 ENV BREAKTIME_CONTENT_SETTINGS_PATH=/etc/breaktime/breakcontent.conf
 RUN     chmod +x /entrypoint.sh

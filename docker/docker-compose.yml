@@ -17,6 +17,14 @@ services:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf
             - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
         restart: always
+    psql:
+        container_name: psql
+        image: postgres
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        restart: always
     web:
         container_name: web
         build:
@@ -46,6 +54,12 @@ services:
             options:
                 max-size: "50m"
         restart: always
+        healthcheck:
+            test: ["CMD-SHELL", "curl -f http://localhost:8100/v1/create_tasks/1 && echo 'OK'"]
+            interval: 30m30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
 
     # hub:
     #     container_name: hub

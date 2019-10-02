@@ -214,6 +214,8 @@ def upsert_main_task(data: dict):
         tns.upsert(q, task_data)
 
     logger.debug(f"url_hash: {data['url_hash']} that to upsert was finished.")
+    if "priority" in data:
+        create_task.delay(data['url_hash'], data['priority'], 'pending')
 
 
 @celery.task()
@@ -250,6 +252,38 @@ def create_tasks(priority: str, limit: int=4000, asc: bool=True):
             # this might happen if you use sql to change doing back to pending
             # plz use reset_doing_tasks() instead
             bypass_crawler.delay(url_hash)
+
+
+@celery.task()
+def create_task(url_hash, priority, status):
+    q = dict(url_hash=url_hash, priority=priority, status=status)
+    tm = TaskMain().select(q)
+
+    request_id = tm.request_id
+    url_hash = tm.url_hash
+    logger.debug(f'url_hash {url_hash}, in task list')
+
+    if tm.task_service and tm.partner_id:
+        data = tm.task_service.to_dict()
+        data['priority'] = int(priority)
+        data['request_id'] = request_id
+        if int(priority) == 1:
+            logger.debug(
+                f'url_hash {url_hash}, sent to high_speed_p1.delay()')
+            high_speed_p1.delay(data)
+        else:
+            prepare_task.delay(data)
+    elif tm.task_noservice and not tm.partner_id:
+        logger.debug(
+            f'url_hash {url_hash}, sent task for tm.task_noservice {tm.task_noservice}')
+        data = tm.task_noservice.to_dict()
+        data['priority'] = int(priority)
+        data['request_id'] = request_id
+        prepare_task.delay(data)
+    else:
+        # this might happen if you use sql to change doing back to pending
+        # plz use reset_doing_tasks() instead
+        bypass_crawler.delay(url_hash)
 
 
 @celery.task()

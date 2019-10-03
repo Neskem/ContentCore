@@ -17,11 +17,16 @@ WORKDIR /usr/src/app
 
 COPY requirements.txt /usr/src/app/
 RUN \
+    pip install supervisor==3.2 && \
     pip3 install -r requirements.txt && \
     # pip install --upgrade google-cloud-logging && \
-    mkdir -p /var/log/contentcore/ && \
+    mkdir -p /var/log/contentcore/ /etc/supervisor/conf.d /etc/breaktime && \
     echo Done
 
 COPY . /usr/src/app
 COPY    entrypoint.sh /
+COPY supervisord.conf /etc/
+COPY supervisor-uwsgi.conf supervisor-worker.conf /etc/supervisor/conf.d/
+
+ENV BREAKTIME_CONTENT_SETTINGS_PATH=/etc/breaktime/breakcontent.conf
 RUN     chmod +x /entrypoint.sh

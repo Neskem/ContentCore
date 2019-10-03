@@ -51,43 +51,43 @@ CELERY_ROUTES = {
 
 # priority: 1(blogger), 2(was partner), 3(wasn't partner), 4(scan index page), 5(sitemap)
 CELERYBEAT_SCHEDULE = {
-    'create_tasks_1': {
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([1])
-    },
-    'create_tasks_2': {
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([2, 4000])
-    },
-    'create_tasks_3': {
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([3])
-    },
-    'create_tasks_4': {
-        # todo: selenium
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([4])
-    },
-    'create_tasks_5': {
-        'task': 'breakcontent.tasks.create_tasks',
-        'schedule': crontab(minute='*'),
-        'args': ([5])
-    },
+    # 'create_tasks_1': {
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([1])
+    # },
+    # 'create_tasks_2': {
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([2, 4000])
+    # },
+    # 'create_tasks_3': {
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([3])
+    # },
+    # 'create_tasks_4': {
+    #     # todo: selenium
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([4])
+    # },
+    # 'create_tasks_5': {
+    #     'task': 'breakcontent.tasks.create_tasks',
+    #     'schedule': crontab(minute='*'),
+    #     'args': ([5])
+    # },
     # 'create_tasks_6': {  # Update task (including daily and monthly)
     #     'task': 'breakcontent.tasks.create_tasks',
     #     'schedule': crontab(minute='*'),
     #     'args': ([6]),
     #     # 'options': {'queue': 'postman'}
     # },
-    'reset_doing_task': {
-        'task': 'breakcontent.tasks.reset_doing_tasks',
-        'schedule': crontab(minute=0, hour='*'),
-        'args': ([1])
-    },
+    # 'reset_doing_task': {
+    #     'task': 'breakcontent.tasks.reset_doing_tasks',
+    #     'schedule': crontab(minute=0, hour='*'),
+    #     'args': ([1])
+    # },
     # 'stats_cc': {
     #     'task': 'breakcontent.tasks.stats_cc',
     #     'schedule': crontab(minute=0, hour=7),

@@ -5,8 +5,10 @@ from urllib.parse import unquote, urlparse
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
 from breakcontent import db
+from breakcontent.config import MERCURY_PATH
 from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 
+from Naked.toolshed.shell import execute_js, muterun_js
 from flask import current_app
 from urllib.parse import urlencode, quote_plus, unquote, quote, unquote_plus, parse_qs
 from urllib.parse import urlparse, urljoin
@@ -1460,34 +1462,19 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
         return a_wpx, iac
 
 
-def mercuryContent(url, retry: int=5, sleep_sec: int=1):
-    if os.environ.get('MERCURY_TOKEN', None):
-        headers = {"x-api-key": os.environ.get('MERCURY_TOKEN')}
-        # logger.debug(f'headers {headers}')
-        api = "https://mercury.postlight.com/parser?url=" + url
-        logger.debug(f'url_hash {url_hash}, mercury api {api}')
-        # retry = 5  # retry 5 times at most
-        # sleep_sec = 1
-        while retry:
-            r = requests.get(api, headers=headers)
-            if r.status_code == 200:
-                try:
-                    res = r.json()
-                    # logger.debug(f'res {res}')
-                    return res
-                except Exception as e:
-                    retry -= 1
-                    if retry == 0:
-                        break
-                    logger.error(f'url_hash {url_hash}, mercury r.json exception: {e}')
-                    sleep_sec = sleep_sec * 2
-                    time.sleep(sleep_sec)
+def mercury_parser(url):
+    if os.environ.get('MERCURY_PATH', None):
+        mercury_path = os.environ.get('MERCURY_PATH', None)
+        mercury = muterun_js(mercury_path, arguments=url)
 
-            else:
-                logger.error(f'url_hash {url_hash}, failed mercury request')
-                return None
+        if mercury.exitcode == 0:
+            res = mercury.stdout.decode('utf-8')
+            response = json.loads(res)
+            return response
+        else:
+            return None
     else:
-        logger.error(f'url_hash {url_hash}, MERCURY_TOKEN env variable not set')
+        logger.error(f'url_ {url}, failed mercury parsing.')
         return None
 
 
@@ -1506,7 +1493,7 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
         wp = WebpagesPartnerAi()
     else:
         ts = TaskNoService.query.filter_by(**q).first()
-        wp = WebpagesNoService()
+        wp = WebpagesNoService.query.filter_by(**q).first()
 
     # logger.debug(f'wp {wp}')
     # logger.debug(f'parseData {parseData}')
@@ -1527,12 +1514,13 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
             if i in url:
                 use_crawlera = True
 
+        decode_url = decode_url_function(url)
         if crawlera_apikey and use_crawlera:
             proxies = {
                 'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
                 'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
             }
-            r = requests.get(url, allow_redirects=False,
+            r = requests.get(decode_url, allow_redirects=False,
                              headers=headers, proxies=proxies, verify=False)
 
             if check_r(r):
@@ -1540,11 +1528,12 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
             else:
                 logger.warning('CRAWLERA request failed, try local')
                 # don't use crawlera if failed at once
-                r = requests.get(url, allow_redirects=False, headers=headers)
+                r = requests.get(decode_url, allow_redirects=False, headers=headers)
         else:
-            r = requests.get(url, allow_redirects=False, headers=headers)
+            r = requests.get(decode_url, allow_redirects=False, headers=headers)
     else:
-        r = requests.get(url, verify=False, allow_redirects=False, headers=headers)
+        decode_url = decode_url_function(url)
+        r = requests.get(decode_url, allow_redirects=False, headers=headers)
 
     # ======== xpath ========
     if check_r(r):
@@ -1575,7 +1564,7 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
         return None
 
     # =========== mercury ===========
-    parseData = mercuryContent(url)
+    parseData = mercury_parser(url)
     if parseData:
 
         wp.title = parseData['title']
@@ -1817,6 +1806,17 @@ def send_email(mail):
   print(response.status_code)
   print(response.body)
   print(response.headers)
+
+
+def decode_url_function(url):
+    if type(url) is not str:
+        return url
+    decode_url = unquote(url)
+    if decode_url != url:
+        while decode_url != url:
+            decode_url, url = unquote(decode_url), decode_url
+
+    return decode_url
 
 
 def verify_ac_token(token):

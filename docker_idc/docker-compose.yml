@@ -1,0 +1,41 @@
+version: '3.5'
+services:
+    redis:
+        container_name: redis
+        image: redis:4.0
+        ports:
+            - "6379:6379"
+        restart: always
+    nginx:
+        container_name: nginx
+        image: nginx:1.12
+        depends_on:
+            - web
+        ports:
+            - "80:80"
+        volumes:
+            - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+            - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+        restart: always
+    web:
+        container_name: web
+        image: breaktimeinc/breaktime.contentcore
+        command: supervisord -n
+        depends_on:
+            - redis
+        volumes:
+           - ..:/usr/src/app
+           - /var/log/contentcore:/var/log/contentcore
+        env_file: breakcontent.env
+        environment:
+            - CONTAINER_TAG=web
+        expose:
+            - "8700"
+        ports:
+            - "8100:8100"
+            - "8700:8700"
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+        restart: always

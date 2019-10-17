@@ -25,3 +25,4 @@ tornado==5.1.1
 flower==0.9.3
 sendgrid==5.5.0
 logging-tree==1.8
+Naked==0.1.31

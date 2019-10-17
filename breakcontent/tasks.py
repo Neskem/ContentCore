@@ -1,6 +1,7 @@
 from breakcontent.factory import create_celery_app
-from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, retry_request, request_api
-from breakcontent.utils import mercuryContent, prepare_crawler, ai_a_crawler
+from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, \
+    retry_request, request_api
+from breakcontent.utils import mercury_parser, prepare_crawler, ai_a_crawler
 from breakcontent.utils import construct_email, send_email, to_csvstr, remove_html_tags
 from flask import current_app
 from celery.utils.log import get_task_logger
@@ -22,7 +23,6 @@ import re
 import os
 import requests
 import time
-
 
 celery = create_celery_app()
 logger = get_task_logger('cc')
@@ -154,7 +154,6 @@ def init_external_task(odata: dict, wxp_data: dict, ai_article: bool = False):
 
 @celery.task()
 def upsert_main_task(data: dict):
-
     logger.debug(f'org_data: {data}')
     task_required = [
         'url_hash',
@@ -188,7 +187,7 @@ def upsert_main_task(data: dict):
     tm = TaskMain()
     tm.upsert(q, data)
 
-    if data.get('partner_id', None):
+    if 'partner_id' in data and data['partner_id'] is not None:
         udata = {
             'task_main_id': tm.id,  # for insert use
             'status_ai': 'pending',
@@ -201,14 +200,14 @@ def upsert_main_task(data: dict):
         ts = TaskService()
         ts.upsert(q, task_data)  # for insert
     else:
+        if 'partner_id' in task_data:
+            task_data.pop('partner_id')
         udata = {
             'task_main_id': tm.id,  # for insert use
             'status': 'pending',
             # 'retry': 0,
             'domain': domain
         }
-        if task_data.get('partner_id', None):
-            task_data.pop('partner_id')
         task_data.update(udata)
         tns = TaskNoService()
         tns.upsert(q, task_data)
@@ -219,7 +218,7 @@ def upsert_main_task(data: dict):
 
 
 @celery.task()
-def create_tasks(priority: str, limit: int=4000, asc: bool=True):
+def create_tasks(priority: str, limit: int = 4000, asc: bool = True):
     q = dict(priority=priority, status='pending')
     tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=asc,
                             limit=limit)
@@ -323,7 +322,8 @@ def prepare_task(task: dict):
             if domain_info.get('page', None) and domain_info['page'] != '':
 
                 if not celery.conf['RUN_XPATH_MULTI_CRAWLER']:
-                    logger.debug(f"url_hash {url_hash}, multipage: RUN_XPATH_MULTI_CRAWLER: {celery.conf['RUN_XPATH_MULTI_CRAWLER']}")
+                    logger.debug(
+                        f"url_hash {url_hash}, multipage: RUN_XPATH_MULTI_CRAWLER: {celery.conf['RUN_XPATH_MULTI_CRAWLER']}")
                     tm = TaskMain()
                     tm.update(q, dict(status='done'))
                     return
@@ -426,7 +426,7 @@ def prepare_task(task: dict):
         tns = TaskNoService()
         tns.upsert(q, data)
 
-        if celery.conf['MERCURY_TOKEN']:
+        if celery.conf['MERCURY_PATH']:
             ai_single_crawler.delay(url_hash, url)
             logger.debug(
                 f'url_hash {url_hash}, sent task to ai_single_crawler()')
@@ -755,7 +755,7 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
         q = dict(url_hash=url_hash)
 
         wpns = WebpagesNoService()
-        tns = TaskNoService()
+        tns = TaskNoService().select(q)
         tm = TaskMain()
 
         iac = InformAC()
@@ -765,7 +765,7 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
             udata = {
                 'url_hash': url_hash,
                 'url': url,
-                'request_id': a_wp.task_noservice.request_id,
+                'request_id': tns.request_id,
                 # 'status': True # default value
             }
             iac_data.update(udata)
@@ -802,7 +802,7 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str
 
 
 @celery.task()
-def ai_multi_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None, domain_info: dict=None):
+def ai_multi_crawler(url_hash: str, url: str, partner_id: str = None, domain: str = None, domain_info: dict = None):
     '''
     must be a partner
 
@@ -873,7 +873,7 @@ def ai_multi_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=
 # ==== tool tasks ====
 
 @celery.task()
-def bypass_crawler(url_hash: str, status: str='done'):
+def bypass_crawler(url_hash: str, status: str = 'done'):
     """
     this url need not to crawl
 
@@ -914,7 +914,7 @@ def bypass_crawler(url_hash: str, status: str='done'):
 
 
 @celery.task()
-def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
+def reset_doing_tasks(hour: int = 1, priority: int = None, limit: int = 10000):
     """
     query the hanging task (status = doing) from TaskMain() with _mtime at least a hour before now
 
@@ -927,11 +927,16 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
     logger.debug(f'hours_before_now {hours_before_now}')
 
     if priority and priority != 0:
-        tml = TaskMain.query.options(load_only('url_hash')).filter_by(priority=priority).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(
-            hours_before_now, db.DateTime), or_(TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+        tml = TaskMain.query.options(load_only('url_hash')).filter_by(priority=priority).filter(
+            db.cast(TaskMain._mtime, db.DateTime) < db.cast(
+                hours_before_now, db.DateTime),
+            or_(TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(
+            limit).all()
     else:
-        tml = TaskMain.query.options(load_only('url_hash')).filter(db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), or_(
-            TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(limit).all()
+        tml = TaskMain.query.options(load_only('url_hash')).filter(
+            db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), or_(
+                TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(
+            limit).all()
 
     # TaskMain.partner_id is not None
     # logger.debug(f'type(tml) {type(tml)}')
@@ -951,7 +956,7 @@ def reset_doing_tasks(hour: int=1, priority: int=None, limit: int=10000):
 
 
 @celery.task()
-def stats_cc(itype: str=None):
+def stats_cc(itype: str = None):
     '''
     summarize the daily statistics of CC
 

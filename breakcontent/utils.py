@@ -1,4 +1,5 @@
 import re
+import jwt
 from urllib.parse import unquote, urlparse
 # from breakcontent.tasks import logger
 from sqlalchemy.orm import load_only
@@ -1818,4 +1819,16 @@ def send_email(mail):
   print(response.headers)
 
 
-
+def verify_ac_token(token):
+    jwt_secret_key = "partneri<3breaktimepartner"
+    jwt_authorizate_code = "breaktime.com.tw"
+    # if token payload has aud, decode must need "audience" key or while happen error.
+    try:
+        payload = jwt.decode(token, jwt_secret_key, audience='content_core', algorithms=['HS256'])
+        if payload and payload["iss"] == jwt_authorizate_code:
+            return True, payload
+        else:
+            return False, token
+    except Exception as ex:
+        logger.error("Can not verify zi token, token: {}, exception: {}".format(token, ex))
+        return False, token

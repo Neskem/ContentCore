@@ -1299,7 +1299,11 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     '//a[contains(@class, "username")]/strong/text()')
                 if len(x_author) > 0:
                     author = x_author[0].strip()
-
+            if "www.winentaste.com" in url:
+                x_author = tree.xpath(
+                    '/html/body/div[2]/main/div/div/article/div/div[8]/div[2]/div/h2/a/text()')
+                if len(x_author) > 0:
+                    author = x_author[0].strip()
             # universal logic
             if author == None:
                 x_author = tree.xpath('/html/head/meta[@property="author"]')

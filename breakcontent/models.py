@@ -118,17 +118,12 @@ class Model(db.Model):
                 retry += 1
 
     # @classmethod
-    def select(self, query: dict, order_by: 'column name'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
+    def select(self, query: dict, order_by: 'column name'=None, limit: int=None) -> 'a object or list of objects':
         retry = 0
         while 1:
             try:
                 if order_by and limit:
-                    if asc:
-                        docs = self.__class__.query.filter_by(
-                            **query).order_by(order_by.asc()).limit(limit).all()
-                    else:
-                        docs = self.__class__.query.filter_by(
-                            **query).order_by(order_by.desc()).limit(limit).all()
+                    docs = self.__class__.query.filter_by(**query).limit(limit).all()
                     return docs
                 else:
                     doc = self.__class__.query.filter_by(**query).first()

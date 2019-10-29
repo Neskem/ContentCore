@@ -218,10 +218,9 @@ def upsert_main_task(data: dict):
 
 
 @celery.task()
-def create_tasks(priority: str, limit: int = 4000, asc: bool = True):
+def create_tasks(priority: str, limit: int = 4000):
     q = dict(priority=priority, status='pending')
-    tml = TaskMain().select(q, order_by=TaskMain._mtime, asc=asc,
-                            limit=limit)
+    tml = TaskMain().select(q, order_by=TaskMain._mtime, limit=limit)
     if len(tml) == 0:
         return
 

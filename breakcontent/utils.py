@@ -2,6 +2,7 @@ import re
 import jwt
 from urllib.parse import unquote, urlparse
 # from breakcontent.tasks import logger
+from sqlalchemy import and_
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
 from breakcontent import db
@@ -142,10 +143,8 @@ class InformAC():
         #     # db_session_insert(u2c)
         #     doc.upsert(q, idata)
 
-        q = dict(content_hash=wp.content_hash)
-        # query out the previous url_hash with the same content_hash
-        doc_list = UrlToContent.query.options(load_only('url_hash', 'replaced')).filter_by(**q).filter(
-            UrlToContent.url_hash != self.url_hash).all()
+        doc_list = UrlToContent.query.filter(and_(UrlToContent.content_hash == wp.content_hash,
+                                                  UrlToContent.url_hash != self.url_hash)).all()
 
         for i, doc in enumerate(doc_list):
             logger.debug(f'doc.url_hash {doc.url_hash}')

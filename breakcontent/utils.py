@@ -145,7 +145,7 @@ class InformAC():
         q = dict(content_hash=wp.content_hash)
         # query out the previous url_hash with the same content_hash
         doc_list = UrlToContent.query.options(load_only('url_hash', 'replaced')).filter_by(**q).filter(
-            UrlToContent.url_hash != self.url_hash).order_by(UrlToContent._mtime.desc()).all()
+            UrlToContent.url_hash != self.url_hash).all()
 
         for i, doc in enumerate(doc_list):
             logger.debug(f'doc.url_hash {doc.url_hash}')

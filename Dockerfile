@@ -5,7 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ENV TERM linux
 
 RUN \
-  apt-get update ; \
+  apt-get update && apt-get install --assume-yes apt-utils ; \
   apt-get -y install git curl python3 python3-dev python3-setuptools python3-pip && \
   apt-get -y install python python-dev python-setuptools python-pip && \
   apt-get -y install build-essential libffi-dev && \

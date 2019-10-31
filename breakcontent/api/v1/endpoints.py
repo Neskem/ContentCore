@@ -79,11 +79,17 @@ def delete_task():
         res['msg'] = f'Authorization is not correct.'
         return jsonify(res), 401
     from breakcontent.tasks import delete_main_task
-    delete_main_task.delay(data)
-    res.update({
-        'msg': 'ok',
-        'status': True
-    })
+    if "url_hash" in data:
+        delete_main_task.delay(data["url_hash"])
+        res.update({
+            'msg': 'ok',
+            'status': True
+        })
+    else:
+        res.update({
+            'msg': 'Can not find the url_hash',
+            'status': False
+        })
     return jsonify(res), 200
 
 

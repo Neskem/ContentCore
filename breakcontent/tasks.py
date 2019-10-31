@@ -1,4 +1,5 @@
 from breakcontent.factory import create_celery_app
+from breakcontent.orm_content import delete_old_related_data
 from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, \
     retry_request, request_api
 from breakcontent.utils import mercury_parser, prepare_crawler, ai_a_crawler
@@ -31,15 +32,12 @@ ac_content_status_api = os.environ.get('AC_CONTENT_STATUS_API', None)
 ac_content_multipage_api = os.environ.get('AC_CONTENT_MULTIPAGE_API', None)
 
 
-@celery.task()
-def delete_main_task(data: dict):
-    logger.debug(
-        f'run delete_main_task(), down stream records will also be deleted...')
-    tmd = TaskMain.query.filter_by(**data).first()
-    db.session.delete(tmd)
-    db.session.commit()
-
+@celery.task(ignore_result=True)
+def delete_main_task(url_hash):
+    logger.debug(f'run delete_main_task(), down stream records will also be deleted...')
+    delete_old_related_data(url_hash)
     logger.debug('done delete_main_task()')
+    return True
 
 
 @celery.task()

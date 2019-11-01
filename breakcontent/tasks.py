@@ -1,5 +1,9 @@
 from breakcontent.factory import create_celery_app
-from breakcontent.orm_content import delete_old_related_data
+from breakcontent.orm_content import delete_old_related_data, get_task_main_data, update_task_main_detailed_status, \
+    init_task_main, get_task_service_data, init_task_service_with_xpath, init_task_service, \
+    update_task_service_with_status, \
+    get_task_no_service_data, init_task_no_service, update_task_no_service_with_status, update_task_main, \
+    update_task_service, update_task_no_service
 from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, \
     retry_request, request_api
 from breakcontent.utils import mercury_parser, prepare_crawler, ai_a_crawler
@@ -153,66 +157,42 @@ def init_external_task(odata: dict, wxp_data: dict, ai_article: bool = False):
 @celery.task()
 def upsert_main_task(data: dict):
     logger.debug(f'org_data: {data}')
-    task_required = [
-        'url_hash',
-        'url',
-        'request_id',
-        'partner_id',
-        'domain'
-    ]
-    task_data = {k: v for (k, v) in data.items() if k in task_required}
 
-    url = data['url']
     if data.get('domain', None):
         domain = data['domain']
     else:
-        o = urlparse(url)
+        o = urlparse(data['url'])
         domain = o.netloc
         data['domain'] = domain
 
-    q = {
-        'url_hash': data['url_hash']
-    }
-    udata = {
-        'status': 'pending',
-        'doing_time': None,
-        'done_time': None,
-        'zi_sync': None,
-        'inform_ac_status': None
-    }
-    data.update(udata)
-    logger.debug(f'new_data: {data}, after append to udata.')
-    tm = TaskMain()
-    tm.upsert(q, data)
+    task_main = get_task_main_data(data['url_hash'])
+    if not task_main:
+        init_task_main(data['url'], data['url_hash'], data['partner_id'], domain, data['request_id'], data['priority'],
+                       data['generator'])
+        task_main = get_task_main_data(data['url_hash'])
+    else:
+        update_task_main(data['url_hash'], data['partner_id'], data['request_id'], data['priority'], data['generator'])
+    update_task_main_detailed_status(data['url_hash'], status='pending', doing_time=None, done_time=None,
+                                     zi_sync=None, inform_ac_status=None)
 
     if 'partner_id' in data and data['partner_id'] is not None:
-        udata = {
-            'task_main_id': tm.id,  # for insert use
-            'status_ai': 'pending',
-            'status_xpath': 'pending',
-            # 'retry_ai': 0,
-            'retry_xpath': 0,
-            'domain': domain
-        }
-        task_data.update(udata)
-        ts = TaskService()
-        ts.upsert(q, task_data)  # for insert
+        task_service = get_task_service_data(data['url_hash'])
+        if not task_service:
+            init_task_service(task_main.id, data['url'], data['url_hash'], domain, data['partner_id'],
+                              data['request_id'])
+        else:
+            update_task_service(data['url_hash'], data['partner_id'], data['request_id'])
+        update_task_service_with_status(data['url_hash'], status_ai='pending', status_xpath='pending', retry_xpath=0)
     else:
-        if 'partner_id' in task_data:
-            task_data.pop('partner_id')
-        udata = {
-            'task_main_id': tm.id,  # for insert use
-            'status': 'pending',
-            # 'retry': 0,
-            'domain': domain
-        }
-        task_data.update(udata)
-        tns = TaskNoService()
-        tns.upsert(q, task_data)
+        task_no_service = get_task_no_service_data(data['url_hash'])
+        if not task_no_service:
+            init_task_no_service(task_main.id, data['url'], data['url_hash'], domain, data['request_id'])
+        else:
+            update_task_no_service(data['url_hash'], data['request_id'])
+        update_task_no_service_with_status(data['url_hash'], status='pending')
 
-    logger.debug(f"url_hash: {data['url_hash']} that to upsert was finished.")
-    if "priority" in data:
-        create_task.delay(data['url_hash'], data['priority'], 'pending')
+    if 'priority' in data:
+        create_task.delay(data['url_hash'], data['priority'], status='pending')
 
 
 @celery.task()

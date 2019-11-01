@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from flask import Blueprint, request, g, jsonify, current_app, abort
 from flask_headers import headers
 from flask_cors import cross_origin
@@ -157,7 +159,7 @@ def partner_setting_add_update(partner_id, domain):
 @bp.route('/hc/<itype>', methods=['GET'])
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 @cross_origin()
-def health_check(itype: str=None):
+def health_check(itype: str = None):
     current_app.logger.debug('run health_check()...')
     res = {'msg': '', 'status': False}
 
@@ -277,38 +279,29 @@ def init_external_content():
         res['msg'] = f'Authorization is not correct.'
         return jsonify(res), 401
 
-    request_id = request.headers.get("X-REQUEST-ID", None)
     data = request.json
+    data['request_id'] = request.headers.get("X-REQUEST-ID", None)
+    if 'url' not in data or 'url_hash' not in data or 'priority' not in data or 'partner_id' not in data or \
+            'request_id' not in data or 'title' not in data or 'content' not in data:
+        res['msg'] = "lack of required parameters"
+        return jsonify(res), 401
 
-    required = ['url', 'url_hash', 'priority', 'partner_id']
-    task_optional = ['request_id', 'generator', 'domain']
-    wxp_optional = ['request_id', 'generator', 'domain', 'title', 'content', 'publish_date', 'cover', 'description', 'author']
-
-    odata = {}
-    wxp_data = {}
-    odata['request_id'] = request_id
-    ai_article = data['ai_article'] if data['ai_article'] else False
-    for r in required:
-        if not data.get(r, None):
-            res['msg'] = f'{r} is required'
-            return jsonify(res), 401
-
-    for i in data.keys():
-        if i not in required + task_optional:
-            if i == '500':
-                return jsonify(res), 500
-        else:
-            odata[i] = data[i]
-
-    for i in data.keys():
-        if i not in required + wxp_optional:
-            if i == '500':
-                return jsonify(res), 500
-        else:
-            wxp_data[i] = data[i]
+    # check all parameters expect for requires.
+    if data.get('domain', None):
+        pass
+    else:
+        o = urlparse(data['url'])
+        domain = o.netloc
+        data['domain'] = domain
+    data.setdefault('generator', None)
+    data.setdefault('publish_date', None)
+    data.setdefault('cover', None)
+    data.setdefault('description', None)
+    data.setdefault('author', None)
+    data.setdefault('ai_article', False)
 
     from breakcontent.tasks import init_external_task
-    init_external_task.delay(odata, wxp_data, ai_article)
+    init_external_task.delay(data)
 
     res.update({
         'msg': 'ok',

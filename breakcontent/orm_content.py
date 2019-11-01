@@ -103,6 +103,12 @@ def update_task_service_with_status(url_hash, status_ai, status_xpath, retry_xpa
     })
 
 
+def update_task_service_with_status_only_xpath(url_hash, status_xpath):
+    db.session.query(TaskService).filter_by(url_hash=url_hash).update({
+        'status_xpath': status_xpath
+    })
+
+
 def update_task_no_service_with_status(url_hash, status):
     db.session.query(TaskNoService).filter_by(url_hash=url_hash).update({
         'status': status
@@ -241,3 +247,10 @@ def update_webpages_for_external(url_hash, title, content, content_hash, author=
         })
     db.session.commit()
 
+
+def get_webpages_xpath(url_hash):
+    webpages_xpath = db.session.query(WebpagesPartnerXpath).filter_by(url_hash=url_hash).first()
+    if webpages_xpath is not None:
+        return webpages_xpath
+    else:
+        return False

@@ -3,7 +3,8 @@ from breakcontent.orm_content import delete_old_related_data, get_task_main_data
     init_task_main, get_task_service_data, init_task_service_with_xpath, init_task_service, \
     update_task_service_with_status, \
     get_task_no_service_data, init_task_no_service, update_task_no_service_with_status, update_task_main, \
-    update_task_service, update_task_no_service
+    update_task_service, update_task_no_service, update_task_main_status, get_webpages_xpath, \
+    update_webpages_for_external, update_task_main_sync_status, create_webpages_with_data
 from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, \
     retry_request, request_api
 from breakcontent.utils import mercury_parser, prepare_crawler, ai_a_crawler
@@ -45,111 +46,82 @@ def delete_main_task(url_hash):
 
 
 @celery.task()
-def init_external_task(odata: dict, wxp_data: dict, ai_article: bool = False):
-    upsert_main_task(odata)
-    q = dict(url_hash=odata['url_hash'])
-    logger.debug(f'url_hash: {q}, run init_external_task(), odata: {odata}, wxp_data: {wxp_data}')
-    sdata = {'status': 'doing', 'doing_time': datetime.utcnow()}
-    tm = TaskMain()
-    tm.update(q, sdata)
-
-    a_wpx = WebpagesPartnerXpath()
-    ts = TaskService().select(q)
-    a_wpx.task_service_id = ts.id
-    a_wpx.url = wxp_data['url']
-    a_wpx.url_hash = wxp_data['url_hash']
-    a_wpx.domain = wxp_data['domain']
-    a_wpx.title = wxp_data['title']
-    a_wpx.content = wxp_data['content']
-    a_wpx.author = wxp_data['author']
-    a_wpx.publish_date = wxp_data.setdefault("publish_date", None)
-    a_wpx.cover = wxp_data['cover']
-    a_wpx.meta_description = wxp_data['description']
+def init_external_task(data: dict):
+    upsert_main_task(data)
+    update_task_main_status(data['url_hash'], status='doing', doing_time=datetime.utcnow())
 
     content_p = ''
     len_p = 0
-    content = unquote(a_wpx.content)
+    content = unquote(data['content'])
     content_html = lxml.html.fromstring(content)
-    xp = content_html.xpath('.//p')
-    for p in xp:
+
+    xpath_p = content_html.xpath('.//p')
+    for p in xpath_p:
         txt = remove_html_tags(etree.tostring(
             p, pretty_print=True, method='html').decode("utf-8"))
         s = unescape(txt.strip())
         if s.strip():
             content_p += '<p>{}</p>'.format(s)
             len_p = len_p + 1
-    a_wpx.content_p = content_p
-    a_wpx.len_p = len_p
 
     content = remove_html_tags(content)
     pattern = re.compile(r'\s+')
     content = re.sub(pattern, '', content)
     content = unescape(content)
     len_char = len(content)
-    a_wpx.len_char = len_char
 
     content_hash = ''
-    if a_wpx.meta_description != None and a_wpx.meta_description != "":
-        content_hash += a_wpx.meta_description
+    if data['description'] is not None and data['description'] != "":
+        content_hash += data['description']
     else:
-        if a_wpx.title:
-            content_hash += a_wpx.title
+        if data['title']:
+            content_hash += data['title']
     # concat publish_date
-    if a_wpx.publish_date:
-        if isinstance(a_wpx.publish_date, datetime):
-            content_hash += a_wpx.publish_date.isoformat()
-        else:
-            content_hash += a_wpx.publish_date
+    if isinstance(data['publish_date'], datetime):
+        content_hash += data['publish_date'].isoformat()
+    else:
+        content_hash += data['publish_date']
     m = hashlib.sha1(content_hash.encode('utf-8'))
-    content_hash = odata['partner_id'] + '_' + m.hexdigest()
-    a_wpx.content_hash = content_hash
+    content_hash = data['partner_id'] + '_' + m.hexdigest()
 
-    ext_wpx_data = a_wpx.to_dict()
-    if a_wpx.publish_date is None:
-        del ext_wpx_data['publish_date']
-    a_wpx.upsert(q, ext_wpx_data)
+    webpages_xpath = get_webpages_xpath(data['url_hash'])
+    if webpages_xpath is False:
+        create_webpages_with_data(data['url'], data['url_hash'], data['domain'], data['title'], data['content'],
+                                  content_hash, author=data['author'], publish_date=data['publish_date'],
+                                  cover=data['cover'], meta_description=data['description'], content_p=content_p,
+                                  len_p=len_p, len_char=len_char)
+    else:
+        update_webpages_for_external(data['url_hash'], title=data['title'], content=data['content'],
+                                     content_hash=content_hash, author=data['author'],
+                                     publish_date=data['publish_date'], cover=data['cover'],
+                                     meta_description=data['description'], content_p=content_p, len_p=len_p,
+                                     len_char=len_char)
 
-    iac = InformAC()
-    iac.url_hash = odata['url_hash']
-    iac.url = odata['url']
-    iac.request_id = odata['request_id']
-    iac.publish_date = a_wpx.publish_date
-    iac.status = True
+    inform_ac = {'url_hash': data['url_hash'], 'url': data['url'], 'request_id': data['request_id'],
+                 'publish_date': data['publish_date'], 'status': True, 'zi_defy': [],
+                 'ai_article': data['ai_article'], }
 
     if len_char < 100:
-        iac.quality = False
-        iac.zi_sync = False
-        iac.zi_defy.add('quality')
+        inform_ac['quality'] = False
+        inform_ac['zi_sync'] = False
+        inform_ac['zi_defy'].append('quality')
     else:
-        iac.quality = True
-        iac.zi_sync = True
-
-    rdata = {'status': 'ready'}
-    tm.update(q, rdata)
-
-    inform_ac_data = iac.to_dict()
-
-    inform_ac_data['ai_article'] = ai_article
-
-    logger.debug(f'url_hash {iac.url_hash}, run init_external_task(), inform_ac_data {inform_ac_data}')
-
-    ts.update(q, dict(status_xpath='ready'))
-    tm.update(q, dict(status='ready', zi_sync=iac.zi_sync, inform_ac_status=iac.status))
+        inform_ac['quality'] = True
+        inform_ac['zi_sync'] = True
+    update_task_main_sync_status(data['url_hash'], status='ready', zi_sync=inform_ac['zi_sync'],
+                                 inform_ac_status=inform_ac['status'])
+    update_task_service_with_status(data['url_hash'], status_ai=None, status_xpath='done', retry_xpath=None)
 
     headers = {'Content-Type': "application/json"}
-    resp_data = retry_request(
-        'put', ac_content_status_api, inform_ac_data, headers)
-
+    resp_data = retry_request('put', ac_content_status_api, inform_ac, headers)
     if resp_data:
-        q = dict(url_hash=iac.url_hash)
-        ts.update(q, dict(status_xpath='done'))
-        tm.update(q, dict(status='done', done_time=datetime.utcnow()))
-        logger.debug(f'url_hash {iac.url_hash}, inform AC successful')
+        update_task_main_status(data['url_hash'], status='done', done_time=datetime.utcnow())
+        update_task_service_with_status(data['url_hash'], status_ai=None, status_xpath='done', retry_xpath=None)
+        logger.debug('url_hash {}, inform AC successful'.format(data['url_hash']))
     else:
-        q = dict(url_hash=iac.url_hash)
-        ts.update(q, dict(status_xpath='failed'))
-        tm.update(q, dict(status='failed'))
-        logger.error(f'url_hash {iac.url_hash}, inform AC failed')
+        update_task_main_status(data['url_hash'], status='failed')
+        update_task_service_with_status(data['url_hash'], status_ai=None, status_xpath='failed', retry_xpath=None)
+        logger.error('url_hash {}, inform AC failed'.format(data['url_hash']))
 
     return True
 
@@ -191,7 +163,7 @@ def upsert_main_task(data: dict):
             update_task_no_service(data['url_hash'], data['request_id'])
         update_task_no_service_with_status(data['url_hash'], status='pending')
 
-    if 'priority' in data:
+    if 'priority' in data and data['priority'] != 7:
         create_task.delay(data['url_hash'], data['priority'], status='pending')
 
 

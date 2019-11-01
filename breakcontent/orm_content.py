@@ -95,7 +95,7 @@ def init_task_service_with_xpath(url_hash, domain, task_main_id, status_ai, stat
     pg_add_wrapper(new_init_task_service)
 
 
-def update_task_service_with_status(url_hash, status_ai, status_xpath, retry_xpath):
+def update_task_service_with_status(url_hash, status_ai, status_xpath, retry_xpath=0):
     db.session.query(TaskService).filter_by(url_hash=url_hash).update({
         'status_ai': status_ai,
         'status_xpath': status_xpath,
@@ -157,6 +157,14 @@ def get_task_service_data(url_hash):
 
 def get_task_main_data(url_hash):
     url_hash_task_main = TaskMain.query.filter_by(url_hash=url_hash).first()
+    if url_hash_task_main is not None:
+        return url_hash_task_main
+    else:
+        return False
+
+
+def get_task_main_data_with_status(url_hash, priority, status):
+    url_hash_task_main = TaskMain.query.filter_by(url_hash=url_hash, priority=priority, status=status).first()
     if url_hash_task_main is not None:
         return url_hash_task_main
     else:
@@ -254,3 +262,21 @@ def get_webpages_xpath(url_hash):
         return webpages_xpath
     else:
         return False
+
+
+def get_task_main_tasks(priority, status, limit=4000):
+    tasks = TaskMain.query.filter_by(priority=priority, status=status).limit(limit).all()
+    if tasks is not None:
+        return tasks
+    else:
+        return False
+
+
+def update_task_service_multipage(url_hash, is_multipage, page_query_param, status_ai, status_xpath, retry_xpath=0):
+    db.session.query(TaskService).filter_by(url_hash=url_hash).update({
+        'is_multipage': is_multipage,
+        'page_query_param': page_query_param,
+        'status_ai': status_ai,
+        'status_xpath': status_xpath,
+        'retry_xpath': retry_xpath
+    })

@@ -280,3 +280,17 @@ def update_task_service_multipage(url_hash, is_multipage, page_query_param, stat
         'status_xpath': status_xpath,
         'retry_xpath': retry_xpath
     })
+
+
+def update_task_service_send_content_time(url_hash, sent_content_time):
+    task_service = TaskService.query.filter_by(url_hash=url_hash).first()
+    if task_service.sent_content_ini_time is not None:
+        db.session.query(TaskService).filter_by(url_hash=url_hash).update({
+            'sent_content_time': sent_content_time
+        })
+    else:
+        db.session.query(TaskService).filter_by(url_hash=url_hash).update({
+            'sent_content_time': sent_content_time,
+            'sent_content_ini_time': sent_content_time
+        })
+    db.session.commit()

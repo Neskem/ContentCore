@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload, Load, load_only
 from breakcontent.models import TaskMain, WebpagesPartnerXpath, DomainInfo
 import datetime
 
+from breakcontent.orm_content import get_webpages_xpath, update_task_service_send_content_time
 from breakcontent.utils import verify_ac_token
 
 bp = Blueprint('endpoints', __name__)
@@ -20,46 +21,31 @@ bp = Blueprint('endpoints', __name__)
 def init_task():
     res = {'msg': '', 'status': False}
     current_app.logger.debug(f'request.json {request.json}')
-    request_id = request.headers.get("X-REQUEST-ID", None)
-    data = request.json
     jwt_token = request.headers.get("Authorization", None)
     verify_successfully, token = verify_ac_token(jwt_token)
-    current_app.logger.debug('get the request from AC, verify: {}, token: {}'.format(verify_successfully, token))
     if verify_successfully is False:
         res['msg'] = f'Authorization is not correct.'
         return jsonify(res), 401
 
-    required = [
-        'url',
-        'url_hash',
-        'priority',
-    ]
+    data = request.json
 
-    optional = [
-        'request_id',
-        'partner_id',
-        'generator',
-        'domain'
-    ]
+    if 'url' not in data or 'url_hash' not in data or 'priority' not in data:
+        res['msg'] = 'Lack of required parameters'
+        return jsonify(res), 401
 
-    odata = {}
-    odata['request_id'] = request_id
-    for r in required:
-        if not data.get(r, None):
-            res['msg'] = f'{r} is required'
-            return jsonify(res), 401
+    if data.get('domain', None):
+        pass
+    else:
+        o = urlparse(data['url'])
+        domain = o.netloc
+        data['domain'] = domain
 
-    for i in data.keys():
-        if i not in required + optional:
-            current_app.logger.warning(
-                f'drop unexpected key {i}:{data[i]} from input payload')
-            if i == '500':
-                return jsonify(res), 500
-        else:
-            odata[i] = data[i]
+    data['request_id'] = request.headers.get("X-REQUEST-ID", None)
+    data.setdefault('partner_id', None)
+    data.setdefault('generator', None)
 
     from breakcontent.tasks import upsert_main_task
-    upsert_main_task.delay(odata)
+    upsert_main_task.delay(data)
 
     res.update({
         'msg': 'ok',
@@ -100,7 +86,6 @@ def delete_task():
 @cross_origin()
 def create_tasks(priority):
     res = {'msg': '', 'status': False}
-    data = request.json
 
     from breakcontent.tasks import create_tasks
     create_tasks.delay(priority)
@@ -122,18 +107,18 @@ def get_content(url_hash):
     if verify_successfully is False:
         res['msg'] = f'Authorization is not correct.'
         return jsonify(res), 401
-    wpxf = WebpagesPartnerXpath.query.filter_by(url_hash=url_hash).first()
-    data = {'data': wpxf.to_ac()}
-    res.update(data)
+    webpages_data = get_webpages_xpath(url_hash)
+    return_data = {'data': {'url': webpages_data.url, 'url_structure_type': webpages_data.url_structure_type,
+                            'title': webpages_data.title, 'cover': webpages_data.cover,
+                            'content': webpages_data.content,
+                            'publishedAt': webpages_data.publish_date.isoformat()
+                            if webpages_data.publish_date is not None else ''}}
+    res.update(return_data)
     res.update({
         'msg': 'ok',
         'status': True
     })
-    # record sent_content_time/sent_content_ini_time in TaskMain
-    wpxf.task_service.sent_content_time = datetime.datetime.utcnow()
-    if not wpxf.task_service.sent_content_ini_time:
-        wpxf.task_service.sent_content_ini_time = datetime.datetime.utcnow()
-    db.session.commit()
+    update_task_service_send_content_time(url_hash, datetime.datetime.utcnow())
     return jsonify(res), 200
 
 

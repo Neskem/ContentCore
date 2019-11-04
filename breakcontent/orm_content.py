@@ -3,7 +3,7 @@ import datetime
 from breakcontent import db
 from breakcontent.helper import pg_add_wrapper
 from breakcontent.models import TaskMain, WebpagesNoService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, \
-    TaskService
+    TaskService, DomainInfo
 
 
 def init_task_main(url, url_hash, partner_id, domain, request_id, priority, generator=None):
@@ -293,4 +293,24 @@ def update_task_service_send_content_time(url_hash, sent_content_time):
             'sent_content_time': sent_content_time,
             'sent_content_ini_time': sent_content_time
         })
+    db.session.commit()
+
+
+def get_partner_domain_rules(partner_id, domain):
+    rules = DomainInfo.query.filter_by(partner_id=partner_id, domain=domain).first()
+    if rules is not None:
+        return rules
+    else:
+        return False
+
+
+def init_partner_domain_rules(partner_id, domain, rules):
+    new_init_rules = DomainInfo(partner_id=partner_id, domain=domain, rules=rules)
+    pg_add_wrapper(new_init_rules)
+
+
+def update_partner_domain_rules(partner_id, domain, rules):
+    db.session.query(DomainInfo).filter_by(partner_id=partner_id, domain=domain).update({
+        'rules': rules
+    })
     db.session.commit()

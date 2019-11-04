@@ -1,10 +1,11 @@
+from breakcontent.article_manager import InformACObj
 from breakcontent.factory import create_celery_app
 from breakcontent.orm_content import delete_old_related_data, get_task_main_data, update_task_main_detailed_status, \
     init_task_main, get_task_service_data, init_task_service_with_xpath, init_task_service, \
     update_task_service_with_status, \
     get_task_no_service_data, init_task_no_service, update_task_no_service_with_status, update_task_main, \
     update_task_service, update_task_no_service, update_task_main_status, get_webpages_xpath, \
-    update_webpages_for_external, update_task_main_sync_status, create_webpages_with_data, get_task_main_tasks, \
+    update_webpages_for_external, update_task_main_sync_status, create_webpages_xpath_with_data, get_task_main_tasks, \
     update_task_service_multipage, get_task_main_data_with_status
 from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, \
     retry_request, request_api
@@ -80,50 +81,27 @@ def init_external_task(data: dict):
     # concat publish_date
     if isinstance(data['publish_date'], datetime):
         content_hash += data['publish_date'].isoformat()
-    else:
-        content_hash += data['publish_date']
+    elif data['publish_date'] is not None and len(data['publish_date']) > 0:
+        content_hash += str(data['publish_date'])
     m = hashlib.sha1(content_hash.encode('utf-8'))
     content_hash = data['partner_id'] + '_' + m.hexdigest()
 
     webpages_xpath = get_webpages_xpath(data['url_hash'])
     if webpages_xpath is False:
-        create_webpages_with_data(data['url'], data['url_hash'], data['domain'], data['title'], data['content'],
-                                  content_hash, author=data['author'], publish_date=data['publish_date'],
-                                  cover=data['cover'], meta_description=data['description'], content_p=content_p,
-                                  len_p=len_p, len_char=len_char)
+        create_webpages_xpath_with_data(data['url'], data['url_hash'], data['domain'], data['title'], data['content'],
+                                        content_hash, author=data['author'], publish_date=data['publish_date'],
+                                        cover=data['cover'], meta_description=data['description'], content_p=content_p,
+                                        len_p=len_p, len_char=len_char)
     else:
         update_webpages_for_external(data['url_hash'], title=data['title'], content=data['content'],
                                      content_hash=content_hash, author=data['author'],
                                      publish_date=data['publish_date'], cover=data['cover'],
                                      meta_description=data['description'], content_p=content_p, len_p=len_p,
                                      len_char=len_char)
-
-    inform_ac = {'url_hash': data['url_hash'], 'url': data['url'], 'request_id': data['request_id'],
-                 'publish_date': data['publish_date'], 'status': True, 'zi_defy': [],
-                 'ai_article': data['ai_article'], }
-
-    if len_char < 100:
-        inform_ac['quality'] = False
-        inform_ac['zi_sync'] = False
-        inform_ac['zi_defy'].append('quality')
-    else:
-        inform_ac['quality'] = True
-        inform_ac['zi_sync'] = True
-    update_task_main_sync_status(data['url_hash'], status='ready', zi_sync=inform_ac['zi_sync'],
-                                 inform_ac_status=inform_ac['status'])
-    update_task_service_with_status(data['url_hash'], status_ai=None, status_xpath='done', retry_xpath=None)
-
-    headers = {'Content-Type': "application/json"}
-    resp_data = retry_request('put', ac_content_status_api, inform_ac, headers)
-    if resp_data:
-        update_task_main_status(data['url_hash'], status='done', done_time=datetime.utcnow())
-        update_task_service_with_status(data['url_hash'], status_ai=None, status_xpath='done', retry_xpath=None)
-        logger.debug('url_hash {}, inform AC successful'.format(data['url_hash']))
-    else:
-        update_task_main_status(data['url_hash'], status='failed')
-        update_task_service_with_status(data['url_hash'], status_ai=None, status_xpath='failed', retry_xpath=None)
-        logger.error('url_hash {}, inform AC failed'.format(data['url_hash']))
-
+    inform_ac = InformACObj(url=data['url'], url_hash=data['url_hash'], request_id=data['request_id'],
+                            publish_date=data['publish_date'], ai_article=data['ai_article'])
+    inform_ac.calculate_quality(len_char)
+    inform_ac.sync_external_to_ac()
     return True
 
 

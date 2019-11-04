@@ -3,7 +3,7 @@ import datetime
 from breakcontent import db
 from breakcontent.helper import pg_add_wrapper
 from breakcontent.models import TaskMain, WebpagesNoService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, \
-    TaskService, DomainInfo
+    TaskService, DomainInfo, UrlToContent
 
 
 def init_task_main(url, url_hash, partner_id, domain, request_id, priority, generator=None):
@@ -83,9 +83,16 @@ def update_task_main_detailed_status(url_hash, status, doing_time, done_time, zi
     db.session.commit()
 
 
-def update_task_service_status_xapth(url_hash, status_xpath):
+def update_task_service_status_xpath(url_hash, status_xpath, status_code=None):
     db.session.query(TaskService).filter_by(url_hash=url_hash).update({
-        'status_xpath': status_xpath
+        'status_xpath': status_xpath,
+        'status_code': status_code
+    })
+
+
+def update_task_service_status_ai(url_hash, status_ai):
+    db.session.query(TaskService).filter_by(url_hash=url_hash).update({
+        'status_ai': status_ai
     })
 
 
@@ -211,8 +218,23 @@ def delete_old_related_data(url_hash):
         return
 
 
-def create_webpages_with_data(url, url_hash, domain, title, content, content_hash, author=None, publish_date=None,
-                              cover=None, meta_description=None, content_p=None, len_p=None, len_char=None):
+def create_webpages_xpath_without_data(url, url_hash, domain, task_service_id=None):
+    new_init_webpages = WebpagesPartnerXpath(url=url, url_hash=url_hash, domain=domain, task_service_id=task_service_id)
+    pg_add_wrapper(new_init_webpages)
+
+
+def create_webpages_ai_without_data(url, url_hash, domain, task_service_id=None):
+    new_init_webpages = WebpagesPartnerAi(url=url, url_hash=url_hash, domain=domain, task_service_id=task_service_id)
+    pg_add_wrapper(new_init_webpages)
+
+
+def create_webpages_no_service_without_data(url, url_hash, domain, task_noservice_id=None):
+    new_init_webpages = WebpagesNoService(url=url, url_hash=url_hash, domain=domain, task_noservice_id=task_noservice_id)
+    pg_add_wrapper(new_init_webpages)
+
+
+def create_webpages_xpath_with_data(url, url_hash, domain, title, content, content_hash, author=None, publish_date=None,
+                                    cover=None, meta_description=None, content_p=None, len_p=None, len_char=None):
     if publish_date is not None and (type(publish_date) is datetime.date or type(publish_date) is datetime.datetime):
         new_init_webpages = WebpagesPartnerXpath(url=url, url_hash=url_hash, domain=domain, title=title,
                                                  content=content, content_hash=content_hash, author=author, cover=cover,
@@ -312,5 +334,29 @@ def init_partner_domain_rules(partner_id, domain, rules):
 def update_partner_domain_rules(partner_id, domain, rules):
     db.session.query(DomainInfo).filter_by(partner_id=partner_id, domain=domain).update({
         'rules': rules
+    })
+    db.session.commit()
+
+
+def get_url_to_content_data(content_hash):
+    url_content = UrlToContent.filter_by(content_hash=content_hash).first()
+    if url_content is not None:
+        return url_content
+    else:
+        return False
+
+
+def init_url_to_content(url, url_hash, content_hash, request_id, replaced=False):
+    new_init_url_content = UrlToContent(url=url, url_hash=url_hash, content_hash=content_hash, request_id=request_id,
+                                        replaced=replaced)
+    pg_add_wrapper(new_init_url_content)
+
+
+def update_url_to_content(content_hash, url, url_hash, request_id, replaced):
+    db.session.query(UrlToContent).filter_by(content_hash=content_hash).update({
+        'url': url,
+        'url_hash': url_hash,
+        'request_id': request_id,
+        'replaced': replaced
     })
     db.session.commit()

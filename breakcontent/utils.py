@@ -7,7 +7,8 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
 from breakcontent import db
 from breakcontent.config import MERCURY_PATH
-from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
+from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, \
+    WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
 
 from Naked.toolshed.shell import execute_js, muterun_js
 from flask import current_app
@@ -36,11 +37,19 @@ from sendgrid.helpers.mail import Email, Content, Mail, Attachment, Personalizat
 import base64
 
 import logging
+
+from breakcontent.orm_content import get_task_service_data, get_task_no_service_data, get_task_main_data, \
+    update_task_main_status, update_task_service_status_xpath, get_webpages_partner_xpath_data, \
+    create_webpages_xpath_without_data, update_task_service_status_ai, get_webpages_partner_ai_data, \
+    create_webpages_ai_without_data, update_task_no_service_with_status, get_webpages_no_service_data, \
+    create_webpages_no_service_without_data
+
 logger = logging.getLogger('cc')
+
 
 class Secret():
 
-    def __init__(self, secret: bool=False, domain: str=None, bsp: str=None):
+    def __init__(self, secret: bool = False, domain: str = None, bsp: str = None):
         self.secret = secret
         self.domain = domain
         self.bsp = bsp  # pixnet, xuite, wordpress, ...
@@ -157,7 +166,6 @@ class InformAC():
 
 
 class DomainSetting():
-
     data = {
         'xpath': None,
         'e_xpath': None,
@@ -311,8 +319,7 @@ class DomainSetting():
         pass
 
 
-def retry_request(method: str, api: str, data: dict=None, headers: dict=None, retry: int=5):
-
+def retry_request(method: str, api: str, data: dict = None, headers: dict = None, retry: int = 5):
     method = method.lower()
     while retry:
         try:
@@ -413,7 +420,7 @@ def parse_domain_info(data: dict) -> dict:
             # logger.debug(f'type(v) {type(v)}')
             # logger.debug(f'v {v}')
             domain_info = {kk: vv for kk,
-                           vv in v.items() if kk in optional}
+                                      vv in v.items() if kk in optional}
             # logger.debug(f'filtered domain_info {domain_info}')
             return domain_info
         else:
@@ -505,7 +512,8 @@ def db_session_update(table: object, query: dict, data: dict):
             retry += 1
 
 
-def db_session_query(table: object, query: dict, order_by: 'column name'=None, asc: bool=True, limit: int=None) -> 'a object or list of objects':
+def db_session_query(table: object, query: dict, order_by: 'column name' = None, asc: bool = True,
+                     limit: int = None) -> 'a object or list of objects':
     '''
     return a table record object
     '''
@@ -543,8 +551,8 @@ def db_session_query(table: object, query: dict, order_by: 'column name'=None, a
                 raise
 
 
-def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False):
-    '''
+def prepare_crawler(url_hash: str, partner: bool = False, xpath: bool = False):
+    """
     init record in WebpagesPartnerXpath for singlepage or multipage crawler, so the fk will be linked to TaskService and the pk will be created.
 
     <return>
@@ -553,65 +561,37 @@ def prepare_crawler(url_hash: str, partner: bool=False, xpath: bool=False):
     a WebpagesPartnerAi dict
     or
     a WebpagesNoService dict
-    '''
+    """
     logger.debug('start prepare_crawler()...')
-    q = dict(url_hash=url_hash)
+    task_service = get_task_service_data(url_hash) if partner is True else get_task_no_service_data(url_hash)
+    task_main = get_task_main_data(url_hash)
 
-    if partner:
-        ts = TaskService().select(q)
-    else:
-        ts = TaskNoService().select(q)
-
-    tm = TaskMain()
-    if not ts:
-        # this will cause the task be hanging at status 'preparing'
-        logger.error(f'url_hash {url_hash} this usually should not happen!')
-        tm.update(q, dict(status='failed'))
+    if task_service is False or task_main is False:
+        logger.error('url_hash {} does not exist. Please check prepare_crawler function and this record again.')
         return None
 
-    tm.update(q, dict(status='doing'))
+    update_task_main_status(url_hash, status='doing')
 
-    udata = {
-        'url_hash': ts.url_hash,
-        'url': ts.url,  # should url be updated here?
-    }
-    if partner and xpath:
-        ts.status_xpath = 'doing'
-        ts.commit()
-        wpx = WebpagesPartnerXpath()
-        udata['task_service_id'] = ts.id
-        wpx.upsert(q, udata)
-        # wp_data = ts.webpages_partner_xpath.to_inform()
-        # wp_data['generator'] = ts.task_main.generator
-        # logger.debug(f'wp_data {wp_data}')
-        # return wp_data
+    if partner is True and xpath is True:
+        update_task_service_status_xpath(url_hash, status_xpath='doing')
+        webpages_xpath = get_webpages_partner_xpath_data(url_hash)
+        if webpages_xpath is False:
+            create_webpages_xpath_without_data(task_service.url, url_hash, task_service.domain, task_service.id)
+    elif partner is True and xpath is False:
+        update_task_service_status_ai(url_hash, status_ai='doing')
+        webpages_ai = get_webpages_partner_ai_data(url_hash)
+        if webpages_ai is False:
+            create_webpages_ai_without_data(task_service.url, url_hash, task_service.domain, task_service.id)
+    elif partner is False:
+        update_task_no_service_with_status(url_hash, status='doing')
+        webpages_mercury = get_webpages_no_service_data(url_hash)
+        if webpages_mercury is False:
+            create_webpages_no_service_without_data(task_service.url, url_hash, task_service.domain, task_service.id)
 
-    elif partner and not xpath:
-        # prepare for ai crawler
-        ts.status_ai = 'doing'
-        ts.commit()
-        wpa = WebpagesPartnerAi()
-        udata['task_service_id'] = ts.id
-        wpa.upsert(q, udata)
-        # wp_data = ts.webpages_partner_ai.to_inform()
-        # wp_data['generator'] = ts.task_main.generator
-        # logger.debug(f'wp_data {wp_data}')
-        # return wp_data
-
-    elif not partner:
-        # prepare for ai crawler
-        ts.status = 'doing'
-        ts.commit()
-        wns = WebpagesNoService()
-        udata['task_noservice_id'] = ts.id
-        wns.upsert(q, udata)
-        # wp_data = ts.webpages_noservice.to_inform() # if the tm-ts relation was bound to another one this will fail
-        # wp_data['generator'] = ts.task_main.generator
-        # logger.debug(f'wp_data {wp_data}')
-        # return wp_data
+    return True
 
 
-def check_r(r: 'response', ts: object=None):
+def check_r(r: 'response', ts: object = None):
     if ts:
         ts.status_code = r.status_code
         db.session.commit()
@@ -623,7 +603,8 @@ def check_r(r: 'response', ts: object=None):
         return False
 
 
-def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, multipaged: bool=False, timeout: int=6) -> (object, object):
+def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, multipaged: bool = False,
+                    timeout: int = 6) -> (object, object):
     """
     note: this is not a celery task function
 
@@ -1141,7 +1122,7 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 xpublish_date = tree.xpath('//*[@itemprop="datePublished"]')
                 if len(xpublish_date) > 0:
                     # logger.debug(
-                        # f"xpublish_date[0].text {xpublish_date[0].text}")
+                    # f"xpublish_date[0].text {xpublish_date[0].text}")
                     publish_date = xpublish_date[0].get(
                         'content') or xpublish_date[0].get('datetime')
                     if publish_date == None and xpublish_date[0].text:
@@ -1202,7 +1183,8 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                     logger.debug(f'url_hash {url_hash}, publish_date str type {publish_date}')
                     publish_date = publish_date.split('+')[0]
                     publish_date = dateparser.parse(publish_date, date_formats=[
-                                                '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'], settings={'TIMEZONE': '+0000', 'TO_TIMEZONE': 'UTC'})
+                        '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'],
+                                                    settings={'TIMEZONE': '+0000', 'TO_TIMEZONE': 'UTC'})
                 a_wpx.publish_date = publish_date
                 iac.publish_date = publish_date
 
@@ -1455,7 +1437,6 @@ def xpath_a_crawler(url_hash: str, url: str, partner_id: str, domain: str, domai
                 iac.zi_sync = False
                 iac.zi_defy.add('secret')
 
-
             iac.status = False
             return a_wpx, iac
 
@@ -1481,7 +1462,8 @@ def mercury_parser(url):
         return None
 
 
-def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None, domain_info: str=None, multipaged: bool=False) -> object:
+def ai_a_crawler(url_hash: str, url: str, partner_id: str = None, domain: str = None, domain_info: str = None,
+                 multipaged: bool = False) -> object:
     '''
     use mercury to crawl a page
 
@@ -1505,7 +1487,6 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
     if multipaged:
         crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
-
 
         # slight different w/ that of xpath_a_crawler
         candidate = [
@@ -1640,7 +1621,7 @@ def ai_a_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None
         return None
 
 
-def request_api(api: str, method: str, payload: dict=None, headers: dict=None):
+def request_api(api: str, method: str, payload: dict = None, headers: dict = None):
     '''
     a wrapper func for requesting api
     '''
@@ -1678,7 +1659,7 @@ def getWpRealLink(url, shortlink):
         r = requests.get(shortlink, allow_redirects=False)
     except requests.exceptions.MissingSchema as e:
         logger.error(e)
-        shortlink = 'http:'+shortlink
+        shortlink = 'http:' + shortlink
         r = requests.get(shortlink, allow_redirects=False)
 
     if r.status_code == 301:
@@ -1735,7 +1716,8 @@ def getUdnPublishTime(tree):
         date = publish_time.xpath('//span[@class="dd"]/text()')
         h = publish_time.xpath('//span[@class="hh"]/text()')
         i = publish_time.xpath('//span[@class="ii"]/text()')
-        return '{}/{}/{}T{}:{}:00+08:00'.format(year[0].strip(), month[0].strip(), date[0].strip(), h[0].strip(), i[0].strip())
+        return '{}/{}/{}T{}:{}:00+08:00'.format(year[0].strip(), month[0].strip(), date[0].strip(), h[0].strip(),
+                                                i[0].strip())
     return None
 
 
@@ -1759,16 +1741,16 @@ def remove_html_tags(text):
 
 
 def to_csvstr(data: 'list of tuples'):
-  '''list of tuples turn into csv str'''
-  datastr = ''
-  for tp in data:
-    ilist = [str(i) for i in tp]
-    datastr += '\t'.join(ilist) + '\n'
-  return datastr
+    '''list of tuples turn into csv str'''
+    datastr = ''
+    for tp in data:
+        ilist = [str(i) for i in tp]
+        datastr += '\t'.join(ilist) + '\n'
+    return datastr
 
 
 def construct_email(mailfrom: str, mailto: list, subject: str, content: str, attfilename: str, data: str):
-  '''
+    '''
   still intake one mailfrom and one mailto for now
 
   params:
@@ -1778,37 +1760,37 @@ def construct_email(mailfrom: str, mailto: list, subject: str, content: str, att
   data: csv-ready string
   attfilename: filename for attachment
   '''
-  mail = Mail()
+    mail = Mail()
 
-  mail.from_email = Email(mailfrom)
+    mail.from_email = Email(mailfrom)
 
-  mail.subject = subject
+    mail.subject = subject
 
-  mail.add_content(Content("text/html", content))
+    mail.add_content(Content("text/html", content))
 
-  personalization = Personalization()
-  for i in mailto:
-    personalization.add_to(Email(i))
-  mail.add_personalization(personalization)
+    personalization = Personalization()
+    for i in mailto:
+        personalization.add_to(Email(i))
+    mail.add_personalization(personalization)
 
-  attachment = Attachment()
-  attachment.content = str(base64.b64encode(data.encode('utf-8')), 'utf-8')
-  attachment.type = 'text/csv'
-  attachment.filename = attfilename
-  attachment.disposition = 'attachment'
-  mail.add_attachment(attachment)
-  return mail
+    attachment = Attachment()
+    attachment.content = str(base64.b64encode(data.encode('utf-8')), 'utf-8')
+    attachment.type = 'text/csv'
+    attachment.filename = attfilename
+    attachment.disposition = 'attachment'
+    mail.add_attachment(attachment)
+    return mail
 
 
 def send_email(mail):
-  # dangerous
-  SENDGRIDAPIKEY = "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"
-  sg = sendgrid.SendGridAPIClient(apikey=SENDGRIDAPIKEY)
-  response = sg.client.mail.send.post(request_body=mail.get())
-  # print(response)
-  print(response.status_code)
-  print(response.body)
-  print(response.headers)
+    # dangerous
+    SENDGRIDAPIKEY = "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"
+    sg = sendgrid.SendGridAPIClient(apikey=SENDGRIDAPIKEY)
+    response = sg.client.mail.send.post(request_body=mail.get())
+    # print(response)
+    print(response.status_code)
+    print(response.body)
+    print(response.headers)
 
 
 def decode_url_function(url):

@@ -5,8 +5,8 @@ import requests
 
 from urllib.parse import urlparse
 
-from breakcontent.orm_content import update_task_main_sync_status, update_task_service_with_status, \
-    get_url_to_content_data, init_url_to_content, update_task_main_status, update_task_service_with_status_only_xpath, \
+from breakcontent.orm_content import update_task_main_sync_status,  get_url_to_content_data, \
+    init_url_to_content, update_task_main_status, update_task_service_with_status_only_xpath, \
     update_url_to_content, delete_old_related_data
 
 logger = logging.getLogger('cc')
@@ -115,7 +115,7 @@ class InformACObj:
             'url': self.url,
             'old_url_hash': self.old_url_hash,
             'request_id': self.request_id,
-            'publish_date': self.publish_date,
+            'publish_date': str(self.publish_date),
             'secret': self.secret,
             'has_page_code': self.has_page_code,
             'quality': self.quality,
@@ -156,11 +156,20 @@ class InformACObj:
         return True
 
     def set_zi_sync(self, zi_sync=True):
-        self.zi_sync = zi_sync
+        if zi_sync is bool:
+            self.zi_sync = zi_sync
 
     def add_zi_defy(self, defy):
         if defy is not None and type(defy) is str:
             self.zi_defy.append(defy)
+
+    def set_ac_sync(self, status):
+        if status is bool:
+            self.ac_sync = status
+
+    def set_page_code(self, page_code):
+        if page_code is bool:
+            self.has_page_code = page_code
 
 
 def retry_requests(method, api, data=None, headers=None, retry=3):
@@ -177,7 +186,7 @@ def retry_requests(method, api, data=None, headers=None, retry=3):
                 r = requests.get(api, json=data, headers=headers)
 
             if r.status_code == 200:
-                return r.json()
+                return r
             else:
                 logger.error(f"url_hash {data.get('url_hash', None)} request status code {r.status_code}")
                 retry -= 1

@@ -339,7 +339,7 @@ def update_partner_domain_rules(partner_id, domain, rules):
 
 
 def get_url_to_content_data(content_hash):
-    url_content = UrlToContent.filter_by(content_hash=content_hash).first()
+    url_content = UrlToContent.query.filter_by(content_hash=content_hash).first()
     if url_content is not None:
         return url_content
     else:
@@ -360,3 +360,31 @@ def update_url_to_content(content_hash, url, url_hash, request_id, replaced):
         'replaced': replaced
     })
     db.session.commit()
+
+
+def update_webpages_for_xpath(url, url_hash, content_hash, title, content, len_char, content_p, len_p, content_h1, content_h2,
+                              content_image, len_img, content_xpath, cover, author, publish_date, meta_jdoc,
+                              meta_description, meta_keywords, wp_url, category, categories, multi_page_urls=''):
+    db.session.query(WebpagesPartnerXpath).filter_by(url=url, url_hash=url_hash).update({
+        'content_hash': content_hash,
+        'title': title,
+        'content': content,
+        'len_char': len_char,
+        'content_p': content_p,
+        'len_p': len_p,
+        'content_h1': content_h1,
+        'content_h2': content_h2,
+        'content_image': content_image,
+        'len_img': len_img,
+        'content_xpath': content_xpath,
+        'cover': cover,
+        'author': author,
+        'publish_date': publish_date,
+        'meta_jdoc': meta_jdoc,
+        'meta_description': meta_description,
+        'meta_keywords': meta_keywords,
+        'wp_url': wp_url,
+        'category': category,
+        'categories': categories,
+        'multi_page_urls': multi_page_urls
+    })

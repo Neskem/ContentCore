@@ -1,4 +1,5 @@
 from breakcontent.article_manager import InformACObj
+from breakcontent.crawler_manager import CrawlerObj
 from breakcontent.factory import create_celery_app
 from breakcontent.orm_content import delete_old_related_data, get_task_main_data, update_task_main_detailed_status, \
     init_task_main, get_task_service_data, init_task_service_with_xpath, init_task_service, \
@@ -296,118 +297,13 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
     <notice>
     partner only
     """
-    logger.debug(f'url_hash {url_hash}, start to crawl single-paged url.')
+    logger.debug('url_hash {}, start to crawl single-paged url.'.format(url_hash))
 
-    prepare_crawler(url_hash, partner=True, xpath=True)
+    crawler_obj = CrawlerObj(url_hash=url_hash, url=url, domain=domain, partner_id=partner_id)
+    crawler_obj.prepare_crawler(xpath=True)
+    crawler_obj.xpath_a_crawler(domain_rules=domain_info, multi_pages=False)
 
-    q = dict(url_hash=url_hash)
-    tm = TaskMain().select(q)
-    ts = TaskService().select(q)
-    priority = tm.priority
-
-    try:
-        a_wpx, inform_ac = xpath_a_crawler(
-            url_hash, url, partner_id, domain, domain_info)
-    except requests.exceptions.ReadTimeout as e:
-        logger.error(
-            f'url_hash {url_hash}, site task too long to response, quit waiting!')
-        logger.error(f'url_hash {url_hash}, task ReadTimeout exception: {e}')
-        bypass_crawler.delay(url_hash)
-        return
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f'url_hash {url_hash}, task ConnectionError exception: {e}')
-        bypass_crawler.delay(url_hash)
-        return
-
-    logger.debug(f'url_hash {url_hash}, a_wpx from xpath_a_crawler(): {a_wpx}')
-
-    if inform_ac.skip_crawler:
-        logger.debug(
-            f'url_hash {url_hash}, inform_ac.skip_crawler {inform_ac.skip_crawler} no need to update WebpagesPartnerXpath() table')
-    else:
-        # check crawler status code, if 406/426 retry 5 time at most
-        # retry stretagy: send task into broker again
-        retry = ts.retry_xpath
-        status_code = ts.status_code
-        candidate = [406, 426]
-        retry_limit = 2
-        if retry < retry_limit and (status_code in candidate or status_code != 200):
-            logger.warning(
-                f'url_hash {url_hash}, status_code {status_code}, retry {retry} times')
-            retry += 1
-            ts.update(q, dict(retry_xpath=retry))
-
-            time.sleep(0.5)
-            if int(priority) == 1:
-                logger.debug(
-                    f'url_hash {url_hash}, run xpath_single_crawler() in high_speed_p1 task func')
-                xpath_single_crawler(
-                    url_hash, url, partner_id, domain, domain_info)
-            else:
-                xpath_single_crawler(
-                    url_hash, url, partner_id, domain, domain_info)
-            return  # exit this func
-        elif retry >= retry_limit:
-            logger.critical(
-                f'url_hash {url_hash}, status_code {status_code}, stop after retry {retry} times!')
-            ts.update(q, dict(status_xpath='failed'))
-            tm.update(q, dict(status='failed'))
-
-        wpx_data = a_wpx.to_dict()
-        a_wpx.update(q, wpx_data)
-        logger.debug(
-            f'url_hash {url_hash}, update successful, crawler completed')
-
-    # inform AC
-    inform_ac.check_content_hash(a_wpx)
-    inform_ac_data = inform_ac.to_dict()
-    logger.debug(f'url_hash {url_hash}, inform_ac_data {inform_ac_data}')
-
-    ts.update(q, dict(status_xpath='ready'))
-    tm.update(q, dict(status='ready', zi_sync=inform_ac.zi_sync,
-                      inform_ac_status=inform_ac.status))
-
-    logger.debug(f'url_hash {url_hash}, status {ts.status_xpath}')
-
-    if not ac_content_status_api:
-        return
-
-    if celery.conf['ONLY_PERMIT_P1'] and priority != 1:
-        return
-
-    headers = {'Content-Type': "application/json"}
-    resp_data = retry_request(
-        'put', ac_content_status_api, inform_ac_data, headers)
-
-    if resp_data:
-        if inform_ac.old_url_hash:
-            q = {
-                'url_hash': inform_ac.old_url_hash,
-                'content_hash': a_wpx.content_hash
-            }
-            u2c = UrlToContent().select(q)
-            u2c.update(q, dict(replaced=True))
-            logger.debug(
-                f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in UrlToContent() has been modified')
-
-            q = {'url_hash': inform_ac.old_url_hash}
-            # tm = TaskMain()
-            doc = tm.select(q)
-            tm.delete(doc)
-            logger.debug(
-                f'url_hash {url_hash}, old url_hash {inform_ac.old_url_hash} record in TaskMain() has been deleted')
-
-        logger.debug(f'resp_data {resp_data}')
-        q = dict(url_hash=url_hash)
-        ts.update(q, dict(status_xpath='done'))
-        tm.update(q, dict(status='done', done_time=datetime.utcnow()))
-        logger.debug(f'url_hash {url_hash}, inform AC successful')
-
-    else:
-        q = dict(url_hash=url_hash)
-        ts.update(q, dict(status_xpath='failed'))
-        tm.update(q, dict(status='failed'))
-        logger.error(f'url_hash {url_hash}, inform AC failed')
+    return True
 
 
 @celery.task()

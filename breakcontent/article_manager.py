@@ -61,9 +61,6 @@ class InformACObj:
         return True
 
     def sync_external_to_ac(self):
-        notify_status = 'ready'
-        update_task_main_sync_status(self.url_hash, status=notify_status, inform_ac_status=self.ac_sync,
-                                     zi_sync=self.zi_sync)
 
         data = dict()
         data['url'] = self.url
@@ -83,20 +80,17 @@ class InformACObj:
         data['zi_defy'] = self.zi_defy
         data['ai_article'] = self.ai_article
 
-        logger.debug(f'url_hash {self.url_hash}, run init_external_task(), inform_ac_data {data}')
+        logger.debug('url_hash {}, run init_external_task(), inform_ac_data {}'.format(self.url_hash, data))
 
         r = retry_requests('put', self.ac_status_api, data=data, headers=self.headers)
-        if r is False:
-            notify_status = 'failed'
-            crawler_status = 'failed'
+        if r.status_code == 200:
+            update_task_main_status(self.url_hash, status='failed')
+            update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
             logger.debug('url_hash {}, inform AC failed'.format(self.url_hash))
         else:
-            notify_status = 'done'
-            crawler_status = 'done'
+            update_task_main_status(self.url_hash, status='done')
+            update_task_service_with_status_only_xpath(self.url_hash, status_xpath='done')
             logger.debug('url_hash {}, inform AC successful'.format(self.url_hash))
-
-        update_task_main_status(self.url_hash, status=notify_status)
-        update_task_service_with_status_only_xpath(self.url_hash, status_xpath=crawler_status)
 
         return True
 
@@ -124,8 +118,6 @@ class InformACObj:
             'status': self.ac_sync,
         }
         r = retry_requests('put', self.ac_status_api, data=data, headers=self.headers)
-        update_task_main_status(self.url_hash, status='ready')
-        update_task_service_with_status_only_xpath(self.url_hash, status_xpath='ready')
 
         if r.status_code == 200:
             if self.old_url_hash is not None and self.content_hash is not None:
@@ -133,7 +125,7 @@ class InformACObj:
             update_task_main_status(self.url_hash, status='done')
             update_task_service_with_status_only_xpath(self.url_hash, status_xpath='done')
         else:
-            logger.error(f'url_hash {self.url_hash}, inform AC failed')
+            logger.error('url_hash {}, inform AC failed'.format(self.url_hash))
             update_task_main_status(self.url_hash, status='failed')
             update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
         return True
@@ -188,13 +180,13 @@ def retry_requests(method, api, data=None, headers=None, retry=3):
             if r.status_code == 200:
                 return r
             else:
-                logger.error(f"url_hash {data.get('url_hash', None)} request status code {r.status_code}")
+                logger.error("url_hash {} request status code {}".format(data.get('url_hash', None), r.status_code))
                 retry -= 1
                 continue
         except ValueError as e:
-            logger.error(f"url_hash {data['url_hash']} {e}")
+            logger.error("url_hash {} {}".format(data['url_hash'], e))
             retry -= 1
             continue
 
-    logger.error(f'failed requesting {api} {retry} times')
+    logger.error('failed requesting {} {} times'.format(api, retry))
     return False

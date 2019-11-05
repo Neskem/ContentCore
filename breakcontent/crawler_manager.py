@@ -79,54 +79,155 @@ class CrawlerObj:
         self.priority = task_main.priority
         self.request_id = task_main.request_id
         self.generator = task_main.generator
-        inform_ac = InformACObj(self.url_hash, self.url_hash, self.request_id)
-        check_rules = True if self.priority == 1 else check_sync_rules(self.url, domain_rules)
-        if check_rules is True:
-            inform_ac.set_zi_sync(True)
-        else:
-            defy = 'regex'
-            inform_ac.set_zi_sync(False)
-            inform_ac.add_zi_defy(defy)
-        response = self.get_url_content_with_requests(self.url, self.priority, multi_pages)
-        if response is not False:
-            response.encoding = 'utf-8'
-            html = response.text
-            content_directory = None
 
-            try:
-                au_js = (re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
-            except AttributeError as e:
-                # AttributeError: 'NoneType' object has no attribute 'span'
-                logger.warning(f'url_hash {self.url_hash}, aujs exception: {e}')
-                au_js = False
-            if au_js is True:
-                inform_ac.set_page_code(True)
+        if multi_pages is False:
+            inform_ac = InformACObj(self.url_hash, self.url_hash, self.request_id)
+            check_rules = True if self.priority == 1 else check_sync_rules(self.url, domain_rules)
+            if check_rules is True:
+                inform_ac.set_zi_sync(True)
+            else:
+                defy = 'regex'
+                inform_ac.set_zi_sync(False)
+                inform_ac.add_zi_defy(defy)
+            response = self.get_url_content_with_requests(self.url, self.priority, multi_pages)
+            if response is not False:
+                response.encoding = 'utf-8'
+                html = response.text
+                content_directory = None
 
-            try:
-                tree = lxml.html.fromstring(html)
-            except ValueError as e:
-                logger.error(f'url_hash {self.url_hash}, tree xml exception: {e}')
-                inform_ac.set_ac_sync(False)
-                return
+                try:
+                    au_js = (re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+                except AttributeError as e:
+                    # AttributeError: 'NoneType' object has no attribute 'span'
+                    logger.warning('url_hash {}, au.js exception: {}'.format(self.url_hash, e))
+                    au_js = False
+                if au_js is True:
+                    inform_ac.set_page_code(True)
 
-            # ----- check if content_xpath can be matched, parsing canonical url ----
-            match_xpath = None
-            for xpath in domain_rules['xpath']:
-                xpath = unquote(xpath)
-                content_directory = tree.xpath(xpath)  # content directory
-                if len(content_directory) > 0:
-                    match_xpath = xpath
-                    logger.info(f'url_hash {self.url_hash}, match xpath: {xpath}')
-                    break
-            if match_xpath is not None:
-                logger.debug("url_hash {}, xpath matched!".format(self.url_hash))
+                try:
+                    tree = lxml.html.fromstring(html)
+                except ValueError as e:
+                    logger.error('url_hash {}, tree xml exception: {}'.format(self.url_hash, e))
+                    inform_ac.set_ac_sync(False)
+                    return
 
-            logger.error('content_directory: {}'.format(content_directory))
-            iac, content_hash, len_char = self.get_content_from_xml_tree(inform_ac, tree, domain_rules,
-                                                                         content_directory, match_xpath,
-                                                                         self.generator)
-            iac.check_url_to_content(content_hash)
-            iac.sync_to_ac()
+                # ----- check if content_xpath can be matched, parsing canonical url ----
+                match_xpath = None
+                for xpath in domain_rules['xpath']:
+                    xpath = unquote(xpath)
+                    content_directory = tree.xpath(xpath)  # content directory
+                    if len(content_directory) > 0:
+                        match_xpath = xpath
+                        logger.info('url_hash {}, match xpath: {}'.format(self.url_hash, xpath))
+                        break
+                if match_xpath is not None:
+                    logger.debug("url_hash {}, xpath matched!".format(self.url_hash))
+
+                logger.error('content_directory: {}'.format(content_directory))
+                iac, content_hash, len_char = self.get_content_from_xml_tree(inform_ac, tree, domain_rules,
+                                                                             content_directory, match_xpath,
+                                                                             self.generator)
+                iac.check_url_to_content(content_hash)
+                iac.sync_to_ac()
+
+        elif multi_pages is True:
+            page_query_param = domain_rules['page'][0]
+            page_num = 0
+
+            cat_wpx = dict()
+            cat_iac = None
+            multi_page_urls = set()
+
+            inform_ac = InformACObj(self.url, self.url_hash, self.request_id)
+            while page_num <= 10:
+                page_num += 1
+                if page_query_param == "d+":
+                    i_url = '{}/{}'.format(self.url, page_num)
+                else:
+                    i_url = '{}?{}={}'.format(self.url, page_query_param, page_num)
+
+                response = self.get_url_content_with_requests(i_url, self.priority, multi_pages)
+
+                if response is not False:
+                    response.encoding = 'utf-8'
+                    html = response.text
+                    content_directory = None
+
+                    try:
+                        au_js = (re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+                    except AttributeError as e:
+                        # AttributeError: 'NoneType' object has no attribute 'span'
+                        logger.warning(f'url_hash {self.url_hash}, aujs exception: {e}')
+                        au_js = False
+
+                    if au_js is not False:
+                        inform_ac.set_page_code(True)
+
+                    try:
+                        tree = lxml.html.fromstring(html)
+                    except ValueError as e:
+                        logger.error(f'url_hash {self.url_hash}, tree xml exception: {e}')
+                        inform_ac.set_ac_sync(False)
+                        return
+
+                    match_xpath = None
+
+                    # ----- check if content_xpath can be matched, parsing canonical url ----
+                    for xpath in domain_rules['xpath']:
+                        xpath = unquote(xpath)
+                        content_directory = tree.xpath(xpath)  # content directory
+                        if len(content_directory) > 0:
+                            match_xpath = xpath
+                            logger.info(f'url_hash {self.url_hash}, match xpath: {xpath}')
+
+                            break
+                    if match_xpath is not None:
+                        logger.debug("url_hash {}, xpath matched!".format(self.url_hash))
+
+                    iac, a_wpx = self.get_content_from_xml_tree(inform_ac, tree, domain_rules, content_directory,
+                                                                match_xpath, multi_pages)
+
+                    multi_page_urls.add(i_url)
+                    if page_num == 1:
+                        cat_wpx = a_wpx
+                        cat_iac = iac
+                    else:
+                        cat_wpx['content'] += a_wpx['content']
+                        cat_wpx['content_h1'] += a_wpx['content_h1']
+                        cat_wpx['content_h2'] += a_wpx['content_h2']
+                        cat_wpx['content_p'] += a_wpx['content_p']
+                        cat_wpx['content_image'] += a_wpx['content_image']
+                        cat_wpx['len_p'] += a_wpx['len_p']
+                        cat_wpx['len_img'] += a_wpx['len_img']
+                        cat_wpx['len_char'] += a_wpx['len_char']
+
+                else:
+                    return
+
+            cat_wpx['url'] = self.url
+            cat_wpx['url_hash'] = self.url_hash
+            cat_wpx['content_hash'] = generate_content_hash(cat_wpx['url'], cat_wpx['title'], multipaged=True,
+                                                            wp_url=cat_wpx['wp_url'],
+                                                            meta_description=cat_wpx['meta_description'],
+                                                            publish_date=cat_wpx['publish_date'])
+            cat_wpx['multi_page_urls'] = sorted(multi_page_urls)
+            cat_iac.check_url_to_content(cat_wpx['content_hash'])
+            cat_wpx.setdefault('len_img', 0)
+            cat_wpx.setdefault('len_char', 0)
+
+            update_webpages_for_xpath(cat_wpx['url'], cat_wpx['url_hash'], content_hash=cat_wpx['content_hash'],
+                                      title=cat_wpx['title'], content=cat_wpx['content'], len_char=cat_wpx['len_char'],
+                                      content_p=cat_wpx['content_p'], len_p=cat_wpx['len_p'],
+                                      content_h1=cat_wpx['content_h1'], content_h2=cat_wpx['content_h2'],
+                                      content_image=cat_wpx['content_img'], len_img=cat_wpx['len_img'],
+                                      content_xpath=cat_wpx['content_xpath'], cover=cat_wpx['cover'],
+                                      author=cat_wpx['author'],  publish_date=cat_wpx['publish_date'],
+                                      meta_jdoc=cat_wpx['meta_jdoc'], meta_description=cat_wpx['meta_description'],
+                                      meta_keywords=cat_wpx['meta_keywords'], wp_url=cat_wpx['wp_url'],
+                                      category=cat_wpx['category'], categories=cat_wpx['categories'])
+            inform_ac.set_ac_sync(True)
+            inform_ac.check_url_to_content(cat_wpx['content_hash'])
+            inform_ac.sync_to_ac()
 
     def get_url_content_with_requests(self, url, priority, multi_pages):
         timeout = 12
@@ -147,14 +248,14 @@ class CrawlerObj:
                     r = requests.get(url, allow_redirects=False, headers=self.headers, proxies=proxies,
                                      verify=False, timeout=timeout)
                     if r.status_code == 200:
-                        logger.debug(f'url_hash {self.url_hash}, CRAWLERA reqeust successful')
+                        logger.debug('url_hash {}, CRAWLER reqeust successful'.format(self.url_hash))
                         return r
                     else:
-                        logger.warning(f'url_hash {self.url_hash}, CRAWLERA request failed, try local')
+                        logger.warning('url_hash {}, CRAWLER request failed, try local'.format(self.url_hash))
                         r = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
 
                 else:
-                    logger.debug(f'url_hash {self.url_hash}, use local to request')
+                    logger.debug('url_hash {}, use local to request'.format(self.url_hash))
                     r = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
 
             else:
@@ -184,13 +285,13 @@ class CrawlerObj:
         #     script.getparent().remove(script)
 
         # ----- parsing meta ----
-        meta_all = get_meta_document_from_xml_tree(tree)
+        meta_jdoc = get_meta_document_from_xml_tree(tree)
 
         # ----- sanlih ----
         if "webtest1.sanlih.com.tw" in self.url or "www.setn.com" in self.url:
             iac.zi_sync = False
-            if 'auth' in meta_all.keys():
-                if meta_all['auth'][0] == "1":
+            if 'auth' in meta_jdoc.keys():
+                if meta_jdoc['auth'][0] == "1":
                     iac.zi_sync = True
 
         # ----- parsing images ----
@@ -294,7 +395,7 @@ class CrawlerObj:
             publish_date = parse_publish_date_from_specific_logic(tree, self.url, self.domain, self.title)
 
         # bsp specific logic
-        if publish_date is None and generator == "PChoc":
+        if publish_date is None and self.generator == "PChoc":
             publish_date = get_pixnet_publish_time(tree)
 
         # universal logic
@@ -305,14 +406,14 @@ class CrawlerObj:
         if publish_date is None:
             publish_date = get_publish_date_from_ft(tree)
 
-        if not publish_date and domain_rules.delayday:
-            logger.critical(f'url_hash {self.url_hash}, failed to parse publish_date for {self.url}')
+        if not publish_date and domain_rules['delayday']:
+            logger.critical('url_hash {}, failed to parse publish_date for {}'.format(self.url_hash, self.url))
 
         # assume all the parsed publish_date is in TW format, must convert them to utc before storing them in psql db
 
         if publish_date:
             if isinstance(publish_date, str):
-                logger.debug(f'url_hash {self.url_hash}, publish_date str type {publish_date}')
+                logger.debug('url_hash {}, publish_date str type {}'.format(self.url_hash, publish_date))
                 publish_date = publish_date.split('+')[0]
                 publish_date = dateparser.parse(publish_date, date_formats=[
                     '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'],
@@ -344,8 +445,7 @@ class CrawlerObj:
         if len(x_news_keywords) > 0:
             meta_keywords = x_news_keywords[0].get('content').split(',')
         else:
-            x_keywords = tree.xpath(
-                '/html/head/meta[@property="keywords"]')
+            x_keywords = tree.xpath('/html/head/meta[@property="keywords"]')
             if len(x_keywords) > 0:
                 meta_keywords = x_keywords[0].get('content').split(',')
 
@@ -436,7 +536,7 @@ class CrawlerObj:
             webpage = {'title': title, 'content': content, 'len_char': len_char, 'content_p': content_p, 'len_p': len_p,
                        'content_h1': content_h1, 'content_h2': content_h2, 'content_image': content_img,
                        'len_img': len_img, 'content_xpath': match_xpath, 'cover': cover, 'author': author,
-                       'publish_date': publish_date, 'meta_jdoc': meta_all, 'meta_description': meta_description,
+                       'publish_date': publish_date, 'meta_jdoc': meta_jdoc, 'meta_description': meta_description,
                        'meta_keywords': meta_keywords, 'wp_url': wp_url, 'category': category, 'categories': categories
                        }
             return iac, webpage
@@ -444,7 +544,7 @@ class CrawlerObj:
                                   len_char=len_char, content_p=content_p, len_p=len_p, content_h1=content_h1,
                                   content_h2=content_h2, content_image=content_img, len_img=len_img,
                                   content_xpath=match_xpath, cover=cover, author=author, publish_date=publish_date,
-                                  meta_jdoc=meta_all, meta_description=meta_description, meta_keywords=meta_keywords,
+                                  meta_jdoc=meta_jdoc, meta_description=meta_description, meta_keywords=meta_keywords,
                                   wp_url=wp_url, category=category, categories=categories)
 
         iac.calculate_crawl_quality(len_char, len_img)
@@ -727,13 +827,11 @@ def parse_content_paragraphs(content_directory):
 
 def parse_publish_date_from_xml_tree(tree, url_hash):
     publish_date = None
-    x_publish_date = tree.xpath(
-        '/html/head/meta[@property="article:published_time"]')
+    x_publish_date = tree.xpath('/html/head/meta[@property="article:published_time"]')
     if len(x_publish_date) > 0:
         publish_date = x_publish_date[0].get('content')
     else:
-        data_blocks = tree.xpath(
-            '//script[@type="application/ld+json"]/text()')
+        data_blocks = tree.xpath('//script[@type="application/ld+json"]/text()')
         logger.debug(f'url_hash {url_hash}, data_blocks {data_blocks}')
         for data_block in data_blocks:
             try:

@@ -256,18 +256,18 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
                     logger.debug("url_hash {}, mp_url = url: partner_id {}, domain {}".format(
                         url_hash, partner_id, domain))
                     if priority and int(priority) == 1:
-                        xpath_multi_crawler(url_hash, url, partner_id, domain, domain_info)
+                        xpath_crawler(url_hash, url, partner_id, domain, domain_info, multi_pages=True)
                     else:
-                        xpath_multi_crawler.delay(url_hash, url, partner_id, domain, domain_info)
+                        xpath_crawler.delay(url_hash, url, partner_id, domain, domain_info, multi_pages=True)
             else:
                 # preparing for single page crawler
                 update_task_service_with_status(url_hash, status_ai='preparing', status_xpath='preparing')
                 if priority and int(priority) == 1:
                     logger.debug('url_hash {}, run xpath_single_crawler() in high_speed_p1 task func'.format(url_hash))
-                    xpath_single_crawler(url_hash, url, partner_id, domain, domain_info)
+                    xpath_crawler(url_hash, url, partner_id, domain, domain_info)
                 else:
                     logger.debug('url_hash {}, sent task to xpath_single_crawler.delay()'.format(url_hash))
-                    xpath_single_crawler.delay(url_hash, url, partner_id, domain, domain_info)
+                    xpath_crawler.delay(url_hash, url, partner_id, domain, domain_info)
         else:
             logger.error('url_hash {}, no domain_info!'.format(url_hash))
             bypass_crawler.delay(url_hash)
@@ -289,7 +289,7 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
 
 
 @celery.task()
-def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict):
+def xpath_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, multi_pages=False):
     """
     <purpose>
     use the domain config from Partner System to crawl through the entire page, then inform AC with request
@@ -301,162 +301,9 @@ def xpath_single_crawler(url_hash: str, url: str, partner_id: str, domain: str, 
 
     crawler_obj = CrawlerObj(url_hash=url_hash, url=url, domain=domain, partner_id=partner_id)
     crawler_obj.prepare_crawler(xpath=True)
-    crawler_obj.xpath_a_crawler(domain_rules=domain_info, multi_pages=False)
+    crawler_obj.xpath_a_crawler(domain_rules=domain_info, multi_pages=multi_pages)
 
     return True
-
-
-@celery.task()
-def xpath_multi_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict):
-    '''
-    partner only
-
-    loop xpath_a_crawler by page number
-
-    ** remember to update the url & url_hash in CC and AC
-    '''
-    logger.debug(f'start to crawl multipaged url on url_hash {url_hash}')
-
-    prepare_crawler(url_hash, partner=True, xpath=True)
-
-    q = dict(url_hash=url_hash)
-    tm = TaskMain()
-    ts = TaskService().select(q)
-    priority = ts.task_main.priority
-    url = ts.url
-    page_query_param = domain_info['page'][0]
-
-    page_num = 0
-    cat_wpx = WebpagesPartnerXpath()
-    cat_inform_ac = InformAC()
-
-    multi_page_urls = set()
-    while page_num <= 10:
-        page_num += 1
-        if page_query_param == "d+":
-            i_url = f'{url}/{page_num}'
-        else:
-            i_url = f'{url}?{page_query_param}={page_num}'
-
-        try:
-            a_wpx, inform_ac = xpath_a_crawler(
-                url_hash, i_url, partner_id, domain, domain_info, multipaged=True)
-            # multi_page_urls.add(i_url)
-        except requests.exceptions.ReadTimeout as e:
-            logger.error(
-                f'url_hash {url_hash}, i_url {i_url} site take too long to response, quit waiting!')
-            logger.error(e)
-            if page_num == 1:
-                bypass_crawler.delay(url_hash)
-                return
-            continue
-        except requests.exceptions.ConnectionError as e:
-            logger.error(e)
-            if page_num == 1:
-                bypass_crawler.delay(url_hash)
-                return
-            continue
-
-        if not inform_ac.status:
-            logger.debug(f'failed to crawl {i_url}')
-            # cat_inform_ac.status = False
-            break
-
-        logger.debug(f'inform_ac.skip_crawler {inform_ac.skip_crawler}')
-        if inform_ac.skip_crawler:
-            cat_inform_ac.skip_crawler = True
-            cat_wpx = a_wpx
-            break
-
-        multi_page_urls.add(i_url)
-        if page_num == 1:
-            # if successed, replace
-            cat_wpx = a_wpx  # reference replacement
-            cat_inform_ac = inform_ac
-
-            if not inform_ac.status:
-                # only if failed at first page, it is a total failure
-                bypass_crawler.delay(url_hash)
-                return
-
-            # break  # Lance debug
-        else:
-            cat_wpx.content += a_wpx.content
-            cat_wpx.content_h1 += a_wpx.content_h1
-            cat_wpx.content_h2 += a_wpx.content_h2
-            cat_wpx.content_p += a_wpx.content_p
-            cat_wpx.content_image += a_wpx.content_image
-            cat_wpx.len_p += a_wpx.len_p
-            cat_wpx.len_img += a_wpx.len_img
-            cat_wpx.len_char += a_wpx.len_char
-
-    cat_inform_ac.url = url
-    cat_wpx.url = url
-    cat_wpx.url_hash = url_hash
-    cat_inform_ac.check_content_hash(cat_wpx)
-
-    cat_wpx.len_img = 0 if cat_wpx.len_char is None else cat_wpx.len_img
-    cat_wpx.len_char = 0 if cat_wpx.len_char is None else cat_wpx.len_char
-    if cat_inform_ac.status and cat_wpx.len_img < 2 and cat_wpx.len_char < 100:
-        cat_inform_ac.zi_sync = False
-        cat_inform_ac.zi_defy.add('quality')
-        cat_inform_ac.quality = False
-
-    if cat_inform_ac.skip_crawler:
-        logger.debug(
-            f'url_hash {url_hash} cat_inform_ac.skip_crawler {cat_inform_ac.skip_crawler} no need to update WebpagesPartnerXpath() table')
-    else:
-        wpx = WebpagesPartnerXpath()
-        cat_wpx.multi_page_urls = sorted(multi_page_urls)
-        cat_wpx.task_service_id = ts.id
-        cat_wpx_data = cat_wpx.to_dict()
-        wpx.update(q, cat_wpx_data)
-
-    ts.update(q, dict(status_xpath='ready'))
-    tm.update(q, dict(status='ready', zi_sync=cat_inform_ac.zi_sync,
-                      inform_ac_status=cat_inform_ac.status))
-
-    if not ac_content_status_api:
-        return
-    if celery.conf['ONLY_PERMIT_P1'] and priority != 1:
-        return
-
-    data = cat_inform_ac.to_dict()
-    logger.debug(f'url_hash {url_hash}, payload {data}')
-    headers = {'Content-Type': "application/json"}
-    resp_data = retry_request('put', ac_content_status_api, data, headers)
-    logger.debug(f'resp_data {resp_data}')
-    if resp_data:
-        if cat_inform_ac.old_url_hash:
-            q = {
-                'url_hash': cat_inform_ac.old_url_hash,
-                'content_hash': cat_wpx.content_hash
-            }
-            u2c = UrlToContent().select(q)
-            u2c.update(q, dict(replaced=True))
-            logger.debug(
-                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in UrlToContent() has been modified')
-
-            q = {'url_hash': cat_inform_ac.old_url_hash}
-            tm = TaskMain()
-            doc = tm.select(q)
-            tm.delete(doc)
-            logger.debug(
-                f'url_hash {url_hash}, old url_hash {cat_inform_ac.old_url_hash} record in TaskMain() has been deleted')
-
-        logger.debug(f'url_hash {url_hash}, before updating TaskService()')
-        q = dict(url_hash=url_hash)
-        ts.update(q, dict(status_xpath='done'))
-        tm = TaskMain()
-        tm.update(q, dict(status='done', done_time=datetime.utcnow()))
-
-        logger.debug(f'url_hash {url_hash}, inform AC successful')
-    else:
-        q = dict(url_hash=url_hash)
-        ts.update(q, dict(status_xpath='failed'))
-        tm.update(q, dict(status='failed'))
-        # cat_wpx.task_service.status_xpath = 'failed'
-        logger.error(f'url_hash {url_hash} inform AC failed')
 
 
 @celery.task()

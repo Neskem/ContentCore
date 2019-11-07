@@ -3,36 +3,22 @@ from breakcontent.crawler_manager import CrawlerObj
 from breakcontent.factory import create_celery_app
 from breakcontent.mercury_manager import MercuryObj
 from breakcontent.orm_content import delete_old_related_data, get_task_main_data, update_task_main_detailed_status, \
-    init_task_main, get_task_service_data, init_task_service_with_xpath, init_task_service, \
-    update_task_service_with_status, \
+    init_task_main, get_task_service_data, init_task_service, update_task_service_with_status, \
     get_task_no_service_data, init_task_no_service, update_task_no_service_with_status, update_task_main, \
     update_task_service, update_task_no_service, update_task_main_status, get_webpages_xpath, \
-    update_webpages_for_external, update_task_main_sync_status, create_webpages_xpath_with_data, get_task_main_tasks, \
-    update_task_service_multipage, get_task_main_data_with_status
-from breakcontent.utils import Secret, InformAC, DomainSetting, xpath_a_crawler, parse_domain_info, get_domain_info, \
-    retry_request, request_api
-from breakcontent.utils import mercury_parser, prepare_crawler, ai_a_crawler
+    update_webpages_for_external, create_webpages_xpath_with_data, get_task_main_tasks, \
+    update_task_service_multipage, get_task_main_data_with_status, get_executing_tasks, get_cc_health_check_report
+from breakcontent.utils import get_domain_info, request_api
 from breakcontent.utils import construct_email, send_email, to_csvstr, remove_html_tags
-from flask import current_app
 from celery.utils.log import get_task_logger
-from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
-from sqlalchemy.orm import load_only
-from sqlalchemy import or_
-from breakcontent import db
-from breakcontent.models import TaskMain, TaskService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi
-from breakcontent.models import WebpagesNoService, StructureData, UrlToContent, DomainInfo, BspInfo
-from urllib.parse import urlencode, quote_plus, unquote, quote, unquote_plus, parse_qs
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse
 from datetime import timedelta, datetime
 from lxml import etree
 from html import unescape
 import hashlib
-import dateparser
 import lxml.html
 import re
 import os
-import requests
-import time
 
 celery = create_celery_app()
 logger = get_task_logger('cc')
@@ -320,48 +306,32 @@ def ai_single_crawler(url_hash: str, url: str, partner_id: str = None, domain: s
 # ==== tool tasks ====
 
 @celery.task()
-def bypass_crawler(url_hash: str, status: str = 'done'):
+def bypass_crawler(url_hash: str):
     """
     this url need not to crawl
 
     do two things:
-    1. infrom AC through request
+    1. inform AC through request
     2. if (1) succeed, change db TaskMain() status to done
 
     data should have keys: url_hash, url, request_id
     """
-
-    q = dict(url_hash=url_hash)
-    tm = TaskMain().select(q)
-    priority = tm.priority
-    iac = InformAC()
-    iac.url = tm.url
-    iac.url_hash = tm.url_hash
-    iac.request_id = tm.request_id
-    # iac.zi_sync = False
-    iac.status = False
-    iac_data = iac.to_dict()
-
-    if not ac_content_status_api:
-        return
-    if celery.conf['ONLY_PERMIT_P1'] and priority != 1:
+    task_main = get_task_main_data(url_hash)
+    if task_main is False:
+        logger.error('{} url_hash does not exist.'.format(url_hash))
         return
 
-    resp_data = request_api(ac_content_status_api, 'put', iac_data)
-    if resp_data:
-        logger.debug(f'url_hash {url_hash} inform AC successful')
-        data = dict(status=status, done_time=datetime.utcnow(),
-                    zi_sync=False, inform_ac_status=False)
-        tm.update(q, data)
+    inform_ac = InformACObj(task_main.url, url_hash, task_main.request_id)
+    inform_ac.set_ac_sync(False)
+    inform_ac.set_zi_sync(False)
+    if task_main.partner_id is not None and task_main.partner_id != '':
+        inform_ac.sync_to_ac(True)
     else:
-        logger.error(f'url_hash {url_hash} inform AC failed')
-        data = dict(status='failed', done_time=datetime.utcnow(),
-                    zi_sync=False, inform_ac_status=False)
-        tm.update(q, data)
+        inform_ac.sync_to_ac(False)
 
 
 @celery.task()
-def reset_doing_tasks(hour: int = 1, priority: int = None, limit: int = 10000):
+def reset_doing_tasks(hour: int = 1, priority: int = 0, limit: int = 10000):
     """
     query the hanging task (status = doing) from TaskMain() with _mtime at least a hour before now
 
@@ -374,37 +344,21 @@ def reset_doing_tasks(hour: int = 1, priority: int = None, limit: int = 10000):
     logger.debug(f'hours_before_now {hours_before_now}')
 
     if priority and priority != 0:
-        tml = TaskMain.query.options(load_only('url_hash')).filter_by(priority=priority).filter(
-            db.cast(TaskMain._mtime, db.DateTime) < db.cast(
-                hours_before_now, db.DateTime),
-            or_(TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(
-            limit).all()
-    else:
-        tml = TaskMain.query.options(load_only('url_hash')).filter(
-            db.cast(TaskMain._mtime, db.DateTime) < db.cast(hours_before_now, db.DateTime), or_(
-                TaskMain.status == 'preparing', TaskMain.status == 'doing')).order_by(TaskMain._mtime.asc()).limit(
-            limit).all()
+        executing_tasks = get_executing_tasks(priority, hours_before_now, limit)
+        if executing_tasks is False:
+            logger.error('There is no executing task.')
+            return False
 
-    # TaskMain.partner_id is not None
-    # logger.debug(f'type(tml) {type(tml)}')
-    logger.debug(f'len {len(tml)}')
-    if not len(tml):
-        logger.debug(f'too good to be true, no doing tasks left before an hour')
-        return
-
-    for tm in tml:
-        # only partner need to be redo
-
-        data = dict(url_hash=tm.url_hash, domain=tm.domain, url=tm.url)
-        if tm.partner_id:
-            data['partner_id'] = tm.partner_id
-        upsert_main_task.delay(data)
-        logger.debug(f'url_hash {tm.url_hash}, upsert_main_task.delay() sent')
+        logger.debug('executing tasks: {}'.format(len(executing_tasks)))
+        for task in executing_tasks:
+            create_task.delay(task.url_hash, task.priority, status=task.status)
+            logger.debug('{} url_hash is retrying again'.format(task.url_hash))
+    return True
 
 
 @celery.task()
-def stats_cc(itype: str = None):
-    '''
+def stats_cc(input_type: str = None):
+    """
     summarize the daily statistics of CC
 
     be triggered every 7:00AM TW
@@ -414,67 +368,58 @@ def stats_cc(itype: str = None):
     day => for yesterday
     hour => for last hour
     all => for all record
-    '''
+    """
 
-    if itype and itype not in ['day', 'hour', 'all']:
+    if input_type and input_type not in ['day', 'hour', 'all']:
         return
 
-    start_dt_str = None
-    end_dt_str = None
-
-    if itype == 'day':
+    if input_type == 'day':
         # converting to TW time range
         start_dt_str = (datetime.utcnow() - timedelta(days=1)
                         ).strftime("%Y-%m-%d 16:00:00")
         end_dt_str = (datetime.utcnow() - timedelta(days=0)
                       ).strftime("%Y-%m-%d 16:00:00")
-    elif itype == 'hour':
+    elif input_type == 'hour':
         start_dt_str = (datetime.utcnow() - timedelta(hours=1)
                         ).strftime("%Y-%m-%d %H:%M:%S")
         end_dt_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     else:
-        itype = 'all'
+        input_type = 'all'
         start_dt_str = '2019-01-01 00:00:00'  # CC released date: 2019-03-05
         end_dt_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-    logger.debug(
-        f'start_dt_str \'{start_dt_str}\' ~ end_dt_str \'{end_dt_str}\'')
-    # under construction
-    sql_str = f'select case when partner_id is null then false else true end as pbool,priority,status,count(id) from task_main where _mtime > \'{start_dt_str}\' and _mtime < \'{end_dt_str}\' group by pbool,priority,status order by pbool desc,priority,status;'
-    logger.debug(f'sql_str {sql_str}')
-
-    ret = db.engine.execute(sql_str)
-    logger.debug(f'ret {ret}')
+    logger.debug(f'start_dt_str \'{start_dt_str}\' ~ end_dt_str \'{end_dt_str}\'')
+    report_list = get_cc_health_check_report(start_dt_str, end_dt_str)
 
     rows = []
-    outdata = {}
+    output = {}
 
     rows.append(['partner', 'priority', 'status', 'count'])
-    for row in ret:
+    for report in report_list:
         tmp = []
-        partner = row['pbool']
-        priority = row['priority']
-        status = row['status']
-        count = row['count']
+        partner = report['pbool']
+        priority = report['priority']
+        status = report['status']
+        count = report['count']
         tmp = [partner, priority, status, count]
         rows.append(tmp)
         logger.debug(f'tmp row {tmp}')
 
-    outdata[f'stats_cc_{itype}'] = rows
+    output['stats_cc_{}'.format(input_type)] = rows
 
     # send email
-    datastr = to_csvstr(rows)
-    # construct_email(mailfrom, mailto, subject, content, attfilename, data)
+    mail_data = to_csvstr(rows)
+    # construct_email(mail_from, mail_to, subject, content, attach_filename, data)
 
     conf = (
         'rd@breaktime.com.tw',
         ['rd@breaktime.com.tw', 'data-service@breaktime.com.tw'],
-        f'[CC] {itype} stats',
-        f'Dear all,<br>Please find the {itype} report in the attached file.<br>',
-        f'CC_{itype}_report',
-        datastr
+        '[CC] {} stats'.format(input_type),
+        'Dear all,<br>Please find the {} report in the attached file.<br>'.format(input_type),
+        'CC_{}_report'.format(input_type),
+        mail_data
     )
     mail = construct_email(*conf)
     send_email(mail)
 
-    return outdata
+    return output

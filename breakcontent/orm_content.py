@@ -1,5 +1,7 @@
 import datetime
 
+from sqlalchemy import or_
+
 from breakcontent import db
 from breakcontent.helper import pg_add_wrapper
 from breakcontent.models import TaskMain, WebpagesNoService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, \
@@ -465,3 +467,25 @@ def update_webpages_partner_ai(url_hash, url, content_hash, title, content, meta
                 'content_image': content_image
             })
     db.session.commit()
+
+
+def get_executing_tasks(priority, judge_time, limit=10000):
+    executing_tasks = TaskMain.query.filter_by(priority=priority).filter(
+        db.cast(TaskMain._mtime, db.DateTime) < db.cast(judge_time, db.DateTime),
+        or_(TaskMain.status == 'preparing', TaskMain.status == 'doing')).limit(limit).all()
+
+    if executing_tasks is not None:
+        return executing_tasks
+    else:
+        return False
+
+
+def get_cc_health_check_report(start_time, end_time):
+    report_list = db.engine.execute(f'select case when partner_id is null then false else true '
+                                    f'end as pbool,priority,status,count(id) from task_main '
+                                    f'where _mtime > \'{start_time}\' and _mtime < \'{end_time}\' '
+                                    f'group by pbool,priority,status order by pbool desc,priority,status;')
+    if report_list is not None:
+        return report_list
+    else:
+        return False

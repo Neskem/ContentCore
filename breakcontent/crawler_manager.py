@@ -1176,30 +1176,3 @@ def get_medium_iframe_source(url):
                 params = parse_qs(o.query)
                 return params['src'][0]
     return None
-
-
-class DomainSetting:
-    data = {
-        'xpath': None,
-        'e_xpath': None,
-        'category': None,
-        'e_category': None,
-        'authorList': None,
-        'e_authorList': None,
-        'regex': None,
-        'e_title': None,
-        'syncDate': None,
-        'page': None,
-        'delayday': None,
-        'sitemap': None
-    }
-
-    def __init__(self, *initial_data, **kwargs):
-        for k, v in self.data.items():
-            setattr(self, k, v)
-        for dictionary in initial_data:
-            for key in dictionary:
-                setattr(self, key, dictionary[key])
-        for key in kwargs:
-            setattr(self, key, kwargs[key])
-

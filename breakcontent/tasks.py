@@ -200,10 +200,10 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
     logger.debug('url_hash {}, execute prepare_task'.format(url_hash))
 
     update_task_main_status(url_hash, status='preparing', doing_time=datetime.utcnow())
-    if partner_id is not None:
+    if partner_id:
         logger.debug('url_hash {}, domain {}, partner_id {}'.format(url_hash, domain, partner_id))
         domain_info = get_domain_info(domain, partner_id)
-        if domain_info:
+        if type(domain_info) is dict:
             if domain_info.get('page', None) and domain_info['page'] != '':
                 execute_multi_crawler = celery.conf['RUN_XPATH_MULTI_CRAWLER']
                 if not execute_multi_crawler:

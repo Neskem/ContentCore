@@ -227,7 +227,7 @@ class CrawlerObj:
                                       category=cat_wpx['category'], categories=cat_wpx['categories'])
             inform_ac.set_ac_sync(True)
             inform_ac.check_url_to_content(cat_wpx['content_hash'])
-            inform_ac.sync_to_ac()
+            inform_ac.sync_to_ac(partner=True)
 
     def get_url_content_with_requests(self, url, priority, multi_pages):
         timeout = 12

@@ -19,6 +19,7 @@ def update_task_main(url_hash, partner_id, request_id, priority, generator=None)
         'priority': priority,
         'generator': generator
     })
+    db.session.commit()
 
 
 def init_task_service(task_main_id, url, url_hash, domain, partner_id, request_id):
@@ -32,6 +33,7 @@ def update_task_service(url_hash, partner_id, request_id):
         'partner_id': partner_id,
         'request_id': request_id
     })
+    db.session.commit()
 
 
 def init_task_no_service(task_main_id, url, url_hash, domain, request_id):
@@ -44,6 +46,7 @@ def update_task_no_service(url_hash, request_id):
     db.session.query(TaskNoService).filter_by(url_hash=url_hash).update({
         'request_id': request_id
     })
+    db.session.commit()
 
 
 def update_task_main_status(url_hash, status, doing_time=None, done_time=None):
@@ -70,6 +73,7 @@ def update_task_main_sync_status(url_hash, status, zi_sync, inform_ac_status):
         'zi_sync': zi_sync,
         'inform_ac_status': inform_ac_status
     })
+    db.session.commit()
 
 
 def update_task_main_detailed_status(url_hash, status, doing_time, done_time, zi_sync, inform_ac_status):
@@ -88,12 +92,14 @@ def update_task_service_status_xpath(url_hash, status_xpath, status_code=None):
         'status_xpath': status_xpath,
         'status_code': status_code
     })
+    db.session.commit()
 
 
 def update_task_service_status_ai(url_hash, status_ai):
     db.session.query(TaskService).filter_by(url_hash=url_hash).update({
         'status_ai': status_ai
     })
+    db.session.commit()
 
 
 def init_task_service_with_xpath(url_hash, domain, task_main_id, status_ai, status_xpath, retry_xpath):
@@ -108,18 +114,21 @@ def update_task_service_with_status(url_hash, status_ai, status_xpath, retry_xpa
         'status_xpath': status_xpath,
         'retry_xpath': retry_xpath
     })
+    db.session.commit()
 
 
 def update_task_service_with_status_only_xpath(url_hash, status_xpath):
     db.session.query(TaskService).filter_by(url_hash=url_hash).update({
         'status_xpath': status_xpath
     })
+    db.session.commit()
 
 
 def update_task_no_service_with_status(url_hash, status):
     db.session.query(TaskNoService).filter_by(url_hash=url_hash).update({
         'status': status
     })
+    db.session.commit()
 
 
 def get_webpages_no_service_data(url_hash):
@@ -302,6 +311,7 @@ def update_task_service_multipage(url_hash, is_multipage, page_query_param, stat
         'status_xpath': status_xpath,
         'retry_xpath': retry_xpath
     })
+    db.session.commit()
 
 
 def update_task_service_send_content_time(url_hash, sent_content_time):
@@ -388,3 +398,70 @@ def update_webpages_for_xpath(url, url_hash, content_hash, title, content, len_c
         'categories': categories,
         'multi_page_urls': multi_page_urls
     })
+    db.session.commit()
+
+
+def update_webpages_partner_ai(url_hash, url, content_hash, title, content, meta_jdoc, author=None, cover=None,
+                               content_h1=None, content_h2=None, content_p=None, content_image=None, publish_date=None,
+                               partner=False):
+    if partner is True:
+        if publish_date is not None and publish_date != '':
+            db.session.query(WebpagesPartnerAi).filter_by(url_hash=url_hash).update({
+                'url': url,
+                'content_hash': content_hash,
+                'title': title,
+                'content': content,
+                'author': author,
+                'meta_jdoc': meta_jdoc,
+                'cover': cover,
+                'content_h1': content_h1,
+                'content_h2': content_h2,
+                'content_p': content_p,
+                'content_image': content_image,
+                'publish_date': publish_date
+            })
+        else:
+            db.session.query(WebpagesPartnerAi).filter_by(url_hash=url_hash).update({
+                'url': url,
+                'content_hash': content_hash,
+                'title': title,
+                'content': content,
+                'author': author,
+                'meta_jdoc': meta_jdoc,
+                'cover': cover,
+                'content_h1': content_h1,
+                'content_h2': content_h2,
+                'content_p': content_p,
+                'content_image': content_image
+            })
+    else:
+        if publish_date is not None and publish_date != '':
+            db.session.query(WebpagesNoService).filter_by(url_hash=url_hash).update({
+                'url': url,
+                'content_hash': content_hash,
+                'title': title,
+                'content': content,
+                'author': author,
+                'meta_jdoc': meta_jdoc,
+                'cover': cover,
+                'content_h1': content_h1,
+                'content_h2': content_h2,
+                'content_p': content_p,
+                'content_image': content_image,
+                'publish_date': publish_date
+            })
+        else:
+            db.session.query(WebpagesNoService).filter_by(url_hash=url_hash).update({
+                'url': url,
+                'content_hash': content_hash,
+                'title': title,
+                'content': content,
+                'author': author,
+                'meta_jdoc': meta_jdoc,
+                'cover': cover,
+                'content_h1': content_h1,
+                'content_h2': content_h2,
+                'content_p': content_p,
+                'content_image': content_image
+            })
+    db.session.commit()

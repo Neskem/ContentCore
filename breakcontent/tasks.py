@@ -1,6 +1,7 @@
 from breakcontent.article_manager import InformACObj
 from breakcontent.crawler_manager import CrawlerObj
 from breakcontent.factory import create_celery_app
+from breakcontent.mercury_manager import MercuryObj
 from breakcontent.orm_content import delete_old_related_data, get_task_main_data, update_task_main_detailed_status, \
     init_task_main, get_task_service_data, init_task_service_with_xpath, init_task_service, \
     update_task_service_with_status, \
@@ -167,8 +168,7 @@ def create_tasks(priority: str, limit: int = 4000):
                                    task.partner_id)
         elif task.task_noservice and not task.partner_id:
             logger.debug('url_hash {}, sent task for tm.task_noservice {}'.format(task.url_hash, task.task_noservice))
-            prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id, task.domain,
-                               task.id)
+            prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id, task.id)
         else:
             # this might happen if you use sql to change doing back to pending
             # plz use reset_doing_tasks() instead
@@ -192,8 +192,7 @@ def create_task(url_hash, priority, status):
                                task.partner_id)
     elif task.task_noservice and not task.partner_id:
         logger.debug('url_hash {}, sent task for tm.task_noservice {}'.format(task.url_hash, task.task_noservice))
-        prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id, task.domain,
-                           task.id)
+        prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id, task.id)
     else:
         # this might happen if you use sql to change doing back to pending
         # plz use reset_doing_tasks() instead
@@ -279,7 +278,7 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
         update_task_no_service_with_status(url_hash, status='doing')
 
         if celery.conf['MERCURY_PATH']:
-            ai_single_crawler.delay(url_hash, url)
+            ai_single_crawler.delay(url_hash, url, domain=domain)
             logger.debug('url_hash {}, sent task to ai_single_crawler()'.format(url_hash))
         else:
             logger.debug('url_hash {}, MERCURY_TOKEN env variable not set'.format(url_hash))
@@ -307,161 +306,15 @@ def xpath_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_
 
 
 @celery.task()
-def ai_single_crawler(url_hash: str, url: str, partner_id: str=None, domain: str=None, domain_info: dict=None):
-    '''
+def ai_single_crawler(url_hash: str, url: str, partner_id: str = None, domain: str = None):
+    """
     might be a partner or non-partner
-    '''
-    logger.debug(f'run ai_single_crawler() on url_hash {url_hash}')
+    """
+    logger.debug('run ai_single_crawler() on url_hash {}'.format(url_hash))
 
-    if partner_id:
-        # this part deprecated
-        prepare_crawler(url_hash, partner=True, xpath=False)
-        # url_hash = wp_dict['url_hash']
-        a_wp = ai_a_crawler(url_hash, url, partner_id, domain, domain_info)
-
-        q = dict(url_hash=url_hash)
-
-        wpa = WebpagesPartnerAi()
-        ts = TaskService()
-
-        if not a_wp:
-            data = dict(status_ai='failed')
-            ts.update(q, data)
-            logger.debug('ai_single_crawler() failed')
-            return
-
-        wpa.update(q, a_wp.to_dict())
-        data = dict(status_ai='done')
-        ts.update(q, data)
-        logger.debug('ai_single_crawler() successful')
-        # do not notify AC here
-    else:
-        # only non-partner should inform AC
-        prepare_crawler(url_hash, partner=False, xpath=False)
-        # url_hash = wp_dict['url_hash']
-        try:
-            a_wp = ai_a_crawler(url_hash, url)
-        except requests.exceptions.ConnectionError as e:
-            logger.error(e)
-            bypass_crawler.delay(url_hash)
-            return
-
-        q = dict(url_hash=url_hash)
-
-        wpns = WebpagesNoService()
-        tns = TaskNoService().select(q)
-        tm = TaskMain()
-
-        iac = InformAC()
-        iac_data = iac.to_dict()
-
-        if a_wp:
-            udata = {
-                'url_hash': url_hash,
-                'url': url,
-                'request_id': tns.request_id,
-                # 'status': True # default value
-            }
-            iac_data.update(udata)
-            wpns.update(q, a_wp.to_dict())
-        else:
-            # no need to update if a_wp == None
-            iac_data['status'] = False
-
-        if not ac_content_status_api:
-            return
-
-        # inform AC
-        logger.debug(f'url_hash {url_hash} ready to inform AC')
-        headers = {'Content-Type': "application/json"}
-        resp_data = retry_request(
-            'put', ac_content_status_api, iac_data, headers)
-
-        if resp_data:
-            logger.debug(f'url_hash {url_hash} inform AC successful')
-            data = dict(status='done')
-            tns.update(q, data)
-
-            data = {
-                'done_time': datetime.utcnow(),
-                'status': 'done'
-            }
-            tm.update(q, data)
-
-            logger.debug('inform AC successful')
-        else:
-            data = dict(status='failed')
-            tm.update(q, data)
-            logger.error('inform AC failed')
-
-
-@celery.task()
-def ai_multi_crawler(url_hash: str, url: str, partner_id: str = None, domain: str = None, domain_info: dict = None):
-    '''
-    must be a partner
-
-    no need to inform AC
-    '''
-    logger.debug(f'run ai_multi_crawler() on url_hash {url_hash}')
-
-    if partner_id:
-        prepare_crawler(url_hash, partner=True, xpath=False)
-        cat_wp_data = WebpagesPartnerAi().to_dict()
-        # logger.debug(f'cat_wp_data {cat_wp_data}')
-
-    if domain_info['page']:
-        page_query_param = domain_info['page'][0]
-        logger.debug(f'page_query_param {page_query_param}')
-
-    page_num = 0
-    multi_page_urls = set()
-    while page_num <= 40:
-        page_num += 1
-        if page_query_param == "d+":
-            i_url = f'{url}/{page_num}'
-        else:
-            i_url = f'{url}?{page_query_param}={page_num}'
-
-        # replace url
-        wp_dict['url'] = i_url
-        a_wp = ai_a_crawler(wp_dict, partner_id, multipaged=True)
-        logger.debug(f'a_wp {a_wp}')
-        if not a_wp:
-            break
-        wp_data = a_wp.to_dict()
-        logger.debug(f'wp_data from xpath_a_crawler(): {wp_data}')
-
-        if page_num == 1:
-            cat_wp_data.update(wp_data)
-        else:
-            cat_wp_data['content'] += wp_data['content']
-            cat_wp_data['content_h1'] += wp_data['content_h1']
-            cat_wp_data['content_h2'] += wp_data['content_h2']
-            cat_wp_data['content_p'] += wp_data['content_p']
-            cat_wp_data['content_image'] += wp_data['content_image']
-
-        multi_page_urls.add(i_url)
-
-    cat_wp_data['url'] = url
-    cat_wp_data['url_hash'] = url_hash
-    cat_wp_data['multi_page_urls'] = sorted(multi_page_urls)
-
-    logger.debug(f'cat_wp_data {cat_wp_data}')
-    q = dict(url_hash=url_hash)
-
-    if partner_id:
-        wpa = WebpagesPartnerAi()
-        wpa.update(q, cat_wp_data)
-        # logger.debug(f'wpa {wpa}')
-        data = dict(status_ai='done')
-        ts = TaskService()
-        ts.update(q, data)
-    else:
-        wpns = WebpagesNoService()
-        wpns.update(q, cat_wp_data)
-        data = dict(status='done')
-        tns = TaskNoService()
-        tns.update(q, data)
+    mercury_obj = MercuryObj(url_hash, url, domain, partner_id=partner_id)
+    mercury_obj.prepare_mercury()
+    mercury_obj.mercury_a_crawler()
 
 
 # ==== tool tasks ====

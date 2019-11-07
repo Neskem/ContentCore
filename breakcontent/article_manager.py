@@ -5,9 +5,9 @@ import requests
 
 from urllib.parse import urlparse
 
-from breakcontent.orm_content import update_task_main_sync_status,  get_url_to_content_data, \
+from breakcontent.orm_content import update_task_main_sync_status, get_url_to_content_data, \
     init_url_to_content, update_task_main_status, update_task_service_with_status_only_xpath, \
-    update_url_to_content, delete_old_related_data
+    update_url_to_content, delete_old_related_data, update_task_no_service_with_status
 
 logger = logging.getLogger('cc')
 
@@ -103,7 +103,7 @@ class InformACObj:
             if url_content.url != self.url:
                 self.old_url_hash = url_content.url
 
-    def sync_to_ac(self):
+    def sync_to_ac(self, partner=True):
         data = {
             'url_hash': self.url_hash,
             'url': self.url,
@@ -119,15 +119,26 @@ class InformACObj:
         }
         r = retry_requests('put', self.ac_status_api, data=data, headers=self.headers)
 
-        if r.status_code == 200:
-            if self.old_url_hash is not None and self.content_hash is not None:
-                update_url_to_content(self.content_hash, self.url, self.url_hash, self.request_id, replaced=True)
-            update_task_main_status(self.url_hash, status='done')
-            update_task_service_with_status_only_xpath(self.url_hash, status_xpath='done')
+        if partner is True:
+            if r.status_code == 200:
+                if self.old_url_hash is not None and self.content_hash is not None:
+                    update_url_to_content(self.content_hash, self.url, self.url_hash, self.request_id, replaced=True)
+                update_task_main_status(self.url_hash, status='done')
+                update_task_service_with_status_only_xpath(self.url_hash, status_xpath='done')
+            else:
+                logger.error('url_hash {}, inform AC failed'.format(self.url_hash))
+                update_task_main_status(self.url_hash, status='failed')
+                update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
+
         else:
-            logger.error('url_hash {}, inform AC failed'.format(self.url_hash))
-            update_task_main_status(self.url_hash, status='failed')
-            update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
+            if r.status_code == 200:
+                update_task_main_status(self.url_hash, status='done')
+                update_task_no_service_with_status(self.url_hash, status='done')
+            else:
+                logger.error('url_hash {}, inform AC failed'.format(self.url_hash))
+                update_task_main_status(self.url_hash, status='failed')
+                update_task_no_service_with_status(self.url_hash, status='failed')
+
         return True
 
     def remove_multipage_data(self, multipage_url, domain=None):

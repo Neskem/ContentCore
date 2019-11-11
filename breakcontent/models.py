@@ -12,154 +12,7 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, DatabaseError
 
 
-class Model(db.Model):
-
-    __abstract__ = True
-
-    def upsert(self, query: dict=None, data: dict=None):
-        if not query:
-            # don't using in this project
-            query = dict(id=self.id)
-
-        # update self attr by data
-        if data:
-            # 1. edit self
-            for k, v in data.items():
-                setattr(self, k, v)
-            # 2. for insert use
-            doc = self.__class__(**data)
-        else:
-            # 1. for insert use
-            doc = self
-            # 2. for update use
-            data = self.to_dict()
-
-        retry = 0
-        while 1:
-            try:
-
-                logger.debug(f'start inserting {doc} to {self.__tablename__}')
-
-                if 1:  # beta version
-                    ret = self.select(query)
-                    if not ret:
-                        db.session.add(doc)
-                        db.session.commit()
-                        ret = self.select(query)
-                        if ret and getattr(ret, 'to_dict', None):
-                            for k, v in ret.to_dict().items():
-                                setattr(self, k, v)
-                        logger.debug(f'insert {query} in {self.__tablename__} table successfully.')
-                    else:
-                        self.update(query, data)
-                if 0:  # deprecated
-                    db.session.add(doc)
-                    db.session.commit()
-                    ret = self.select(query)
-                    if ret and getattr(ret, 'to_dict', None):
-                        for k, v in ret.to_dict().items():
-                            setattr(self, k, v)
-                    logger.debug(f'insert {self.__tablename__} successful')
-                break
-            except OperationalError as e:
-                db.session.rollback()
-                retry += 1
-                if retry > 5:
-                    logger.error(f'{e}: retry {retry}')
-                    raise
-            except IntegrityError as e:
-                logger.error(e)
-                db.session.rollback()
-                # self.update(query, data)
-                break
-
-    def commit(self, query: dict=None, data: dict=None):
-        try:
-            db.session.commit()
-            if query:
-                self = self.select(query)
-            logger.debug(f'self {self}')
-            logger.debug(f'commit {self.__tablename__} successful')
-        except IntegrityError as e:
-            logger.warning(e)
-            db.session.rollback()
-            self.update(query, data)
-            # don't raise
-
-    def update(self, query: dict=None, data: dict=None):
-
-        if not query:
-            query = dict(id=self.id)
-
-        if not data:
-            data = self.to_dict()
-
-        if 'id' in data:
-            data.pop('id')
-
-        retry = 0
-        while 1:
-            try:
-                self.__class__.query.filter_by(**query).update(data)
-                db.session.commit()
-                ret = self.__class__.query.filter_by(**query).first()
-                if ret and getattr(ret, 'to_dict', None):
-                    for k, v in ret.to_dict().items():
-                        setattr(self, k, v)
-                    # logger.debug(f'update {self.__tablename__} successful')
-                else:
-                    logger.debug(f'update {self.__tablename__} failed')
-                break
-            except OperationalError as e:
-                db.session.rollback()
-                if retry > 5:
-                    logger.error(f'update(): query: {query}, OperationalError: {e}, retry: {retry}')
-                    raise
-                retry += 1
-
-    # @classmethod
-    def select(self, query: dict, order_by: 'column name'=None, limit: int=None) -> 'a object or list of objects':
-        retry = 0
-        while 1:
-            try:
-                if order_by and limit:
-                    docs = self.__class__.query.filter_by(**query).limit(limit).all()
-                    return docs
-                else:
-                    doc = self.__class__.query.filter_by(**query).first()
-                    if doc:
-                        return doc
-                    else:
-                        # logger.warning(f'query {query} on {self.__tablename__} found nothing!')
-                        break
-
-            except OperationalError as e:
-                retry += 1
-                db.session.rollback()
-                logger.error(e)
-                if retry > 5:
-                    logger.error(f'{e}, retry {retry}')
-                    raise
-            except DatabaseError as e:
-                retry += 1
-                db.session.rollback()
-                logger.error(e)
-                if retry > 5:
-                    logger.error(f'{e}, retry {retry}')
-                    raise
-
-    def delete(self, doc: 'query object'=None):
-        logger.debug('start delete')
-        if doc:
-            logger.debug(f'start deleting {doc}')
-            db.session.delete(doc)
-        else:
-            db.session.delete(self)
-        db.session.commit()
-        logger.debug('done delete')
-
-
-class TaskMain(Model):
+class TaskMain(db.Model):
     __tablename__ = 'task_main'
     id = Column(Integer, primary_key=True)
     task_service = relationship(
@@ -218,7 +71,7 @@ class TaskMain(Model):
         }
 
 
-class TaskService(Model):
+class TaskService(db.Model):
     __tablename__ = 'task_service'
     id = Column(Integer, primary_key=True)
     task_main_id = Column(Integer, ForeignKey(
@@ -279,7 +132,7 @@ class TaskService(Model):
         }
 
 
-class TaskNoService(Model):
+class TaskNoService(db.Model):
     __tablename__ = 'task_noservice'
     id = Column(Integer, primary_key=True)
     task_main_id = Column(Integer, ForeignKey(
@@ -322,7 +175,7 @@ class TaskNoService(Model):
         }
 
 
-class WebpagesPartnerXpath(Model):
+class WebpagesPartnerXpath(db.Model):
     __tablename__ = 'webpages_partner_xpath'
 
     id = Column(Integer, primary_key=True)
@@ -487,7 +340,7 @@ class WebpagesPartnerXpath(Model):
         }
 
 
-class WebpagesPartnerAi(Model):
+class WebpagesPartnerAi(db.Model):
     __tablename__ = 'webpages_partner_ai'
 
     id = Column(Integer, primary_key=True)
@@ -557,7 +410,7 @@ class WebpagesPartnerAi(Model):
         }
 
 
-class WebpagesNoService(Model):
+class WebpagesNoService(db.Model):
     __tablename__ = 'webpages_noservice'
 
     id = Column(Integer, primary_key=True)
@@ -627,7 +480,7 @@ class WebpagesNoService(Model):
         }
 
 
-class StructureData(Model):
+class StructureData(db.Model):
     # to do
     __tablename__ = 'structure_data'
 
@@ -650,7 +503,7 @@ class StructureData(Model):
     )
 
 
-class UrlToContent(Model):
+class UrlToContent(db.Model):
     '''
     only partner xpath is stored
 
@@ -688,7 +541,7 @@ class UrlToContent(Model):
         }
 
 
-class DomainInfo(Model):
+class DomainInfo(db.Model):
     __tablename__ = 'domain_info'
 
     id = Column(Integer, primary_key=True)
@@ -730,7 +583,7 @@ class DomainInfo(Model):
         }
 
 
-class BspInfo(Model):
+class BspInfo(db.Model):
     __tablename__ = 'bsp_info'
 
     id = Column(Integer, primary_key=True)

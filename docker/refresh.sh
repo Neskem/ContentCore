@@ -11,7 +11,6 @@ if [ "${dropdb}" = 'drop' ]; then
     docker volume rm pgdata
     # create external volumn
     docker volume create --name=pgdata
-    docker-compose up -d
     sleep 5 # takes time for containter be ready
     if [ -e "/etc/os-release" ]; then
         # ------------------ START init DB ------------------
@@ -35,4 +34,4 @@ if [ "${dropdb}" = 'drop' ]; then
 fi
 
 docker-compose up -d
-docker-compose ps
+docker-compose restart

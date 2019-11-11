@@ -52,17 +52,17 @@ class CrawlerObj:
             update_task_service_status_xpath(self.url_hash, status_xpath='doing')
             webpages_xpath = get_webpages_partner_xpath_data(self.url_hash)
             if webpages_xpath is False:
-                create_webpages_xpath_without_data(self.url, self.url_hash, self.domain, task_service.id)
+                create_webpages_xpath_without_data(self.url, self.url_hash, self.domain)
         elif self.partner_id is not None and xpath is False:
             update_task_service_status_ai(self.url_hash, status_ai='doing')
             webpages_ai = get_webpages_partner_ai_data(self.url_hash)
             if webpages_ai is False:
-                create_webpages_ai_without_data(self.url, self.url_hash, self.domain, task_service.id)
+                create_webpages_ai_without_data(self.url, self.url_hash, self.domain)
         elif self.partner_id is None:
             update_task_no_service_with_status(self.url_hash, status='doing')
             webpages_mercury = get_webpages_no_service_data(self.url_hash)
             if webpages_mercury is False:
-                create_webpages_no_service_without_data(self.url, self.url_hash, self.domain, task_service.id)
+                create_webpages_no_service_without_data(self.url, self.url_hash, self.domain)
 
         return True
 

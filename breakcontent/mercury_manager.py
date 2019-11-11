@@ -50,12 +50,12 @@ class MercuryObj:
             update_task_service_status_ai(self.url_hash, status_ai='doing')
             webpages_mercury = get_webpages_partner_ai_data(self.url_hash)
             if webpages_mercury is False:
-                create_webpages_ai_without_data(self.url, self.url_hash, self.domain, task_service.id)
+                create_webpages_ai_without_data(self.url, self.url_hash, self.domain)
         elif self.partner_id is None:
             update_task_no_service_with_status(self.url_hash, status='doing')
             webpages_mercury = get_webpages_no_service_data(self.url_hash)
             if webpages_mercury is False:
-                create_webpages_no_service_without_data(self.url, self.url_hash, self.domain, task_service.id)
+                create_webpages_no_service_without_data(self.url, self.url_hash, self.domain)
 
         return True
 

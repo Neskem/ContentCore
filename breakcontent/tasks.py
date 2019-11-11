@@ -117,15 +117,14 @@ def upsert_main_task(data: dict):
     if 'partner_id' in data and data['partner_id'] is not None:
         task_service = get_task_service_data(data['url_hash'])
         if not task_service:
-            init_task_service(task_main.id, data['url'], data['url_hash'], domain, data['partner_id'],
-                              data['request_id'])
+            init_task_service(data['url'], data['url_hash'], domain, data['partner_id'], data['request_id'])
         else:
             update_task_service(data['url_hash'], data['partner_id'], data['request_id'])
         update_task_service_with_status(data['url_hash'], status_ai='pending', status_xpath='pending', retry_xpath=0)
     else:
         task_no_service = get_task_no_service_data(data['url_hash'])
         if not task_no_service:
-            init_task_no_service(task_main.id, data['url'], data['url_hash'], domain, data['request_id'])
+            init_task_no_service(data['url'], data['url_hash'], domain, data['request_id'])
         else:
             update_task_no_service(data['url_hash'], data['request_id'])
         update_task_no_service_with_status(data['url_hash'], status='pending')
@@ -144,17 +143,17 @@ def create_tasks(priority: str, limit: int = 4000):
     for task in tasks:
         logger.debug('url_hash {}, in task list'.format(task.url_hash))
 
-        if task.task_service and task.task_partner_id:
+        if task.task_partner_id:
             if int(priority) == 1:
                 logger.debug('url_hash {}, sent to high_speed_p1.delay()'.format(task.url_hash))
-                high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.id,
+                high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id,
                                     task.partner_id)
             else:
-                prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.id,
+                prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id,
                                    task.partner_id)
-        elif task.task_noservice and not task.partner_id:
-            logger.debug('url_hash {}, sent task for tm.task_noservice {}'.format(task.url_hash, task.task_noservice))
-            prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id, task.id)
+        elif not task.partner_id:
+            logger.debug('url_hash {}, sent task for tm.task_noservice'.format(task.url_hash))
+            prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id)
         else:
             # this might happen if you use sql to change doing back to pending
             # plz use reset_doing_tasks() instead
@@ -168,17 +167,15 @@ def create_task(url_hash, priority, status):
     if task is False:
         return False
 
-    if task.task_service and task.partner_id:
+    if task.partner_id:
         if int(priority) == 1:
             logger.debug('url_hash {}, sent to high_speed_p1.delay()'.format(task.url_hash))
-            high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.id,
-                                task.partner_id)
+            high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.partner_id)
         else:
-            prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.id,
-                               task.partner_id)
-    elif task.task_noservice and not task.partner_id:
-        logger.debug('url_hash {}, sent task for tm.task_noservice {}'.format(task.url_hash, task.task_noservice))
-        prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id, task.id)
+            prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.partner_id)
+    elif not task.partner_id:
+        logger.debug('url_hash {}, sent task for tm.task_noservice'.format(task.url_hash))
+        prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id)
     else:
         # this might happen if you use sql to change doing back to pending
         # plz use reset_doing_tasks() instead
@@ -187,16 +184,14 @@ def create_task(url_hash, priority, status):
 
 
 @celery.task(ignore_result=True)
-def high_speed_p1(priority: int, url_hash: str, url: str, domain: str, request_id: str, task_main_id: str,
-                  partner_id=None):
+def high_speed_p1(priority: int, url_hash: str, url: str, domain: str, request_id: str, partner_id=None):
     logger.debug("url_hash {}, in high_speed_p1()".format(url_hash))
-    prepare_task(priority, url_hash, url, domain, request_id, task_main_id, partner_id)
+    prepare_task(priority, url_hash, url, domain, request_id, partner_id)
     return True
 
 
 @celery.task(ignore_result=True)
-def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id: str, task_main_id: str,
-                 partner_id=None):
+def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id: str, partner_id=None):
     logger.debug('url_hash {}, execute prepare_task'.format(url_hash))
 
     update_task_main_status(url_hash, status='preparing', doing_time=datetime.utcnow())
@@ -214,7 +209,7 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
                 page_query_param = domain_info['page'][0]
                 task_service = get_task_service_data(url_hash)
                 if task_service is False:
-                    init_task_service(task_main_id, url, url_hash, domain, partner_id, request_id)
+                    init_task_service(url, url_hash, domain, partner_id, request_id)
                 update_task_service_multipage(url_hash, is_multipage=True, page_query_param=page_query_param,
                                               status_ai='doing', status_xpath='preparing')
 
@@ -260,7 +255,7 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
         # none partner goes here
         task_no_service = get_task_no_service_data(url_hash)
         if task_no_service is False:
-            init_task_no_service(task_main_id, url, url_hash, domain, request_id)
+            init_task_no_service(url, url_hash, domain, request_id)
         update_task_no_service_with_status(url_hash, status='doing')
 
         if celery.conf['MERCURY_PATH']:

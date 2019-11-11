@@ -24,9 +24,9 @@ def update_task_main(url_hash, partner_id, request_id, priority, generator=None)
     db.session.commit()
 
 
-def init_task_service(task_main_id, url, url_hash, domain, partner_id, request_id):
-    new_init_task_service = TaskService(task_main_id=task_main_id, url=url, url_hash=url_hash, domain=domain,
-                                        partner_id=partner_id, request_id=request_id)
+def init_task_service(url, url_hash, domain, partner_id, request_id):
+    new_init_task_service = TaskService(url=url, url_hash=url_hash, domain=domain, partner_id=partner_id,
+                                        request_id=request_id)
     pg_add_wrapper(new_init_task_service)
 
 
@@ -38,9 +38,8 @@ def update_task_service(url_hash, partner_id, request_id):
     db.session.commit()
 
 
-def init_task_no_service(task_main_id, url, url_hash, domain, request_id):
-    new_init_task_no_service = TaskNoService(task_main_id=task_main_id, url=url, url_hash=url_hash, domain=domain,
-                                             request_id=request_id)
+def init_task_no_service(url, url_hash, domain, request_id):
+    new_init_task_no_service = TaskNoService(url=url, url_hash=url_hash, domain=domain, request_id=request_id)
     pg_add_wrapper(new_init_task_no_service)
 
 
@@ -104,9 +103,9 @@ def update_task_service_status_ai(url_hash, status_ai):
     db.session.commit()
 
 
-def init_task_service_with_xpath(url_hash, domain, task_main_id, status_ai, status_xpath, retry_xpath):
-    new_init_task_service = TaskService(url_hash=url_hash, domain=domain, task_main_id=task_main_id,
-                                        status_ai=status_ai, status_xpath=status_xpath, retry_xpath=retry_xpath)
+def init_task_service_with_xpath(url_hash, domain, status_ai, status_xpath, retry_xpath):
+    new_init_task_service = TaskService(url_hash=url_hash, domain=domain, status_ai=status_ai,
+                                        status_xpath=status_xpath, retry_xpath=retry_xpath)
     pg_add_wrapper(new_init_task_service)
 
 
@@ -229,18 +228,18 @@ def delete_old_related_data(url_hash):
         return
 
 
-def create_webpages_xpath_without_data(url, url_hash, domain, task_service_id=None):
-    new_init_webpages = WebpagesPartnerXpath(url=url, url_hash=url_hash, domain=domain, task_service_id=task_service_id)
+def create_webpages_xpath_without_data(url, url_hash, domain):
+    new_init_webpages = WebpagesPartnerXpath(url=url, url_hash=url_hash, domain=domain)
     pg_add_wrapper(new_init_webpages)
 
 
-def create_webpages_ai_without_data(url, url_hash, domain, task_service_id=None):
-    new_init_webpages = WebpagesPartnerAi(url=url, url_hash=url_hash, domain=domain, task_service_id=task_service_id)
+def create_webpages_ai_without_data(url, url_hash, domain):
+    new_init_webpages = WebpagesPartnerAi(url=url, url_hash=url_hash, domain=domain)
     pg_add_wrapper(new_init_webpages)
 
 
-def create_webpages_no_service_without_data(url, url_hash, domain, task_noservice_id=None):
-    new_init_webpages = WebpagesNoService(url=url, url_hash=url_hash, domain=domain, task_noservice_id=task_noservice_id)
+def create_webpages_no_service_without_data(url, url_hash, domain):
+    new_init_webpages = WebpagesNoService(url=url, url_hash=url_hash, domain=domain)
     pg_add_wrapper(new_init_webpages)
 
 
@@ -374,8 +373,8 @@ def update_url_to_content(content_hash, url, url_hash, request_id, replaced):
     db.session.commit()
 
 
-def update_webpages_for_xpath(url, url_hash, content_hash, title, content, len_char, content_p, len_p, content_h1, content_h2,
-                              content_image, len_img, content_xpath, cover, author, publish_date, meta_jdoc,
+def update_webpages_for_xpath(url, url_hash, content_hash, title, content, len_char, content_p, len_p, content_h1,
+                              content_h2, content_image, len_img, content_xpath, cover, author, publish_date, meta_jdoc,
                               meta_description, meta_keywords, wp_url, category, categories, multi_page_urls=''):
     db.session.query(WebpagesPartnerXpath).filter_by(url=url, url_hash=url_hash).update({
         'content_hash': content_hash,

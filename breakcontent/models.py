@@ -15,10 +15,6 @@ from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 class TaskMain(db.Model):
     __tablename__ = 'task_main'
     id = Column(Integer, primary_key=True)
-    task_service = relationship(
-        "TaskService", back_populates="task_main", uselist=False, foreign_keys='TaskService.task_main_id', cascade="all, delete-orphan", passive_deletes=True)
-    task_noservice = relationship(
-        "TaskNoService", back_populates="task_main", uselist=False, foreign_keys='TaskNoService.task_main_id', cascade="all, delete-orphan", passive_deletes=True)
     # wpx = relationship('WebpagesPartnerXpath', backref='tm')  # alpha testing
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     url = Column(String(1000), nullable=False, index=True)
@@ -74,14 +70,6 @@ class TaskMain(db.Model):
 class TaskService(db.Model):
     __tablename__ = 'task_service'
     id = Column(Integer, primary_key=True)
-    task_main_id = Column(Integer, ForeignKey(
-        'task_main.id', ondelete='CASCADE'), index=True)
-    task_main = relationship(
-        'TaskMain', foreign_keys=task_main_id, single_parent=True)
-    webpages_partner_xpath = relationship("WebpagesPartnerXpath", back_populates="task_service", uselist=False,
-                                          foreign_keys='WebpagesPartnerXpath.task_service_id', cascade="all, delete-orphan", passive_deletes=True)
-    webpages_partner_ai = relationship("WebpagesPartnerAi", back_populates="task_service", uselist=False,
-                                       foreign_keys='WebpagesPartnerAi.task_service_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), unique=True, nullable=False)
     url = Column(String(1000))
     domain = Column(String(500), index=True, nullable=True)
@@ -135,13 +123,6 @@ class TaskService(db.Model):
 class TaskNoService(db.Model):
     __tablename__ = 'task_noservice'
     id = Column(Integer, primary_key=True)
-    task_main_id = Column(Integer, ForeignKey(
-        'task_main.id', ondelete='CASCADE'), index=True)
-    task_main = relationship(
-        'TaskMain', foreign_keys=task_main_id, single_parent=True)
-
-    webpages_noservice = relationship("WebpagesNoService", back_populates="task_noservice", uselist=False,
-                                      foreign_keys='WebpagesNoService.task_noservice_id', cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), ForeignKey(
         'task_main.url_hash'), nullable=False, unique=True, index=True)
     url = Column(String(1000))
@@ -179,11 +160,6 @@ class WebpagesPartnerXpath(db.Model):
     __tablename__ = 'webpages_partner_xpath'
 
     id = Column(Integer, primary_key=True)
-    # task_main_id = Column(Integer, ForeignKey('task_main.id')) # alpha testing
-    task_service_id = Column(Integer, ForeignKey(
-        'task_service.id', ondelete='CASCADE'), index=True)
-    task_service = relationship(
-        'TaskService', foreign_keys=task_service_id, single_parent=True)
     domain = Column(String(500), nullable=True, index=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     content_hash = Column(String(256), nullable=True)
@@ -344,10 +320,6 @@ class WebpagesPartnerAi(db.Model):
     __tablename__ = 'webpages_partner_ai'
 
     id = Column(Integer, primary_key=True)
-    task_service_id = Column(Integer, ForeignKey(
-        'task_service.id', ondelete='CASCADE'), index=True)
-    task_service = relationship(
-        'TaskService', foreign_keys=task_service_id, single_parent=True)
     domain = Column(String(500), nullable=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     content_hash = Column(String(256), nullable=True)
@@ -414,10 +386,6 @@ class WebpagesNoService(db.Model):
     __tablename__ = 'webpages_noservice'
 
     id = Column(Integer, primary_key=True)
-    task_noservice_id = Column(Integer, ForeignKey(
-        'task_noservice.id'), nullable=False, index=True)
-    task_noservice = relationship(
-        'TaskNoService', foreign_keys=task_noservice_id, single_parent=True)
     domain = Column(String(500), nullable=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     content_hash = Column(String(256), index=True, nullable=True)
@@ -549,19 +517,6 @@ class DomainInfo(db.Model):
     partner_id = Column(String(64), nullable=False, index=True)
     rules = Column(postgresql.JSONB(
         none_as_null=False, astext_type=None), nullable=True)  # to be checked!
-
-    # xpath = Column(postgresql.ARRAY(Text, dimensions=1))
-    # e_xpath = Column(postgresql.ARRAY(Text, dimensions=1))
-    # category = Column(postgresql.ARRAY(Text, dimensions=1))
-    # e_category = Column(postgresql.ARRAY(Text, dimensions=1))
-    # authorList = Column(postgresql.ARRAY(Text, dimensions=1))
-    # e_authorList = Column(postgresql.ARRAY(Text, dimensions=1))
-    # regex = Column(postgresql.ARRAY(Text, dimensions=1))
-    # e_title = Column(postgresql.ARRAY(Text, dimensions=1))
-    # syncDate = Column(postgresql.ARRAY(Text, dimensions=1))
-    # page = Column(postgresql.ARRAY(Text, dimensions=1))
-    # delayday = Column(postgresql.ARRAY(Text, dimensions=1))
-    # sitemap = Column(postgresql.ARRAY(Text, dimensions=1))
 
     _ctime = Column(DateTime(timezone=False),
                     default=datetime.datetime.utcnow)

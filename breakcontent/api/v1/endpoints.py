@@ -5,8 +5,8 @@ from flask_headers import headers
 from flask_cors import cross_origin
 import datetime
 
-from breakcontent.orm_content import get_webpages_xpath, update_task_service_send_content_time, \
-    get_partner_domain_rules, init_partner_domain_rules, update_partner_domain_rules
+from breakcontent.orm_content import get_webpages_xpath, get_partner_domain_rules, init_partner_domain_rules, \
+    update_partner_domain_rules
 from breakcontent.utils import verify_ac_token
 
 bp = Blueprint('endpoints', __name__)
@@ -115,7 +115,6 @@ def get_content(url_hash):
         'msg': 'ok',
         'status': True
     })
-    update_task_service_send_content_time(url_hash, datetime.datetime.utcnow())
     return jsonify(res), 200
 
 

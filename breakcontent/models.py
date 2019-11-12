@@ -1,3 +1,5 @@
+from sqlalchemy.orm import relationship
+
 from breakcontent import db
 import datetime
 from sqlalchemy.dialects import postgresql
@@ -11,6 +13,9 @@ logger = logging.getLogger('cc')
 class TaskMain(db.Model):
     __tablename__ = 'task_main'
     id = Column(Integer, primary_key=True)
+    task_service = relationship(
+        "XpathParsingRules", back_populates="task_main", uselist=False, foreign_keys='XpathParsingRules.task_main_id',
+        cascade="all, delete-orphan", passive_deletes=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     url = Column(String(1000), nullable=False, index=True)
     domain = Column(String(500), index=True, nullable=True)
@@ -28,8 +33,7 @@ class TaskMain(db.Model):
     inform_ac_status = Column(Boolean, default=False, index=True)
     doing_time = Column(DateTime(timezone=False), nullable=True)
     done_time = Column(DateTime(timezone=False), nullable=True, index=True)
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
     _mtime = Column(DateTime(
         timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow, index=True)
 
@@ -58,8 +62,7 @@ class TaskService(db.Model):
                                'failed', name='status_xpath'), default='pending', index=True)
     status_ai = Column(Enum('pending', 'preparing', 'doing', 'done',
                             'failed', name='status_ai'), default='pending', index=True)
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
     _mtime = Column(DateTime(
         timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow, index=True)
 
@@ -70,17 +73,14 @@ class TaskService(db.Model):
 class TaskNoService(db.Model):
     __tablename__ = 'task_noservice'
     id = Column(Integer, primary_key=True)
-    url_hash = Column(String(64), ForeignKey(
-        'task_main.url_hash'), nullable=False, unique=True, index=True)
+    url_hash = Column(String(64), ForeignKey('task_main.url_hash'), nullable=False, unique=True, index=True)
     url = Column(String(1000))
     domain = Column(String(500), index=True, nullable=True)
     request_id = Column(String(256), index=True, nullable=True)
     status = Column(Enum('pending', 'preparing', 'doing', 'done',
                          'failed', name='task_noservice_status'), default='pending')
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
     def __repr__(self):
         return f'<TaskNoService(id={self.id}, url_hash={self.url_hash}, url={self.url}, request_id={self.request_id})>'
@@ -94,17 +94,14 @@ class WebpagesPartnerXpath(db.Model):
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     content_hash = Column(String(256), nullable=True)
     multi_page_urls = Column(postgresql.ARRAY(Text, dimensions=1))
-    url_structure_type = Column(Enum(
-        'home', 'list', 'content', 'others', name='url_structure_type'), nullable=True)
+    url_structure_type = Column(Enum('home', 'list', 'content', 'others', name='url_structure_type'), nullable=True)
     url = Column(String(1000), nullable=False)
     wp_url = Column(String(500), nullable=True)  # only WP bsp has it
     title = Column(Text(), nullable=True)
-    has_page_code = Column(postgresql.ARRAY(
-        Text(), dimensions=1), nullable=True)  # todo
+    has_page_code = Column(postgresql.ARRAY(Text(), dimensions=1), nullable=True)  # todo
     meta_keywords = Column(String(200), nullable=True)
     meta_description = Column(Text(), nullable=True)
-    meta_jdoc = Column(postgresql.JSONB(
-        none_as_null=False, astext_type=None), nullable=True)
+    meta_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
     cover = Column(Text, nullable=True)
     author = Column(String(100), nullable=True)
     category = Column(String(100), nullable=True)
@@ -119,10 +116,8 @@ class WebpagesPartnerXpath(db.Model):
     len_img = Column(Integer, default=0)
     publish_date = Column(DateTime, nullable=True)
     content_xpath = Column(Text, nullable=True)
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
     __table_args__ = (
         Index('idx_gin_meta_jdoc', meta_jdoc, postgresql_using="gin"),
@@ -143,8 +138,7 @@ class WebpagesPartnerAi(db.Model):
     url = Column(String(1000), nullable=False)
     title = Column(Text, nullable=True)
     author = Column(String(100), nullable=True)
-    meta_jdoc = Column(postgresql.JSONB(
-        none_as_null=False, astext_type=None), nullable=True)
+    meta_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
     cover = Column(Text, nullable=True)
     content = Column(Text, nullable=True)
     content_h1 = Column(Text, nullable=True)
@@ -152,10 +146,8 @@ class WebpagesPartnerAi(db.Model):
     content_p = Column(Text, nullable=True)
     content_image = Column(Text, nullable=True)
     publish_date = Column(DateTime, nullable=True)
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
 
 class WebpagesNoService(db.Model):
@@ -168,8 +160,7 @@ class WebpagesNoService(db.Model):
     url = Column(String(1000), nullable=False)
     title = Column(Text, nullable=True)
     author = Column(String(100), nullable=True)
-    meta_jdoc = Column(postgresql.JSONB(
-        none_as_null=False, astext_type=None), nullable=True)
+    meta_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
     cover = Column(Text, nullable=True)
     content = Column(Text, nullable=True)
     content_h1 = Column(Text, nullable=True)
@@ -177,10 +168,8 @@ class WebpagesNoService(db.Model):
     content_p = Column(Text, nullable=True)
     content_image = Column(Text, nullable=True)
     publish_date = Column(DateTime, nullable=True)
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
 
 class StructureData(db.Model):
@@ -190,19 +179,13 @@ class StructureData(db.Model):
     id = Column(Integer, primary_key=True)
     url_hash = Column(String(64), nullable=False, index=True, unique=True)
     content_hash = Column(String(256), index=True, nullable=True)
-    og_jdoc = Column(postgresql.JSONB(
-        none_as_null=False, astext_type=None), nullable=True)
-    item_jdoc = Column(postgresql.JSONB(
-        none_as_null=False, astext_type=None), nullable=True)
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+    og_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
+    item_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
     __table_args__ = (
-        Index('idx_structure_data_og_jdoc_gin',
-              og_jdoc, postgresql_using="gin"),
-        Index('idx_structure_data_item_jdoc_gin',
-              item_jdoc, postgresql_using="gin"),
+        Index('idx_structure_data_og_jdoc_gin', og_jdoc, postgresql_using="gin"),
+        Index('idx_structure_data_item_jdoc_gin', item_jdoc, postgresql_using="gin"),
     )
 
 
@@ -223,10 +206,8 @@ class UrlToContent(db.Model):
     content_hash = Column(String(256), nullable=False)
     # a tag to present if AC is informed to replace this url_hash with new one
     replaced = Column(Boolean, default=False)
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
     __table_args__ = (
         Index('idx_url_to_content_url_hash_content_hash',
@@ -243,10 +224,8 @@ class DomainInfo(db.Model):
     rules = Column(postgresql.JSONB(
         none_as_null=False, astext_type=None), nullable=True)  # to be checked!
 
-    _ctime = Column(DateTime(timezone=False),
-                    default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(
-        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
     __table_args__ = (
         Index('idx_domain_info_rules_gin', rules, postgresql_using="gin"),
@@ -260,23 +239,24 @@ class BspInfo(db.Model):
 
     id = Column(Integer, primary_key=True)
     bsp = Column(String(500), nullable=True)
-    rule = Column(postgresql.JSONB(
-        none_as_null=False, astext_type=None), nullable=True)  # to be checked!
+    rule = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)  # to be checked!
 
     __table_args__ = (
         Index('idx_bsp_info_rule_gin', rule, postgresql_using="gin"),
     )
 
 
-'''
-ref:
-# Sqlalchemy Table Configuration
-https://docs.sqlalchemy.org/en/latest/orm/extensions/declarative/table_config.html
-# Session
-https://docs.sqlalchemy.org/en/latest/orm/session.html
+class XpathParsingRules(db.Model):
+    __tablename__ = 'xpath_parsing_rules'
 
-# how to add a column w/o restarting db
-# e.g.
-ALTER TABLE task_service ADD status_code SMALLINT;
-
-'''
+    id = Column(Integer, primary_key=True)
+    task_main_id = Column(Integer, ForeignKey('task_main.id', ondelete='CASCADE'), index=True)
+    task_main = relationship('TaskMain', foreign_keys=task_main_id, single_parent=True)
+    title = Column(Integer, nullable=True)
+    author = Column(Integer, nullable=True)
+    publish_date = Column(Integer, nullable=True)
+    meta_keywords = Column(Integer, nullable=True)
+    meta_description = Column(Integer, nullable=True)
+    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
+    _mtime = Column(DateTime(
+        timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow, index=True)

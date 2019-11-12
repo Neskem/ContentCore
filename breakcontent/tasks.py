@@ -11,7 +11,7 @@ from breakcontent.orm_content import delete_old_related_data, get_task_main_data
 from breakcontent.utils import get_domain_info, request_api
 from breakcontent.utils import construct_email, send_email, to_csvstr, remove_html_tags
 from celery.utils.log import get_task_logger
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from datetime import timedelta, datetime
 from lxml import etree
 from html import unescape
@@ -38,7 +38,7 @@ def delete_main_task(url_hash):
 @celery.task(ignore_result=True)
 def init_external_task(data: dict):
     upsert_main_task(data)
-    update_task_main_status(data['url_hash'], status='doing', doing_time=datetime.utcnow())
+    update_task_main_status(data['url_hash'], status='doing')
 
     content_p = ''
     len_p = 0
@@ -194,7 +194,7 @@ def high_speed_p1(priority: int, url_hash: str, url: str, domain: str, request_i
 def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id: str, partner_id=None):
     logger.debug('url_hash {}, execute prepare_task'.format(url_hash))
 
-    update_task_main_status(url_hash, status='preparing', doing_time=datetime.utcnow())
+    update_task_main_status(url_hash, status='preparing')
     if partner_id:
         logger.debug('url_hash {}, domain {}, partner_id {}'.format(url_hash, domain, partner_id))
         domain_info = get_domain_info(domain, partner_id)

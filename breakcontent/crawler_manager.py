@@ -14,6 +14,7 @@ from lxml import etree
 import lxml.html
 import requests
 
+from breakcontent import crawler_rules
 from breakcontent.article_manager import InformACObj
 from breakcontent.orm_content import get_task_service_data, get_task_no_service_data, get_task_main_data, \
     update_task_main_status, update_task_service_status_xpath, get_webpages_partner_xpath_data, \
@@ -36,6 +37,8 @@ class CrawlerObj:
         self.priority = None
         self.request_id = None
         self.generator = None
+        self.title = None
+        self.rules = crawler_rules.setdefault(domain, dict())
 
     def prepare_crawler(self, xpath=False):
         task_service = get_task_service_data(self.url_hash) if self.partner_id is not None \
@@ -221,7 +224,7 @@ class CrawlerObj:
                                       content_h1=cat_wpx['content_h1'], content_h2=cat_wpx['content_h2'],
                                       content_image=cat_wpx['content_img'], len_img=cat_wpx['len_img'],
                                       content_xpath=cat_wpx['content_xpath'], cover=cat_wpx['cover'],
-                                      author=cat_wpx['author'],  publish_date=cat_wpx['publish_date'],
+                                      author=cat_wpx['author'], publish_date=cat_wpx['publish_date'],
                                       meta_jdoc=cat_wpx['meta_jdoc'], meta_description=cat_wpx['meta_description'],
                                       meta_keywords=cat_wpx['meta_keywords'], wp_url=cat_wpx['wp_url'],
                                       category=cat_wpx['category'], categories=cat_wpx['categories'])
@@ -278,11 +281,15 @@ class CrawlerObj:
             return False
 
     def get_content_from_xml_tree(self, iac, tree, domain_rules, content_directory, match_xpath, multi_pages=False):
-        # ----- removing script ----
-        # TODO: need to remove script or not
-        # for script in content_directory[0].xpath("//noscript"):
-        #     logger.debug(f'url_hash {self.url_hash}, script.text {script.text}')
-        #     script.getparent().remove(script)
+        remove_redundant_tags(content_directory[0])
+
+        # ----- removing excluded xpath ----
+        if getattr(domain_rules, 'e_xpath', None) and len(domain_rules.e_xpath) > 0:
+            for bad_node in domain_rules.e_xpath:
+                exclude_xpath = unquote(bad_node)
+                logger.debug(f"url_hash {self.url_hash}, exclude xpath: {exclude_xpath}")
+                for bad in content_directory[0].xpath(exclude_xpath):
+                    bad.getparent().remove(bad)
 
         # ----- parsing meta ----
         meta_jdoc = get_meta_document_from_xml_tree(tree)
@@ -302,7 +309,7 @@ class CrawlerObj:
 
         # ----- parsing generator ----
         if self.generator is None:
-            generator = get_generator_from_xml_tree(tree, self.generator)
+            self.generator = get_generator_from_xml_tree(tree, self.generator)
 
         # ----- parsing wp_url ----
         wp_url = parse_wp_url(tree, self.url, self.generator)
@@ -331,34 +338,6 @@ class CrawlerObj:
             iac.zi_sync = False
             iac.zi_defy.add('secret')
 
-        # ----- parsing href (what for?) ----
-        # reformating href?
-        # xarch = cd[0].xpath('.//a')
-        # for a in xarch:
-        #     try:
-        #         href = a.get('href')
-        #         if href != None and href.strip():
-        #             href = urljoin(url, href)
-        #             try:
-        #                 a.set('href', str(href))
-        #             except:
-        #                 pass
-        #     except:
-        #         pass
-        # logger.debug(f'url_hash {url_hash}, xarch {xarch}')
-        # ----- parsing iframe ----
-        # reformating
-        # xiframe = cd[0].xpath('//iframe')
-        # for iframe in xiframe:
-        #     src = iframe.get('src')
-        #     if src != None and src.strip():
-        #         alt = iframe.get('alt')
-        #         src = urljoin(url, src)
-        #         # domain spefic logic
-        #         if domain == "medium.com":
-        #             src = getMediumIframeSource(src)
-        #         iframe.set('src', src)
-
         # ----- parsing title ----
         title = None
         x_title = tree.xpath('/html/head/title/text()')
@@ -386,30 +365,34 @@ class CrawlerObj:
 
         self.title = title
 
+        # ----- parsing author ----
+        from breakcontent.rules_manager import AuthorParser
+        author_record = self.rules.setdefault("author", 0)
+        author_object = AuthorParser(self.url, self.url_hash, self.domain, self.rules, "author", author_record)
+        author = author_object.setting_author(tree)
+
+        # author = get_author_by_domain(tree, self.url)
+        #
+        # if author is None:
+        #     author = get_author_by_universe_logic(tree)
+
+        isa = is_sync_author(domain_rules, author)
+        iac.zi_sync = isa if iac.zi_sync else False
+        if not isa:
+            iac.zi_defy.add('authorList')
+
         # ----- parsing publish_date ----
-
-        publish_date = parse_publish_date_from_xml_tree(tree, self.url_hash)
-
-        # domain specific logic
-        if publish_date is None:
-            publish_date = parse_publish_date_from_specific_logic(tree, self.url, self.domain, self.title)
-
-        # bsp specific logic
-        if publish_date is None and self.generator == "PChoc":
-            publish_date = get_pixnet_publish_time(tree)
-
-        # universal logic
-        if publish_date is None:
-            publish_date = parse_publish_date_from_universe_logic(tree)
-
-        # ft-post-time
-        if publish_date is None:
-            publish_date = get_publish_date_from_ft(tree)
+        from breakcontent.rules_manager import PublishDateParser
+        self.rules = crawler_rules.setdefault(self.domain, dict())
+        publish_date_record = self.rules.setdefault("publish_date", 0)
+        publish_data_object = PublishDateParser(self.url, self.url_hash, self.domain, self.rules, "publish_date",
+                                                publish_date_record)
+        publish_date = publish_data_object.setting_publish_date(tree, self.title, self.generator)
 
         if not publish_date and domain_rules['delayday']:
             logger.critical('url_hash {}, failed to parse publish_date for {}'.format(self.url_hash, self.url))
 
-        # assume all the parsed publish_date is in TW format, must convert them to utc before storing them in psql db
+        # assume all the parsed publish_date is in TW format, must convert them to utc before storing them in db
 
         if publish_date:
             if isinstance(publish_date, str):
@@ -455,52 +438,9 @@ class CrawlerObj:
         if len(x_description) > 0:
             meta_description = x_description[0].get('content')
         else:
-            x_description = tree.xpath(
-                '/html/head/meta[@property="og:description"]')
+            x_description = tree.xpath('/html/head/meta[@property="og:description"]')
             if len(x_description) > 0:
                 meta_description = x_description[0].get('content')
-
-        # ----- parsing author ----
-        author = get_author_by_domain(tree, self.url)
-
-        if author is None:
-            author = get_author_by_universe_logic(tree)
-
-        # i_author = domain_info.get('authorList', None)
-        # e_author = domain_info.get('e_authorList', None)
-        isa = is_sync_author(domain_rules, author)
-        iac.zi_sync = isa if iac.zi_sync else False
-        if not isa:
-            iac.zi_defy.add('authorList')
-
-        # ----- removing style ----
-        # TODO: need to remove style or not
-        for style in content_directory[0].xpath("//style"):
-            style.getparent().remove(style)
-
-        # ----- removing script and exclude tag ----
-        # TODO: need to remove or not
-        for script in content_directory[0].xpath(".//script"):
-            if script.get('type', '') == "application/ld+json":
-                continue
-            srcScript = script.get('src', "")
-            # keep 360 js, but remove others
-            if srcScript not in ["https://theta360.com/widgets.js", "//www.instagram.com/embed.js"]:
-                logger.debug(f"url_hash {self.url_hash}, tail: {script.tail}")
-                if script.tail is not None and script.tail.strip() != "":
-                    logger.debug(f"url_hash {self.url_hash}, drop tag")
-                    script.drop_tag()
-                else:
-                    logger.debug(f"url_hash {self.url_hash}, remove tag text: {script.text}")
-                    script.getparent().remove(script)
-
-        # ----- removing excluded xpath ----
-        if getattr(domain_rules, 'e_xpath', None) and len(domain_rules.e_xpath) > 0:
-            for bad_node in domain_rules.e_xpath:
-                exclude_xpath = unquote(bad_node)
-                logger.debug(f"url_hash {self.url_hash}, exclude xpath: {exclude_xpath}")
-                for bad in content_directory[0].xpath(exclude_xpath):
-                    bad.getparent().remove(bad)
 
         # ----- counting img and char ----
         # reparse the content
@@ -1064,26 +1004,21 @@ def get_author_by_domain(tree, url):
     author = None
     # domain specific logic
     if "blog.tripbaa.com" in url:
-        x_author = tree.xpath(
-            "//div[@class='td-post-author-name']/a/text()")
+        x_author = tree.xpath("//div[@class='td-post-author-name']/a/text()")
         if len(x_author) > 0:
             author = x_author[0].strip()
     if "www.expbravo.com" in url:
-        x_author = tree.xpath(
-            "//*[@id]/header/div[3]/span[1]/span/a/text()")
+        x_author = tree.xpath("//*[@id]/header/div[3]/span[1]/span/a/text()")
         if len(x_author) > 0:
             author = x_author[0].strip()
     if "www.tripresso.com" in url:
-        x_author = tree.xpath(
-            "//*[@id]/header/div/span[2]/span/a/text()")
+        x_author = tree.xpath("//*[@id]/header/div/span[2]/span/a/text()")
         if len(x_author) > 0:
             author = x_author[0].strip()
     if "newtalk.tw" in url:
-        x_author = tree.xpath(
-            '//div[contains(@class, "content_reporter")]/a/following-sibling::text()')
+        x_author = tree.xpath('//div[contains(@class, "content_reporter")]/a/following-sibling::text()')
         if len(x_author) > 0:
-            author = x_author[0].strip().replace(
-                "文/", "").replace('文／', "").strip()
+            author = x_author[0].strip().replace("文/", "").replace('文／', "").strip()
     if "www.saydigi.com" in url:
         x_author = tree.xpath('//a[@rel="author"]/text()')
         if len(x_author) > 0:
@@ -1103,15 +1038,37 @@ def get_author_by_universe_logic(tree):
         if len(x_author) > 0:
             author = x_author[0].get('content')
     if author is None:
-        x_author = tree.xpath(
-            '/html/head/meta[@property="article:author"]/@content')
+        x_author = tree.xpath('/html/head/meta[@property="article:author"]/@content')
         if len(x_author) > 0:
             author = x_author[0]
     if author is None:
-        x_author = tree.xpath(
-            '/html/head/meta[@property="dable:author"]')
+        x_author = tree.xpath('/html/head/meta[@property="dable:author"]')
         if len(x_author) > 0:
             author = x_author[0].get('content')
+    return author
+
+
+def get_author_from_property_author(tree):
+    x_author = tree.xpath('/html/head/meta[@property="author"]')
+    author = None
+    if len(x_author) > 0:
+        author = x_author[0].get('content')
+    return author
+
+
+def get_author_from_property_article_author(tree):
+    x_author = tree.xpath('/html/head/meta[@property="article:author"]/@content')
+    author = None
+    if len(x_author) > 0:
+        author = x_author[0]
+    return author
+
+
+def get_author_from_property_dable_author(tree):
+    x_author = tree.xpath('/html/head/meta[@property="dable:author"]')
+    author = None
+    if len(x_author) > 0:
+        author = x_author[0].get('content')
     return author
 
 
@@ -1176,3 +1133,28 @@ def get_medium_iframe_source(url):
                 params = parse_qs(o.query)
                 return params['src'][0]
     return None
+
+
+def remove_redundant_tags(content_first_directory):
+    # ----- removing script ----
+    # TODO: need to remove script or not
+    for script in content_first_directory.xpath("//noscript"):
+        script.getparent().remove(script)
+
+    # ----- removing style ----
+    # TODO: need to remove style or not
+    for style in content_first_directory.xpath("//style"):
+        style.getparent().remove(style)
+
+    # ----- removing script and exclude tag ----
+    # TODO: need to remove or not
+    for script in content_first_directory.xpath(".//script"):
+        if script.get('type', '') == "application/ld+json":
+            continue
+        src_script = script.get('src', "")
+        # keep 360 js, but remove others
+        if src_script not in ["https://theta360.com/widgets.js", "//www.instagram.com/embed.js"]:
+            if script.tail is not None and script.tail.strip() != "":
+                script.drop_tag()
+            else:
+                script.getparent().remove(script)

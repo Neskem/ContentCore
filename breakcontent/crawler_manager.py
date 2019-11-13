@@ -150,7 +150,6 @@ class CrawlerObj:
                     i_url = '{}?{}={}'.format(self.url, page_query_param, page_num)
 
                 response = self.get_url_content_with_requests(i_url, self.priority, multi_pages)
-
                 if response is not False:
                     response.encoding = 'utf-8'
                     html = response.text
@@ -205,12 +204,12 @@ class CrawlerObj:
                         cat_wpx['len_char'] += a_wpx['len_char']
 
                 else:
-                    return
+                    break
 
             cat_wpx['url'] = self.url
             cat_wpx['url_hash'] = self.url_hash
             cat_wpx['content_hash'] = generate_content_hash(cat_wpx['url'], cat_wpx['title'], multipaged=True,
-                                                            wp_url=cat_wpx['wp_url'],
+                                                            wp_url=cat_wpx['wp_url'], partner_id=self.partner_id,
                                                             meta_description=cat_wpx['meta_description'],
                                                             publish_date=cat_wpx['publish_date'])
             cat_wpx['multi_page_urls'] = sorted(multi_page_urls)
@@ -222,7 +221,7 @@ class CrawlerObj:
                                       title=cat_wpx['title'], content=cat_wpx['content'], len_char=cat_wpx['len_char'],
                                       content_p=cat_wpx['content_p'], len_p=cat_wpx['len_p'],
                                       content_h1=cat_wpx['content_h1'], content_h2=cat_wpx['content_h2'],
-                                      content_image=cat_wpx['content_img'], len_img=cat_wpx['len_img'],
+                                      content_image=cat_wpx['content_image'], len_img=cat_wpx['len_img'],
                                       content_xpath=cat_wpx['content_xpath'], cover=cat_wpx['cover'],
                                       author=cat_wpx['author'], publish_date=cat_wpx['publish_date'],
                                       meta_jdoc=cat_wpx['meta_jdoc'], meta_description=cat_wpx['meta_description'],
@@ -234,42 +233,33 @@ class CrawlerObj:
 
     def get_url_content_with_requests(self, url, priority, multi_pages):
         timeout = 12
-        retry_count = 1
 
-        def get_response_from_url(retry):
-            if priority == 5 or multi_pages is True:
-                crawler_api_key = os.environ.get('CRAWLERA_APIKEY', None)
-                candidate = [
-                    'www.top1health.com'
-                ]
+        if priority == 5 or multi_pages is True:
+            crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
+            logging.info('apikey: {}'.format(crawlera_apikey))
+            candidate = [
+                'www.top1health.com'
+            ]
 
-                if crawler_api_key and self.domain in candidate:
-                    proxies = {
-                        'http': f"http://{crawler_api_key}:x@proxy.crawlera.com:8010/",
-                        'https': f"https://{crawler_api_key}:x@proxy.crawlera.com:8010/"
-                    }
-                    r = requests.get(url, allow_redirects=False, headers=self.headers, proxies=proxies,
-                                     verify=False, timeout=timeout)
-                    if r.status_code == 200:
-                        logger.debug('url_hash {}, CRAWLER reqeust successful'.format(self.url_hash))
-                        return r
-                    else:
-                        logger.warning('url_hash {}, CRAWLER request failed, try local'.format(self.url_hash))
-                        r = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
-
+            if crawlera_apikey and self.domain in candidate:
+                proxies = {
+                    'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
+                    'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
+                }
+                response = requests.get(url, allow_redirects=False, headers=self.headers, proxies=proxies, verify=False,
+                                        timeout=timeout)
+                if response.status_code == 200:
+                    logger.debug('url_hash {}, CRAWLER reqeust successful'.format(self.url_hash))
                 else:
-                    logger.debug('url_hash {}, use local to request'.format(self.url_hash))
-                    r = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
+                    logger.warning('url_hash {}, CRAWLER request failed, try local'.format(self.url_hash))
+                    response = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
 
             else:
-                r = requests.get(url, verify=False, allow_redirects=False, headers=self.headers, timeout=timeout)
-            retry += 1
-            return r
+                logger.debug('url_hash {}, use local to request'.format(self.url_hash))
+                response = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
 
-        response = get_response_from_url(retry_count)
-
-        while response.status_code != 200 and retry_count < 5:
-            response = get_response_from_url(retry_count)
+        else:
+            response = requests.get(url, verify=False, allow_redirects=False, headers=self.headers, timeout=timeout)
 
         if response.status_code == 200:
             update_task_service_status_xpath(self.url_hash, status_xpath='doing', status_code=response.status_code)

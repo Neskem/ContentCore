@@ -23,4 +23,5 @@ if [ "${dropdb}" = 'drop' ]; then
 fi
 
 docker-compose up -d
+sleep 8
 docker-compose restart

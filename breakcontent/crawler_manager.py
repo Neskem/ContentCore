@@ -14,7 +14,6 @@ from lxml import etree
 import lxml.html
 import requests
 
-from breakcontent import crawler_rules
 from breakcontent.article_manager import InformACObj
 from breakcontent.orm_content import get_task_service_data, get_task_no_service_data, get_task_main_data, \
     update_task_main_status, update_task_service_status_xpath, get_webpages_partner_xpath_data, \
@@ -29,16 +28,16 @@ class CrawlerObj:
     headers = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) '
                              'Chrome/70.0.3538.77 Safari/537.36'}
 
-    def __init__(self, url_hash, url, domain, partner_id=None):
+    def __init__(self, url_hash, url, domain, partner_id, parsing_rules):
         self.url_hash = url_hash
         self.url = url
         self.domain = domain
         self.partner_id = partner_id
+        self.parsing_rules = parsing_rules
         self.priority = None
         self.request_id = None
         self.generator = None
         self.title = None
-        self.rules = crawler_rules.setdefault(domain, dict())
 
     def prepare_crawler(self, xpath=False):
         task_service = get_task_service_data(self.url_hash) if self.partner_id is not None \
@@ -228,6 +227,7 @@ class CrawlerObj:
                                       meta_keywords=cat_wpx['meta_keywords'], wp_url=cat_wpx['wp_url'],
                                       category=cat_wpx['category'], categories=cat_wpx['categories'])
             inform_ac.set_ac_sync(True)
+            inform_ac.calculate_crawl_quality(cat_wpx['len_char'], cat_wpx['len_img'])
             inform_ac.check_url_to_content(cat_wpx['content_hash'])
             inform_ac.sync_to_ac(partner=True)
 
@@ -329,21 +329,9 @@ class CrawlerObj:
             iac.zi_defy.add('secret')
 
         # ----- parsing title ----
-        title = None
-        x_title = tree.xpath('/html/head/title/text()')
-
-        if len(x_title):
-            title = x_title[0]
-
-        # domain specific logic:
-        if title is None and "www.soft4fun.net" in self.url:
-            x_title = tree.xpath('//*[@class="post"]/div[1]/h1/span/text()')
-            title = x_title[0]
-
-        if "webtest1.sanlih.com.tw" in self.url or "www.setn.com" in self.url:
-            if title:
-                setn_title_list = title.split('|')
-                title = setn_title_list[0]
+        from breakcontent.rules_manager import ParsingRulesObj
+        parsing_rule_object = ParsingRulesObj(self.url_hash, self.url, self.domain, self.parsing_rules)
+        title = parsing_rule_object.get_title(tree)
 
         # domain specific: title exclude words
         if title and isinstance(title, str) and getattr(domain_rules, 'e_title', None):
@@ -356,15 +344,7 @@ class CrawlerObj:
         self.title = title
 
         # ----- parsing author ----
-        from breakcontent.rules_manager import AuthorParser
-        author_record = self.rules.setdefault("author", 0)
-        author_object = AuthorParser(self.url, self.url_hash, self.domain, self.rules, "author", author_record)
-        author = author_object.setting_author(tree)
-
-        # author = get_author_by_domain(tree, self.url)
-        #
-        # if author is None:
-        #     author = get_author_by_universe_logic(tree)
+        author = parsing_rule_object.get_author(tree)
 
         isa = is_sync_author(domain_rules, author)
         iac.zi_sync = isa if iac.zi_sync else False
@@ -372,12 +352,7 @@ class CrawlerObj:
             iac.zi_defy.add('authorList')
 
         # ----- parsing publish_date ----
-        from breakcontent.rules_manager import PublishDateParser
-        self.rules = crawler_rules.setdefault(self.domain, dict())
-        publish_date_record = self.rules.setdefault("publish_date", 0)
-        publish_data_object = PublishDateParser(self.url, self.url_hash, self.domain, self.rules, "publish_date",
-                                                publish_date_record)
-        publish_date = publish_data_object.setting_publish_date(tree, self.title, self.generator)
+        publish_date = parsing_rule_object.get_publish_date(tree, self.title)
 
         if not publish_date and domain_rules['delayday']:
             logger.critical('url_hash {}, failed to parse publish_date for {}'.format(self.url_hash, self.url))
@@ -413,24 +388,13 @@ class CrawlerObj:
                 iac.zi_defy.add('delayday')
 
         # ----- parsing meta_keywords ----
-        meta_keywords = None
-        x_news_keywords = tree.xpath('/html/head/meta[@property="news_keywords"]')
-        if len(x_news_keywords) > 0:
-            meta_keywords = x_news_keywords[0].get('content').split(',')
-        else:
-            x_keywords = tree.xpath('/html/head/meta[@property="keywords"]')
-            if len(x_keywords) > 0:
-                meta_keywords = x_keywords[0].get('content').split(',')
+        meta_keywords = parsing_rule_object.get_meta_keywords(tree)
 
         # ----- parsing meta_description ----
-        meta_description = None
-        x_description = tree.xpath('/html/head/meta[@name="description"]')
-        if len(x_description) > 0:
-            meta_description = x_description[0].get('content')
-        else:
-            x_description = tree.xpath('/html/head/meta[@property="og:description"]')
-            if len(x_description) > 0:
-                meta_description = x_description[0].get('content')
+        meta_description = parsing_rule_object.get_meta_description(tree)
+
+        # ----- update parsing rules ----
+        parsing_rule_object.update_rules_from_db()
 
         # ----- counting img and char ----
         # reparse the content

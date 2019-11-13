@@ -5,7 +5,7 @@ from sqlalchemy import or_
 from breakcontent import db
 from breakcontent.helper import pg_add_wrapper
 from breakcontent.models import TaskMain, WebpagesNoService, TaskNoService, WebpagesPartnerXpath, WebpagesPartnerAi, \
-    TaskService, DomainInfo, UrlToContent
+    TaskService, DomainInfo, UrlToContent, XpathParsingRules
 
 
 def init_task_main(url, url_hash, partner_id, domain, request_id, priority, generator=None):
@@ -463,3 +463,42 @@ def get_cc_health_check_report(start_time, end_time):
         return report_list
     else:
         return False
+
+
+def update_xpath_parsing_rules_by_id(task_main_id, title=0, author=0, publish_date=0, meta_keywords=0,
+                                     meta_description=0):
+    db.session.query(XpathParsingRules).filter_by(task_main_id=task_main_id).update({
+        'title': title,
+        'author': author,
+        'publish_date': publish_date,
+        'meta_keywords': meta_keywords,
+        'meta_description': meta_description
+    })
+    db.session.commit()
+
+
+def update_xpath_parsing_rules_by_url_hash(url_hash, title=0, author=0, publish_date=0, meta_keywords=0,
+                                           meta_description=0):
+    db.session.query(XpathParsingRules).filter_by(url_hash=url_hash).update({
+        'title': title,
+        'author': author,
+        'publish_date': publish_date,
+        'meta_keywords': meta_keywords,
+        'meta_description': meta_description
+    })
+    db.session.commit()
+
+
+def get_xpath_parsing_rules_by_id(task_main_id):
+    parsing_rules = XpathParsingRules.query.filter_by(task_main_id=task_main_id).first()
+    if parsing_rules is not None:
+        rules_list = [parsing_rules.title, parsing_rules.author, parsing_rules.publish_date,
+                      parsing_rules.meta_keywords, parsing_rules.meta_description]
+        return rules_list
+    else:
+        return False
+
+
+def create_xpath_parsing_rules(task_main_id, url_hash):
+    new_init_rules = XpathParsingRules(task_main_id=task_main_id, url_hash=url_hash)
+    pg_add_wrapper(new_init_rules)

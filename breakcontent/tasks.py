@@ -7,7 +7,8 @@ from breakcontent.orm_content import delete_old_related_data, get_task_main_data
     get_task_no_service_data, init_task_no_service, update_task_no_service_with_status, update_task_main, \
     update_task_service, update_task_no_service, update_task_main_status, get_webpages_xpath, \
     update_webpages_for_external, create_webpages_xpath_with_data, get_task_main_tasks, \
-    update_task_service_multipage, get_task_main_data_with_status, get_executing_tasks, get_cc_health_check_report
+    update_task_service_multipage, get_task_main_data_with_status, get_executing_tasks, get_cc_health_check_report, \
+    get_xpath_parsing_rules_by_id, create_xpath_parsing_rules
 from breakcontent.utils import get_domain_info, request_api
 from breakcontent.utils import construct_email, send_email, to_csvstr, remove_html_tags
 from celery.utils.log import get_task_logger
@@ -142,14 +143,21 @@ def create_tasks(priority: str, limit: int = 4000):
         return False
     for task in tasks:
         logger.debug('url_hash {}, in task list'.format(task.url_hash))
+        if task.partner_id is not None and len(task.partner_id) > 0:
+            parsing_rules = get_xpath_parsing_rules_by_id(task.id)
+            if parsing_rules is False:
+                create_xpath_parsing_rules(task.id, task.url_hash)
+                parsing_rules = [0, 0, 0, 0, 0]
+        else:
+            parsing_rules = None
 
         if task.task_partner_id:
             if int(priority) == 1:
                 logger.debug('url_hash {}, sent to high_speed_p1.delay()'.format(task.url_hash))
-                high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id,
+                high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, parsing_rules,
                                     task.partner_id)
             else:
-                prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id,
+                prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, parsing_rules,
                                    task.partner_id)
         elif not task.partner_id:
             logger.debug('url_hash {}, sent task for tm.task_noservice'.format(task.url_hash))
@@ -167,12 +175,22 @@ def create_task(url_hash, priority, status):
     if task is False:
         return False
 
+    if task.partner_id is not None and len(task.partner_id) > 0:
+        parsing_rules = get_xpath_parsing_rules_by_id(task.id)
+        if parsing_rules is False:
+            create_xpath_parsing_rules(task.id, task.url_hash)
+            parsing_rules = [0, 0, 0, 0, 0]
+    else:
+        parsing_rules = None
+
     if task.partner_id:
         if int(priority) == 1:
             logger.debug('url_hash {}, sent to high_speed_p1.delay()'.format(task.url_hash))
-            high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.partner_id)
+            high_speed_p1.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, parsing_rules,
+                                task.partner_id)
         else:
-            prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, task.partner_id)
+            prepare_task.delay(task.priority, task.url_hash, task.url, task.domain, task.request_id, parsing_rules,
+                               task.partner_id)
     elif not task.partner_id:
         logger.debug('url_hash {}, sent task for tm.task_noservice'.format(task.url_hash))
         prepare_task.delay(int(priority), task.url_hash, task.url, task.domain, task.request_id)
@@ -184,14 +202,15 @@ def create_task(url_hash, priority, status):
 
 
 @celery.task(ignore_result=True)
-def high_speed_p1(priority: int, url_hash: str, url: str, domain: str, request_id: str, partner_id=None):
+def high_speed_p1(priority: int, url_hash: str, url: str, domain: str, request_id: str, parsing_rules, partner_id=None):
     logger.debug("url_hash {}, in high_speed_p1()".format(url_hash))
-    prepare_task(priority, url_hash, url, domain, request_id, partner_id)
+    prepare_task(priority, url_hash, url, domain, request_id, parsing_rules, partner_id)
     return True
 
 
 @celery.task(ignore_result=True)
-def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id: str, partner_id=None):
+def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id: str, parsing_rules=None,
+                 partner_id=None):
     logger.debug('url_hash {}, execute prepare_task'.format(url_hash))
 
     update_task_main_status(url_hash, status='preparing')
@@ -236,18 +255,19 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
                     logger.debug("url_hash {}, mp_url = url: partner_id {}, domain {}".format(
                         url_hash, partner_id, domain))
                     if priority and int(priority) == 1:
-                        xpath_crawler(url_hash, url, partner_id, domain, domain_info, multi_pages=True)
+                        xpath_crawler(url_hash, url, partner_id, domain, domain_info, parsing_rules, multi_pages=True)
                     else:
-                        xpath_crawler.delay(url_hash, url, partner_id, domain, domain_info, multi_pages=True)
+                        xpath_crawler.delay(url_hash, url, partner_id, domain, domain_info, parsing_rules,
+                                            multi_pages=True)
             else:
                 # preparing for single page crawler
                 update_task_service_with_status(url_hash, status_ai='preparing', status_xpath='preparing')
                 if priority and int(priority) == 1:
                     logger.debug('url_hash {}, run xpath_single_crawler() in high_speed_p1 task func'.format(url_hash))
-                    xpath_crawler(url_hash, url, partner_id, domain, domain_info)
+                    xpath_crawler(url_hash, url, partner_id, domain, domain_info, parsing_rules)
                 else:
                     logger.debug('url_hash {}, sent task to xpath_single_crawler.delay()'.format(url_hash))
-                    xpath_crawler.delay(url_hash, url, partner_id, domain, domain_info)
+                    xpath_crawler.delay(url_hash, url, partner_id, domain, domain_info, parsing_rules)
         else:
             logger.error('url_hash {}, no domain_info!'.format(url_hash))
             bypass_crawler.delay(url_hash)
@@ -269,7 +289,8 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
 
 
 @celery.task()
-def xpath_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, multi_pages=False):
+def xpath_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_info: dict, parsing_rules: list,
+                  multi_pages=False):
     """
     <purpose>
     use the domain config from Partner System to crawl through the entire page, then inform AC with request
@@ -279,7 +300,8 @@ def xpath_crawler(url_hash: str, url: str, partner_id: str, domain: str, domain_
     """
     logger.debug('url_hash {}, start to crawl single-paged url.'.format(url_hash))
 
-    crawler_obj = CrawlerObj(url_hash=url_hash, url=url, domain=domain, partner_id=partner_id)
+    crawler_obj = CrawlerObj(url_hash=url_hash, url=url, domain=domain, partner_id=partner_id,
+                             parsing_rules=parsing_rules)
     crawler_obj.prepare_crawler(xpath=True)
     crawler_obj.xpath_a_crawler(domain_rules=domain_info, multi_pages=multi_pages)
 

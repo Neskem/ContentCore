@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from breakcontent.orm_content import update_task_main_sync_status, get_url_to_content_data, \
     init_url_to_content, update_task_main_status, update_task_service_with_status_only_xpath, \
-    update_url_to_content, delete_old_related_data, update_task_no_service_with_status
+    update_url_to_content, delete_old_related_data, update_task_no_service_with_status, update_webpages_page_code
 
 logger = logging.getLogger('cc')
 
@@ -173,6 +173,7 @@ class InformACObj:
     def set_page_code(self, page_code):
         if page_code is bool:
             self.has_page_code = page_code
+            update_webpages_page_code(self.url_hash, page_code)
 
 
 def retry_requests(method, api, data=None, headers=None, retry=3):

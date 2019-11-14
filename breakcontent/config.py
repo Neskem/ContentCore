@@ -114,8 +114,7 @@ ONLY_PERMIT_P1 = False if os.environ.get('ONLY_PERMIT_P1', False) in [
 PS_DOMAIN_API = os.environ.get('PS_DOMAIN_API', None)
 
 # AI crawler
-MERCURY_TOKEN = os.environ.get(
-    'MERCURY_TOKEN', None)
+MERCURY_TOKEN = os.environ.get('MERCURY_TOKEN', None)
 PARTNER_AI_CRAWLER = False if os.environ.get('PARTNER_AI_CRAWLER', None) in [
     'false', 'False', 0, False] else True
 

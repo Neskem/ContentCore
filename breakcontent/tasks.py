@@ -109,7 +109,6 @@ def upsert_main_task(data: dict):
     if not task_main:
         init_task_main(data['url'], data['url_hash'], data['partner_id'], domain, data['request_id'], data['priority'],
                        data['generator'])
-        task_main = get_task_main_data(data['url_hash'])
     else:
         update_task_main(data['url_hash'], data['partner_id'], data['request_id'], data['priority'], data['generator'])
     update_task_main_detailed_status(data['url_hash'], status='pending', doing_time=None, done_time=None,
@@ -336,7 +335,7 @@ def bypass_crawler(url_hash: str):
     task_main = get_task_main_data(url_hash)
     if task_main is False:
         logger.error('{} url_hash does not exist.'.format(url_hash))
-        return
+        return False
 
     inform_ac = InformACObj(task_main.url, url_hash, task_main.request_id)
     inform_ac.set_ac_sync(False)
@@ -345,6 +344,8 @@ def bypass_crawler(url_hash: str):
         inform_ac.sync_to_ac(True)
     else:
         inform_ac.sync_to_ac(False)
+
+    return True
 
 
 @celery.task()

@@ -1,9 +1,8 @@
 from urllib.parse import urlparse
 
-from flask import Blueprint, request, g, jsonify, current_app, abort
+from flask import Blueprint, request, jsonify, current_app, abort
 from flask_headers import headers
 from flask_cors import cross_origin
-import datetime
 
 from breakcontent.orm_content import get_webpages_xpath, get_partner_domain_rules, init_partner_domain_rules, \
     update_partner_domain_rules

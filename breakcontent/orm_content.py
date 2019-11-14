@@ -502,3 +502,10 @@ def get_xpath_parsing_rules_by_id(task_main_id):
 def create_xpath_parsing_rules(task_main_id, url_hash):
     new_init_rules = XpathParsingRules(task_main_id=task_main_id, url_hash=url_hash)
     pg_add_wrapper(new_init_rules)
+
+
+def update_webpages_page_code(url_hash, page_code):
+    db.session.query(WebpagesPartnerXpath).filter_by(url_hash=url_hash).update({
+        'has_page_code': page_code
+    })
+    db.session.commit()

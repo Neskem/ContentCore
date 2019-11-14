@@ -82,8 +82,6 @@ class MercuryObj:
 
             content_h1, content_h2, content_p, content_image = parse_content_html(tree, self.url)
             m = hashlib.sha1(content.encode('utf-8'))
-            logger.info('domain: {}'.format(self.domain))
-            logger.info('hexdigest: {}'.format(m.hexdigest()))
             content_hash = self.domain + '_' + m.hexdigest()
             meta_jdoc = parse_meta_jdoc(self.url, self.headers)
             if self.partner_id:

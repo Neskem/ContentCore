@@ -103,7 +103,8 @@ class CrawlerObj:
                     # AttributeError: 'NoneType' object has no attribute 'span'
                     logger.warning('url_hash {}, au.js exception: {}'.format(self.url_hash, e))
                     au_js = False
-                if au_js is True:
+
+                if au_js is not None:
                     inform_ac.set_page_code(True)
 
                 try:
@@ -161,7 +162,7 @@ class CrawlerObj:
                         logger.warning(f'url_hash {self.url_hash}, aujs exception: {e}')
                         au_js = False
 
-                    if au_js is not False:
+                    if au_js is not None:
                         inform_ac.set_page_code(True)
 
                     try:
@@ -376,8 +377,8 @@ class CrawlerObj:
             delay_datetime = delay_date.replace(tzinfo=datetime.timezone(datetime.timedelta(hours=0)))
             now = datetime.datetime.utcnow() + timedelta(hours=8)
             now = now.replace(tzinfo=datetime.timezone(datetime.timedelta(hours=0)))
-            logger.debug(f'ddt {delay_datetime}')
-            logger.debug(f'now {now}')
+            logger.debug('delay datetime: {}'.format(delay_datetime))
+            logger.debug('now: {}'.format(now))
 
             if delay_datetime < now:
                 isd = True

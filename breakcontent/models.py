@@ -98,7 +98,7 @@ class WebpagesPartnerXpath(db.Model):
     url = Column(String(1000), nullable=False)
     wp_url = Column(String(500), nullable=True)  # only WP bsp has it
     title = Column(Text(), nullable=True)
-    has_page_code = Column(postgresql.ARRAY(Text(), dimensions=1), nullable=True)  # todo
+    has_page_code = Column(Boolean, default=False, nullable=True)
     meta_keywords = Column(String(200), nullable=True)
     meta_description = Column(Text(), nullable=True)
     meta_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
@@ -172,23 +172,6 @@ class WebpagesNoService(db.Model):
     _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
 
 
-class StructureData(db.Model):
-    # to do
-    __tablename__ = 'structure_data'
-
-    id = Column(Integer, primary_key=True)
-    url_hash = Column(String(64), nullable=False, index=True, unique=True)
-    content_hash = Column(String(256), index=True, nullable=True)
-    og_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
-    item_jdoc = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)
-    _ctime = Column(DateTime(timezone=False), default=datetime.datetime.utcnow)
-    _mtime = Column(DateTime(timezone=False), onupdate=datetime.datetime.utcnow, default=datetime.datetime.utcnow)
-    __table_args__ = (
-        Index('idx_structure_data_og_jdoc_gin', og_jdoc, postgresql_using="gin"),
-        Index('idx_structure_data_item_jdoc_gin', item_jdoc, postgresql_using="gin"),
-    )
-
-
 class UrlToContent(db.Model):
     """
     only partner xpath is stored
@@ -231,18 +214,6 @@ class DomainInfo(db.Model):
         Index('idx_domain_info_rules_gin', rules, postgresql_using="gin"),
         Index('idx_domain_info_domain_partner_id',
               domain, partner_id, unique=True),
-    )
-
-
-class BspInfo(db.Model):
-    __tablename__ = 'bsp_info'
-
-    id = Column(Integer, primary_key=True)
-    bsp = Column(String(500), nullable=True)
-    rule = Column(postgresql.JSONB(none_as_null=False, astext_type=None), nullable=True)  # to be checked!
-
-    __table_args__ = (
-        Index('idx_bsp_info_rule_gin', rule, postgresql_using="gin"),
     )
 
 

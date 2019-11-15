@@ -108,41 +108,46 @@ class MercuryObj:
                 update_task_no_service_with_status(self.url_hash, status='failed')
 
     def get_url_content_with_requests(self, multi_pages=False):
-        decode_url = decode_url_function(self.url)
-        if multi_pages is True:
-            crawlera_api_key = os.environ.get('CRAWLERA_APIKEY', None)
+        try:
+            decode_url = decode_url_function(self.url)
+            if multi_pages is True:
+                crawlera_api_key = os.environ.get('CRAWLERA_APIKEY', None)
 
-            # slight different w/ that of xpath_a_crawler
-            candidate = ['www.top1health.com']
-            use_crawlera = False
+                # slight different w/ that of xpath_a_crawler
+                candidate = ['www.top1health.com']
+                use_crawlera = False
 
-            for i in candidate:
-                if i in self.url:
-                    use_crawlera = True
+                for i in candidate:
+                    if i in self.url:
+                        use_crawlera = True
 
-            if crawlera_api_key is not None and use_crawlera:
-                proxies = {
-                    'http': "http://{}:x@proxy.crawlera.com:8010/".format(crawlera_api_key),
-                    'https': "https://{}:x@proxy.crawlera.com:8010/".format(crawlera_api_key)
-                }
-                response = requests.get(decode_url, allow_redirects=False, headers=self.headers, proxies=proxies,
-                                        verify=False)
+                if crawlera_api_key is not None and use_crawlera:
+                    proxies = {
+                        'http': "http://{}:x@proxy.crawlera.com:8010/".format(crawlera_api_key),
+                        'https': "https://{}:x@proxy.crawlera.com:8010/".format(crawlera_api_key)
+                    }
+                    response = requests.get(decode_url, allow_redirects=False, headers=self.headers, proxies=proxies,
+                                            verify=False)
 
-                if response.status_code == 200:
-                    logger.debug('CRAWLERA reqeust successful')
+                    if response.status_code == 200:
+                        logger.debug('CRAWLERA request successful')
+                    else:
+                        logger.warning('CRAWLERA request failed, try local')
+                        # don't use crawlera if failed at once
+                        response = requests.get(decode_url, allow_redirects=False, headers=self.headers)
                 else:
-                    logger.warning('CRAWLERA request failed, try local')
-                    # don't use crawlera if failed at once
                     response = requests.get(decode_url, allow_redirects=False, headers=self.headers)
+
             else:
                 response = requests.get(decode_url, allow_redirects=False, headers=self.headers)
 
-        else:
-            response = requests.get(decode_url, allow_redirects=False, headers=self.headers)
+            if response.status_code == 200:
+                return response
+            else:
+                return False
 
-        if response.status_code == 200:
-            return response
-        else:
+        except Exception as e:
+            logger.error("Can not get response from url {} and error is {}".format(self.url, e))
             return False
 
 

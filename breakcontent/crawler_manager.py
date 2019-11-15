@@ -104,7 +104,7 @@ class CrawlerObj:
                     logger.warning('url_hash {}, au.js exception: {}'.format(self.url_hash, e))
                     au_js = False
 
-                if au_js is not None:
+                if type(au_js) is tuple:
                     inform_ac.set_page_code(True)
 
                 try:
@@ -155,15 +155,16 @@ class CrawlerObj:
                     html = response.text
                     content_directory = None
 
-                    try:
-                        au_js = (re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
-                    except AttributeError as e:
-                        # AttributeError: 'NoneType' object has no attribute 'span'
-                        logger.warning(f'url_hash {self.url_hash}, aujs exception: {e}')
-                        au_js = False
+                    if page_num == 1:
+                        try:
+                            au_js = (re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+                        except AttributeError as e:
+                            # AttributeError: 'NoneType' object has no attribute 'span'
+                            logger.warning(f'url_hash {self.url_hash}, aujs exception: {e}')
+                            au_js = False
 
-                    if au_js is not None:
-                        inform_ac.set_page_code(True)
+                        if type(au_js) is tuple:
+                            inform_ac.set_page_code(True)
 
                     try:
                         tree = lxml.html.fromstring(html)
@@ -233,42 +234,47 @@ class CrawlerObj:
             inform_ac.sync_to_ac(partner=True)
 
     def get_url_content_with_requests(self, url, priority, multi_pages):
-        timeout = 12
+        try:
+            timeout = 12
 
-        if priority == 5 or multi_pages is True:
-            crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
-            logging.info('apikey: {}'.format(crawlera_apikey))
-            candidate = [
-                'www.top1health.com'
-            ]
+            if priority == 5 or multi_pages is True:
+                crawlera_apikey = os.environ.get('CRAWLERA_APIKEY', None)
+                logging.info('apikey: {}'.format(crawlera_apikey))
+                candidate = [
+                    'www.top1health.com'
+                ]
 
-            if crawlera_apikey and self.domain in candidate:
-                proxies = {
-                    'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
-                    'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
-                }
-                response = requests.get(url, allow_redirects=False, headers=self.headers, proxies=proxies, verify=False,
-                                        timeout=timeout)
-                if response.status_code == 200:
-                    logger.debug('url_hash {}, CRAWLER reqeust successful'.format(self.url_hash))
+                if crawlera_apikey and self.domain in candidate:
+                    proxies = {
+                        'http': f"http://{crawlera_apikey}:x@proxy.crawlera.com:8010/",
+                        'https': f"https://{crawlera_apikey}:x@proxy.crawlera.com:8010/"
+                    }
+                    response = requests.get(url, allow_redirects=False, headers=self.headers, proxies=proxies,
+                                            verify=False, timeout=timeout)
+                    if response.status_code == 200:
+                        logger.debug('url_hash {}, CRAWLER reqeust successful'.format(self.url_hash))
+                    else:
+                        logger.warning('url_hash {}, CRAWLER request failed, try local'.format(self.url_hash))
+                        response = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
+
                 else:
-                    logger.warning('url_hash {}, CRAWLER request failed, try local'.format(self.url_hash))
+                    logger.debug('url_hash {}, use local to request'.format(self.url_hash))
                     response = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
 
             else:
-                logger.debug('url_hash {}, use local to request'.format(self.url_hash))
-                response = requests.get(url, allow_redirects=False, headers=self.headers, timeout=timeout)
+                response = requests.get(url, verify=False, allow_redirects=False, headers=self.headers, timeout=timeout)
 
-        else:
-            response = requests.get(url, verify=False, allow_redirects=False, headers=self.headers, timeout=timeout)
+            if response.status_code == 200:
+                update_task_service_status_xpath(self.url_hash, status_xpath='doing', status_code=response.status_code)
+                return response
 
-        if response.status_code == 200:
-            update_task_service_status_xpath(self.url_hash, status_xpath='doing', status_code=response.status_code)
-            return response
+            else:
+                update_task_service_status_xpath(self.url_hash, status_xpath='failed', status_code=response.status_code)
+                update_task_main_status(self.url_hash, status='failed')
+                return False
 
-        else:
-            update_task_service_status_xpath(self.url_hash, status_xpath='failed', status_code=response.status_code)
-            update_task_main_status(self.url_hash, status='failed')
+        except Exception as e:
+            logger.error("Can not get response from url {} and error is {}".format(self.url, e))
             return False
 
     def get_content_from_xml_tree(self, iac, tree, domain_rules, content_directory, match_xpath, multi_pages=False):

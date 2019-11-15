@@ -10,7 +10,7 @@ services:
         container_name: nginx
         image: nginx:1.12
         depends_on:
-            - web
+            - content_core
         ports:
             - "80:80"
         volumes:
@@ -25,8 +25,8 @@ services:
         ports:
             - "5432:5432"
         restart: always
-    web:
-        container_name: web
+    content_core:
+        container_name: content_core
         build:
             context: ../
             dockerfile: Dockerfile
@@ -43,7 +43,7 @@ services:
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:
-            - CONTAINER_TAG=web
+            - CONTAINER_TAG=content_core
         expose:
             - "8700"
         ports:

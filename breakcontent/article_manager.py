@@ -159,21 +159,18 @@ class InformACObj:
         return True
 
     def set_zi_sync(self, zi_sync=True):
-        if zi_sync is bool:
-            self.zi_sync = zi_sync
+        self.zi_sync = zi_sync
 
     def add_zi_defy(self, defy):
         if defy is not None and type(defy) is str:
             self.zi_defy.append(defy)
 
     def set_ac_sync(self, status):
-        if status is bool:
-            self.ac_sync = status
+        self.ac_sync = status
 
     def set_page_code(self, page_code):
-        if page_code is bool:
-            self.has_page_code = page_code
-            update_webpages_page_code(self.url_hash, page_code)
+        self.has_page_code = page_code
+        update_webpages_page_code(self.url_hash, page_code)
 
 
 def retry_requests(method, api, data=None, headers=None, retry=3):

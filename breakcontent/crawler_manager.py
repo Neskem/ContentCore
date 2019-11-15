@@ -69,6 +69,7 @@ class CrawlerObj:
         return True
 
     def xpath_a_crawler(self, domain_rules, multi_pages=False):
+        starting_time = datetime.datetime.now()
         task_main = get_task_main_data(self.url_hash)
         task_service = get_task_service_data(self.url_hash)
         if task_main is False or task_service is False:
@@ -133,6 +134,8 @@ class CrawlerObj:
                 iac.check_url_to_content(content_hash)
                 iac.sync_to_ac()
 
+                finishing_time = datetime.datetime.utcnow()
+                logger.info("executing time: {}".format(finishing_time - starting_time))
         elif multi_pages is True:
             page_query_param = domain_rules['page'][0]
             page_num = 0
@@ -232,6 +235,9 @@ class CrawlerObj:
             inform_ac.calculate_crawl_quality(cat_wpx['len_char'], cat_wpx['len_img'])
             inform_ac.check_url_to_content(cat_wpx['content_hash'])
             inform_ac.sync_to_ac(partner=True)
+
+            finishing_time = datetime.datetime.utcnow()
+            logger.info("executing time: {}".format(finishing_time - starting_time))
 
     def get_url_content_with_requests(self, url, priority, multi_pages):
         try:
@@ -1033,7 +1039,7 @@ def get_author_from_property_dable_author(tree):
     return author
 
 
-def is_sync_author(rules, author: list) -> bool:
+def is_sync_author(rules, author) -> bool:
     if "e_authorList" in rules and len(rules["e_authorList"]) > 0 and author in rules["e_authorList"]:
         return False
     if "authorList" in rules and len(rules["authorList"]) > 0:

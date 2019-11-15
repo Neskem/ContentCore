@@ -3,13 +3,13 @@ requests==2.20.1
 SQLAlchemy==1.2.15
 Flask-SQLAlchemy==2.3.1
 Flask-Script==2.0.6
-redis==2.10.6
+redis==3.3.11
 simplejson==3.16.0
 psycopg2-binary==2.7.6.1
 werkzeug==0.15.5
 PyJWT==1.7.1
-celery==4.2.1
-kombu==4.2.1
+celery==4.3.0
+kombu==4.6.3
 billiard==3.5.0.4
 flask_headers==1.0
 flask_cors==3.0.7
@@ -26,3 +26,4 @@ flower==0.9.3
 sendgrid==5.5.0
 logging-tree==1.8
 Naked==0.1.31
+cython==0.29.13

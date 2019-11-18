@@ -127,7 +127,6 @@ class CrawlerObj:
                 if match_xpath is not None:
                     logger.debug("url_hash {}, xpath matched!".format(self.url_hash))
 
-                logger.error('content_directory: {}'.format(content_directory))
                 iac, content_hash, len_char = self.get_content_from_xml_tree(inform_ac, tree, domain_rules,
                                                                              content_directory, match_xpath,
                                                                              self.generator)
@@ -1052,11 +1051,11 @@ def is_sync_author(rules, author) -> bool:
         return True
 
 
-def generate_content_hash(url, title, partner_id=None, multipaged=False, wp_url=None, meta_description=None,
+def generate_content_hash(url, title=None, partner_id=None, multipaged=False, wp_url=None, meta_description=None,
                           publish_date=None):
     content_hash = ''
     # wp_url, meta_description or title
-    if multipaged:
+    if multipaged and title is not None:
         content_hash += title
     else:
         if wp_url:

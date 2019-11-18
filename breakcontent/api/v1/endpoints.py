@@ -5,7 +5,7 @@ from flask_headers import headers
 from flask_cors import cross_origin
 
 from breakcontent.orm_content import get_webpages_xpath, get_partner_domain_rules, init_partner_domain_rules, \
-    update_partner_domain_rules
+    update_partner_domain_rules, filter_task_main_data
 from breakcontent.utils import verify_ac_token
 
 bp = Blueprint('endpoints', __name__)
@@ -210,4 +210,31 @@ def init_external_content():
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 def hc():
     res = {'msg': 'This endpoint for GCP health check', 'status': True}
+    return jsonify(res), 200
+
+
+@bp.route('/clear_rules/<partner_id>/<domain>', methods=['GET'])
+@headers({'Cache-Control': 's-maxage=0, max-age=0'})
+@cross_origin()
+def clear_parsing_rules(partner_id: str = None, domain: str = None):
+    res = {'msg': '', 'status': False}
+    current_app.logger.debug('Starting to clear parsing rules, partner_id: {}, domain: {}'.format(partner_id, domain))
+
+    domain_list = filter_task_main_data(partner_id, domain)
+
+    if domain_list is False:
+        res.update({
+            'msg': 'ok',
+            'status': False,
+        })
+        return jsonify(res), 200
+
+    from breakcontent.tasks import clear_xpath_parsing_rule_task
+    for domain_rule in domain_list:
+        clear_xpath_parsing_rule_task.delay(domain_rule.id, domain_rule.url_hash)
+
+    res.update({
+        'msg': 'ok',
+        'status': True
+    })
     return jsonify(res), 200

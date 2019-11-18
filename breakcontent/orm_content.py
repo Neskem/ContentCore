@@ -169,6 +169,14 @@ def get_task_main_data(url_hash):
         return False
 
 
+def filter_task_main_data(partner_id, domain):
+    domain_list = TaskMain.query.filter_by(partner_id=partner_id, domain=domain).all()
+    if domain_list is not None:
+        return domain_list
+    else:
+        return False
+
+
 def get_task_main_data_with_status(url_hash, priority, status):
     url_hash_task_main = TaskMain.query.filter_by(url_hash=url_hash, priority=priority, status=status).first()
     if url_hash_task_main is not None:
@@ -507,5 +515,16 @@ def create_xpath_parsing_rules(task_main_id, url_hash):
 def update_webpages_page_code(url_hash, page_code):
     db.session.query(WebpagesPartnerXpath).filter_by(url_hash=url_hash).update({
         'has_page_code': page_code
+    })
+    db.session.commit()
+
+
+def clear_xpath_parsing_rule(task_main_id, url_hash):
+    db.session.query(XpathParsingRules).filter_by(task_main_id=task_main_id, url_hash=url_hash).update({
+        'title': 0,
+        'author': 0,
+        'publish_date': 0,
+        'meta_keywords': 0,
+        'meta_description': 0
     })
     db.session.commit()

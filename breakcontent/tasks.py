@@ -8,7 +8,7 @@ from breakcontent.orm_content import delete_old_related_data, get_task_main_data
     update_task_service, update_task_no_service, update_task_main_status, get_webpages_xpath, \
     update_webpages_for_external, create_webpages_xpath_with_data, get_task_main_tasks, \
     update_task_service_multipage, get_task_main_data_with_status, get_executing_tasks, get_cc_health_check_report, \
-    get_xpath_parsing_rules_by_id, create_xpath_parsing_rules
+    get_xpath_parsing_rules_by_id, create_xpath_parsing_rules, clear_xpath_parsing_rule
 from breakcontent.utils import get_domain_info, request_api
 from breakcontent.utils import construct_email, send_email, to_csvstr, remove_html_tags
 from celery.utils.log import get_task_logger
@@ -441,3 +441,12 @@ def stats_cc(input_type: str = None):
     send_email(mail)
 
     return output
+
+
+@celery.task(ignore_result=True)
+def clear_xpath_parsing_rule_task(task_main_id, url_hash):
+    if task_main_id is not None and url_hash is not None:
+        clear_xpath_parsing_rule(task_main_id, url_hash)
+        logger.info("clear parsing rule, url_hash: {}".format(url_hash))
+
+    return True

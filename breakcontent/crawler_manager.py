@@ -361,7 +361,7 @@ class CrawlerObj:
         isa = is_sync_author(domain_rules, author)
         iac.zi_sync = isa if iac.zi_sync else False
         if not isa:
-            iac.zi_defy.add('authorList')
+            iac.zi_defy.append('authorList')
 
         # ----- parsing publish_date ----
         publish_date = parsing_rule_object.get_publish_date(tree, self.title)

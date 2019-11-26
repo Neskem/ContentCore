@@ -269,6 +269,7 @@ def prepare_task(priority: int, url_hash: str, url: str, domain: str, request_id
                     xpath_crawler.delay(url_hash, url, partner_id, domain, domain_info, parsing_rules)
         else:
             logger.error('url_hash {}, no domain_info!'.format(url_hash))
+            logger.error('domain_info: {}'.format(domain_info))
             bypass_crawler.delay(url_hash)
     else:
         # none partner goes here

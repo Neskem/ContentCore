@@ -145,18 +145,21 @@ class ParsingRulesObj:
             return title
         else:
             text_title = tree.xpath('/html/head/title/text()')
-            title = text_title[0]
-            if title is not None:
-                self.title_rule = 1
-                if "webtest1.sanlih.com.tw" in self.url or "www.setn.com" in self.url:
-                    title = title.split('|')[0]
-                return title
+            if len(text_title) > 0:
+                title = text_title[0]
+
+                if title is not None:
+                    self.title_rule = 1
+                    if "webtest1.sanlih.com.tw" in self.url or "www.setn.com" in self.url:
+                        title = title.split('|')[0]
+                    return title
 
             text_title = tree.xpath('//*[@class="post"]/div[1]/h1/span/text()')
-            title = text_title[0]
-            if title is not None:
-                self.title_rule = 2
-                return title
+            if len(text_title) > 0:
+                title = text_title[0]
+                if title is not None:
+                    self.title_rule = 2
+                    return title
 
             logger.error("Can not parse title from this url: {}".format(self.url))
             self.title_rule = 0

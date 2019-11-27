@@ -323,6 +323,7 @@ class CrawlerObj:
         categories_validate = judge_categories(domain_rules, categories)
         if categories_validate is False:
             iac.set_zi_sync(False)
+            logger.debug("authorList was added to defy list.")
             iac.add_zi_defy('category')
 
         # ----- parsing content_h1 & content_h2 ----
@@ -338,7 +339,7 @@ class CrawlerObj:
             # secret.secret = True
             iac.secret = True
             iac.zi_sync = False
-            iac.zi_defy.add('secret')
+            iac.add_zi_defy('secret')
 
         # ----- parsing title ----
         from breakcontent.rules_manager import ParsingRulesObj
@@ -360,8 +361,9 @@ class CrawlerObj:
 
         isa = is_sync_author(domain_rules, author)
         iac.zi_sync = isa if iac.zi_sync else False
-        if not isa:
-            iac.zi_defy.append('authorList')
+        if isa is False:
+            logger.debug("authorList was added to defy list.")
+            iac.add_zi_defy('authorList')
 
         # ----- parsing publish_date ----
         publish_date = parsing_rule_object.get_publish_date(tree, self.title)
@@ -397,7 +399,7 @@ class CrawlerObj:
                 isd = False
             iac.zi_sync = isd if iac.zi_sync else False
             if isd is False:
-                iac.zi_defy.add('delayday')
+                iac.add_zi_defy('delayday')
 
         # ----- parsing meta_keywords ----
         meta_keywords = parsing_rule_object.get_meta_keywords(tree)
@@ -409,16 +411,15 @@ class CrawlerObj:
         parsing_rule_object.update_rules_from_db()
 
         # ----- counting img and char ----
-        # reparse the content
         content = etree.tostring(content_directory[0], pretty_print=True, method='html').decode("utf-8")
         content = unquote(content)
 
         # h = HTMLParser()
-        content = remove_html_tags(content)
+        content_rm_tag = remove_html_tags(content)
         pattern = re.compile(r'\s+')
-        content = re.sub(pattern, '', content)
-        content = unescape(content)
-        len_char = len(content)
+        content_rm_tag = re.sub(pattern, '', content_rm_tag)
+        content_rm_tag = unescape(content_rm_tag)
+        len_char = len(content_rm_tag)
         logger.info(f"url_hash {self.url_hash}, chars: {len_char}, p count: {len_p}, img count: {len_img}")
 
         # ----- constructing content_hash -----

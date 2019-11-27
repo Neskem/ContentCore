@@ -49,7 +49,7 @@ class InformACObj:
         return True
 
     def calculate_crawl_quality(self, len_char, len_img):
-        if len_char < self.WORD_COUNT_STANDARD or len_img < self.PIC_COUNT_STANDARD:
+        if len_char < self.WORD_COUNT_STANDARD and len_img < self.PIC_COUNT_STANDARD:
             self.quality = False
             self.zi_sync = False
             self.zi_defy.append('quality')

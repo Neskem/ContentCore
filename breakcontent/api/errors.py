@@ -7,10 +7,10 @@ class AlanError(Exception):
 
 
 class InvalidUsage(Exception):
-    '''
+    """
     example from
     http://flask.pocoo.org/docs/1.0/patterns/apierrors/
-    '''
+    """
     status_code = 400
 
     def __init__(self, message, status_code=None, payload=None):

@@ -8,7 +8,6 @@ docker-compose down -v
 # docker-compose build ## When use local cc image, and need to execute this command.
 
 if [ "${dropdb}" = 'drop' ]; then
-    docker-compose up -d
     sleep 5 # takes time for containter be ready
     if [ -e "/etc/os-release" ]; then
         PGPASSWORD=ContentBreak_psql1qaz psql -h 10.140.15.248 -U postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'break_content' AND pid <> pg_backend_pid()"
@@ -24,4 +23,5 @@ if [ "${dropdb}" = 'drop' ]; then
 fi
 
 docker-compose up -d
-docker-compose ps
+sleep 8
+docker-compose restart

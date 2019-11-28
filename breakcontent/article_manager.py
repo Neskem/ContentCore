@@ -172,6 +172,11 @@ class InformACObj:
         self.has_page_code = page_code
         update_webpages_page_code(self.url_hash, page_code)
 
+    def set_unparse_status(self):
+        self.ac_sync = False
+        self.zi_sync = False
+        self.quality = False
+
 
 def retry_requests(method, api, data=None, headers=None, retry=3):
     method = method.lower()

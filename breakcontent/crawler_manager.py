@@ -140,6 +140,11 @@ class CrawlerObj:
 
                 finishing_time = datetime.datetime.utcnow()
                 logger.info("executing time: {}".format(finishing_time - starting_time))
+            else:
+                # TODO: Maybe we should think about a better method to solve this problem.
+                inform_ac.set_unparse_status()
+                inform_ac.sync_to_ac()
+
         elif multi_pages is True:
             page_query_param = domain_rules['page'][0]
             page_num = 0
@@ -290,6 +295,8 @@ class CrawlerObj:
 
         except Exception as e:
             logger.error("Can not get response from url {} and error is {}".format(self.url, e))
+            update_task_service_status_xpath(self.url_hash, status_xpath='failed', status_code=600)
+            update_task_main_status(self.url_hash, status='failed')
             return False
 
     def get_content_from_xml_tree(self, iac, tree, domain_rules, content_directory, match_xpath, multi_pages=False):

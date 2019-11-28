@@ -22,7 +22,7 @@ class TaskMain(db.Model):
     request_id = Column(String(256), nullable=True)
     partner_id = Column(String(64), nullable=True, index=True)
     priority = Column(Integer, nullable=True, index=True)
-    generator = Column(String(100), nullable=True)
+    generator = Column(String(1000), nullable=True)
     # generate many from one
     parent_url = Column(String(1000), nullable=True)
 

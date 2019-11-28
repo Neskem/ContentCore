@@ -99,7 +99,11 @@ class CrawlerObj:
                 content_directory = None
 
                 try:
-                    au_js = (re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+                    au_js_detection = re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html))
+                    if au_js_detection is not None:
+                        au_js = (au_js_detection.span())
+                    else:
+                        au_js = False
                 except AttributeError as e:
                     # AttributeError: 'NoneType' object has no attribute 'span'
                     logger.warning('url_hash {}, au.js exception: {}'.format(self.url_hash, e))
@@ -159,7 +163,11 @@ class CrawlerObj:
 
                     if page_num == 1:
                         try:
-                            au_js = (re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html)).span())
+                            au_js_detection = re.search(r'a.breaktime.com.tw\/js\/au.js\?spj', str(html))
+                            if au_js_detection is not None:
+                                au_js = (au_js_detection.span())
+                            else:
+                                au_js = False
                         except AttributeError as e:
                             # AttributeError: 'NoneType' object has no attribute 'span'
                             logger.warning(f'url_hash {self.url_hash}, aujs exception: {e}')
@@ -742,8 +750,8 @@ def parse_publish_date_from_xml_tree(tree, url_hash):
         logger.debug(f'url_hash {url_hash}, data_blocks {data_blocks}')
         for data_block in data_blocks:
             try:
-                data = json.loads(data_block)
-                if "datePublished" in data:
+                data = json.loads(data_block, strict=False)
+                if "datePublished" in data and type(data) is dict:
                     publish_date = data.get("datePublished")
                     break
             except Exception as e:
@@ -752,10 +760,11 @@ def parse_publish_date_from_xml_tree(tree, url_hash):
                     '[', '').replace(',]', '')
                 logger.debug(f'url_hash {url_hash}, data_block {data_block}')
                 data = json.dumps(data_block)
-                data = json.loads(data)
+                data = json.loads(data, strict=False)
                 if "datePublished" in data:
                     try:
-                        publish_date = data.get("datePublished")
+                        if type(data) is dict:
+                            publish_date = data.get("datePublished")
                     except AttributeError as e:
                         logger.error(f'url_hash {url_hash}, datePublished AttributeError exception: {e}')
                         logger.debug(

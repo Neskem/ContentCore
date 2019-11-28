@@ -134,7 +134,8 @@ class CrawlerObj:
                 iac, content_hash, len_char = self.get_content_from_xml_tree(inform_ac, tree, domain_rules,
                                                                              content_directory, match_xpath,
                                                                              self.generator)
-                iac.check_url_to_content(content_hash)
+                if content_hash is not None:
+                    iac.check_url_to_content(content_hash)
                 iac.sync_to_ac()
 
                 finishing_time = datetime.datetime.utcnow()
@@ -240,7 +241,8 @@ class CrawlerObj:
                                       category=cat_wpx['category'], categories=cat_wpx['categories'])
             inform_ac.set_ac_sync(True)
             inform_ac.calculate_crawl_quality(cat_wpx['len_char'], cat_wpx['len_img'])
-            inform_ac.check_url_to_content(cat_wpx['content_hash'])
+            if cat_wpx['content_hash'] is not None:
+                inform_ac.check_url_to_content(cat_wpx['content_hash'])
             inform_ac.sync_to_ac(partner=True)
 
             finishing_time = datetime.datetime.utcnow()
@@ -291,7 +293,11 @@ class CrawlerObj:
             return False
 
     def get_content_from_xml_tree(self, iac, tree, domain_rules, content_directory, match_xpath, multi_pages=False):
-        remove_redundant_tags(content_directory[0])
+        if type(content_directory) is list and len(content_directory) > 0:
+            remove_redundant_tags(content_directory[0])
+        else:
+            iac.set_unparse_status()
+            return iac, None, 0
 
         # ----- removing excluded xpath ----
         if getattr(domain_rules, 'e_xpath', None) and len(domain_rules.e_xpath) > 0:
@@ -640,8 +646,9 @@ def get_categories_from_xml_tree(tree, url, url_hash, generator):
     if category is None and "thebetteraging.businesstoday.com.tw" in url:
         x_categories = tree.xpath(
             '//span[contains(@class, "service-type")]/text()')
-        x_cat = x_categories[0].replace('分類：', '')
-        categories.append(x_cat)
+        if type(x_categories) is list and len(x_categories) > 0:
+            x_cat = x_categories[0].replace('分類：', '')
+            categories.append(x_cat)
     # bsp specific logic: pixnet
     if category is None and generator == "PChoc":
         g_x_categories = tree.xpath(

@@ -11,7 +11,7 @@ import base64
 
 import logging
 
-from breakcontent.orm_content import get_partner_domain_rules, init_partner_domain_rules
+from breakcontent.orm_content import get_partner_domain_rules, init_partner_domain_rules, update_partner_domain_rules
 
 logger = logging.getLogger('cc')
 
@@ -143,7 +143,11 @@ def get_domain_info(domain: str, partner_id: str):
         if response.status_code == 200:
             json_resp = json.loads(response.text)
             domain_info = parse_domain_info(json_resp) or None
-            init_partner_domain_rules(partner_id, domain, domain_info)
+            rules = get_partner_domain_rules(partner_id, domain)
+            if rules is False:
+                init_partner_domain_rules(partner_id, domain, domain_info)
+            else:
+                update_partner_domain_rules(partner_id, domain, domain_info)
             return domain_info
         else:
             logger.error('request failed status {}'.format(response.status_code))

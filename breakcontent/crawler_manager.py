@@ -143,6 +143,7 @@ class CrawlerObj:
             else:
                 # TODO: Maybe we should think about a better method to solve this problem.
                 inform_ac.set_unparse_status()
+                inform_ac.calculate_crawl_quality(0, 0)
                 inform_ac.sync_to_ac()
 
         elif multi_pages is True:
@@ -304,6 +305,7 @@ class CrawlerObj:
             remove_redundant_tags(content_directory[0])
         else:
             iac.set_unparse_status()
+            iac.calculate_crawl_quality(0, 0)
             return iac, None, 0
 
         # ----- removing excluded xpath ----

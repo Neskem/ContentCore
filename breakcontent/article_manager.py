@@ -101,7 +101,7 @@ class InformACObj:
             init_url_to_content(self.url, self.url_hash, content_hash, self.request_id, replaced=False)
         else:
             if url_content.url != self.url:
-                self.old_url_hash = url_content.url
+                self.old_url_hash = url_content.url_hash
 
     def sync_to_ac(self, partner=True):
         data = {
@@ -122,7 +122,8 @@ class InformACObj:
         if partner is True:
             if r.status_code == 200:
                 if self.old_url_hash is not None and self.content_hash is not None:
-                    update_url_to_content(self.content_hash, self.url, self.url_hash, self.request_id, replaced=True)
+                    update_url_to_content(content_hash=self.content_hash, url=self.url, url_hash=self.url_hash,
+                                          request_id=self.request_id, replaced=True)
                 update_task_main_status(self.url_hash, status='done')
                 update_task_service_with_status_only_xpath(self.url_hash, status_xpath='done')
             else:

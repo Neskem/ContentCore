@@ -84,7 +84,7 @@ class CrawlerObj:
         self.generator = task_main.generator
 
         if multi_pages is False:
-            inform_ac = InformACObj(self.url_hash, self.url_hash, self.request_id)
+            inform_ac = InformACObj(self.url, self.url_hash, self.request_id)
             check_rules = True if self.priority == 1 else check_sync_rules(self.url, domain_rules)
             if check_rules is True:
                 inform_ac.set_zi_sync(True)

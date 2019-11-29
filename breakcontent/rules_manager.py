@@ -67,7 +67,7 @@ class ParsingRulesObj:
 
             logger.error("Can not parse publish_date from this url: {}".format(self.url))
             self.publish_date_rule = 0
-            return datetime.datetime.utcnow()
+            return None
 
     def get_publish_date_from_rule(self, tree, title):
         if self.publish_date_rule == 1:
@@ -88,7 +88,7 @@ class ParsingRulesObj:
         else:
             logger.error("Can not parse publish_date from this url: {}".format(self.url))
             self.publish_date_rule = 0
-            publish_date = datetime.datetime.utcnow()
+            publish_date = None
         return publish_date
 
     def get_author(self, tree):

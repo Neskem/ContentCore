@@ -84,13 +84,13 @@ class InformACObj:
 
         r = retry_requests('put', self.ac_status_api, data=data, headers=self.headers)
         if r.status_code == 200:
-            update_task_main_status(self.url_hash, status='failed')
-            update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
-            logger.debug('url_hash {}, inform AC failed'.format(self.url_hash))
-        else:
             update_task_main_status(self.url_hash, status='done')
             update_task_service_with_status_only_xpath(self.url_hash, status_xpath='done')
             logger.debug('url_hash {}, inform AC successful'.format(self.url_hash))
+        else:
+            update_task_main_status(self.url_hash, status='failed')
+            update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
+            logger.debug('url_hash {}, inform AC failed'.format(self.url_hash))
 
         return True
 
@@ -124,20 +124,24 @@ class InformACObj:
                 if self.old_url_hash is not None and self.content_hash is not None:
                     update_url_to_content(content_hash=self.content_hash, url=self.url, url_hash=self.url_hash,
                                           request_id=self.request_id, replaced=True)
-                update_task_main_status(self.url_hash, status='done')
+                update_task_main_sync_status(self.url_hash, status='done', zi_sync=self.zi_sync,
+                                             inform_ac_status=self.ac_sync)
                 update_task_service_with_status_only_xpath(self.url_hash, status_xpath='done')
             else:
                 logger.error('url_hash {}, inform AC failed'.format(self.url_hash))
-                update_task_main_status(self.url_hash, status='failed')
+                update_task_main_sync_status(self.url_hash, status='failed', zi_sync=self.zi_sync,
+                                             inform_ac_status=self.ac_sync)
                 update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
 
         else:
             if r.status_code == 200:
-                update_task_main_status(self.url_hash, status='done')
+                update_task_main_sync_status(self.url_hash, status='done', zi_sync=self.zi_sync,
+                                             inform_ac_status=self.ac_sync)
                 update_task_no_service_with_status(self.url_hash, status='done')
             else:
                 logger.error('url_hash {}, inform AC failed'.format(self.url_hash))
-                update_task_main_status(self.url_hash, status='failed')
+                update_task_main_sync_status(self.url_hash, status='failed', zi_sync=self.zi_sync,
+                                             inform_ac_status=self.ac_sync)
                 update_task_no_service_with_status(self.url_hash, status='failed')
 
         return True

@@ -104,6 +104,8 @@ class InformACObj:
                 self.old_url_hash = url_content.url_hash
 
     def sync_to_ac(self, partner=True):
+        if len(self.zi_defy) > 0:
+            self.zi_sync = False
         data = {
             'url_hash': self.url_hash,
             'url': self.url,

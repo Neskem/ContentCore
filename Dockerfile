@@ -34,4 +34,7 @@ COPY supervisord.conf /etc/
 COPY supervisor-uwsgi.conf supervisor-worker.conf /etc/supervisor/conf.d/
 
 ENV BREAKTIME_CONTENT_SETTINGS_PATH=/etc/breaktime/breakcontent.conf
-RUN     chmod +x /entrypoint.sh
+
+RUN python3 compile.py build_ext --inplace
+RUN ./build-cython.sh
+RUN chmod +x /entrypoint.sh

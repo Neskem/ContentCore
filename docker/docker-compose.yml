@@ -39,7 +39,6 @@ services:
         depends_on:
             - redis
         volumes:
-           - ..:/usr/src/app
            - /var/log/contentcore:/var/log/contentcore
         env_file: breakcontent.env
         environment:

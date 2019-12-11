@@ -501,14 +501,17 @@ def get_xpath_parsing_rules_by_id(task_main_id):
     parsing_rules = XpathParsingRules.query.filter_by(task_main_id=task_main_id).first()
     if parsing_rules is not None:
         rules_list = [parsing_rules.title, parsing_rules.author, parsing_rules.publish_date,
-                      parsing_rules.meta_keywords, parsing_rules.meta_description]
+                      parsing_rules.meta_keywords, parsing_rules.meta_description, parsing_rules._ctime]
         return rules_list
     else:
         return False
 
 
-def create_xpath_parsing_rules(task_main_id, url_hash):
-    new_init_rules = XpathParsingRules(task_main_id=task_main_id, url_hash=url_hash)
+def create_xpath_parsing_rules(task_main_id, url_hash, create_time=None):
+    if create_time:
+        new_init_rules = XpathParsingRules(task_main_id=task_main_id, url_hash=url_hash, _ctime=create_time)
+    else:
+        new_init_rules = XpathParsingRules(task_main_id=task_main_id, url_hash=url_hash)
     pg_add_wrapper(new_init_rules)
 
 

@@ -145,8 +145,9 @@ def create_tasks(priority: str, limit: int = 4000):
         if task.partner_id is not None and len(task.partner_id) > 0:
             parsing_rules = get_xpath_parsing_rules_by_id(task.id)
             if parsing_rules is False:
-                create_xpath_parsing_rules(task.id, task.url_hash)
-                parsing_rules = [0, 0, 0, 0, 0]
+                create_time = datetime.utcnow()
+                create_xpath_parsing_rules(task.id, task.url_hash, create_time)
+                parsing_rules = [0, 0, 0, 0, 0, create_time]
         else:
             parsing_rules = None
 
@@ -177,8 +178,9 @@ def create_task(url_hash, priority, status):
     if task.partner_id is not None and len(task.partner_id) > 0:
         parsing_rules = get_xpath_parsing_rules_by_id(task.id)
         if parsing_rules is False:
-            create_xpath_parsing_rules(task.id, task.url_hash)
-            parsing_rules = [0, 0, 0, 0, 0]
+            create_time = datetime.utcnow()
+            create_xpath_parsing_rules(task.id, task.url_hash, create_time)
+            parsing_rules = [0, 0, 0, 0, 0, create_time]
     else:
         parsing_rules = None
 

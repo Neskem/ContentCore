@@ -11,7 +11,7 @@ logger = logging.getLogger('cc')
 
 class ParsingRulesObj:
     __slots__ = ['task_main_id', 'url_hash', 'url', 'domain', 'parsing_rules', 'title_rule', 'author_rule',
-                 'publish_date_rule', 'meta_keywords_rule', 'meta_description_rule']
+                 'publish_date_rule', 'meta_keywords_rule', 'meta_description_rule', 'ctime']
 
     def __init__(self, url_hash, url, domain, parsing_rules):
         self.url_hash = url_hash
@@ -23,6 +23,7 @@ class ParsingRulesObj:
         self.publish_date_rule = parsing_rules[2]
         self.meta_keywords_rule = parsing_rules[3]
         self.meta_description_rule = parsing_rules[4]
+        self.ctime = parsing_rules[5]
 
     def update_rules_from_db(self):
         if self.title_rule != self.parsing_rules[0] or self.author_rule != self.parsing_rules[1] or \

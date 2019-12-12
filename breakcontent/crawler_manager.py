@@ -458,8 +458,8 @@ class CrawlerObj:
                 publish_date = dateparser.parse(publish_date)
 
         if not publish_date:
-            logger.debug(f'url_hash {self.url_hash}, use utcnow() if failed to parse publish_date')
-            publish_date = datetime.datetime.utcnow()
+            logger.debug(f'url_hash {self.url_hash}, use xpath_parsing_rules._ctime if failed to parse publish_date')
+            publish_date = parsing_rule_object.ctime
             iac.publish_date = publish_date
 
         if multi_pages is True:

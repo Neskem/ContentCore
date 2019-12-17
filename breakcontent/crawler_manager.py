@@ -940,8 +940,13 @@ def parse_publish_date_from_universe_logic(tree):
         published_dates = tree.xpath('//span[contains(@class, "entry-date")]/text()')
         if len(published_dates) == 1:
             groups = re.match(r'(\d+)\s{0,1}年\s{0,1}(\d+)\s{0,1}月\s{0,1}(\d+)\s{0,1}日', published_dates[0])
-            publish_date = "{}-{:02d}-{:02d}".format(int(groups[1]), int(groups[2]), int(groups[3]))
-            return publish_date
+            if groups:
+                publish_date = "{}-{:02d}-{:02d}".format(int(groups[1]), int(groups[2]), int(groups[3]))
+                return publish_date
+            groups = re.match(' \d{4}-\d{2}-\d{2}', published_dates[0])
+            if groups:
+                publish_date = published_dates[0]
+                return publish_date
     return publish_date
 
 

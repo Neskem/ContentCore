@@ -112,7 +112,7 @@ class MercuryObj:
                                            partner=False)
                 update_task_no_service_with_status(self.url_hash, status='done')
 
-                if self.request_id:
+                if self.request_id is not None:
                     inform_ac = InformACObj(self.url, self.url_hash, self.request_id, publish_date=publish_date)
                     inform_ac.set_ac_sync(True)
                     inform_ac.sync_to_ac(partner=False)

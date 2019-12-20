@@ -5,7 +5,7 @@ import os
 import re
 
 import lxml.html
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 
 import requests
 from Naked.toolshed.shell import execute_js, muterun_js
@@ -61,7 +61,9 @@ class MercuryObj:
 
     def mercury_parse(self):
         if self.mercury_path is not None:
-            mercury = muterun_js(self.mercury_path, arguments=self.url)
+            decode_url = decode_url_function(self.url)
+            new_url = decode_url.split('//')[0] + '//' + quote(decode_url.split('//')[1])
+            mercury = muterun_js(self.mercury_path, arguments=new_url)
             if mercury.exitcode == 0:
                 res = mercury.stdout.decode('utf-8')
                 response = json.loads(res)
@@ -75,10 +77,23 @@ class MercuryObj:
     def mercury_a_crawler(self):
         parse_data = self.mercury_parse()
         if parse_data:
-            title = parse_data['title']
-            content = parse_data['content']
-            publish_date = parse_data['date_published']
-            tree = etree.HTML(parse_data['content'])
+            if 'title' in parse_data:
+                title = parse_data['title']
+            else:
+                title = None
+            if 'content' in parse_data:
+                content = parse_data['content']
+                tree = etree.HTML(parse_data['content'])
+            else:
+                if self.partner_id is not None:
+                    update_task_service_status_ai(self.url_hash, status_ai='failed')
+                else:
+                    update_task_no_service_with_status(self.url_hash, status='failed')
+                return
+            if 'date_published' in parse_data:
+                publish_date = parse_data['date_published']
+            else:
+                publish_date = ''
 
             content_h1, content_h2, content_p, content_image = parse_content_html(tree, self.url)
             m = hashlib.sha1(content.encode('utf-8'))
@@ -97,7 +112,7 @@ class MercuryObj:
                                            partner=False)
                 update_task_no_service_with_status(self.url_hash, status='done')
 
-                if self.request_id is None:
+                if self.request_id:
                     inform_ac = InformACObj(self.url, self.url_hash, self.request_id, publish_date=publish_date)
                     inform_ac.set_ac_sync(True)
                     inform_ac.sync_to_ac(partner=False)

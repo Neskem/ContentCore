@@ -136,6 +136,7 @@ class InformACObj:
                 update_task_service_with_status_only_xpath(self.url_hash, status_xpath='failed')
 
         else:
+            self.zi_sync = False
             if r.status_code == 200:
                 update_task_main_sync_status(self.url_hash, status='done', zi_sync=self.zi_sync,
                                              inform_ac_status=self.ac_sync)

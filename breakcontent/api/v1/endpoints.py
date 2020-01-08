@@ -210,6 +210,7 @@ def init_external_content():
 @headers({'Cache-Control': 's-maxage=0, max-age=0'})
 def hc():
     res = {'msg': 'This endpoint for GCP health check', 'status': True}
+    current_app.logger.kubernetes(f'res: {res}')
     return jsonify(res), 200
 
 

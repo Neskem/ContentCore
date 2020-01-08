@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: content-core
+  labels:
+    app: content-core
+spec:
+  replicas: 1
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: content-core
+  template:
+    metadata:
+      labels:
+        app: content-core
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: content-core
+          # asia.gcr.io/stage-data-alchemy-183102/contentc-core
+          image: breaktimeinc/breaktime.contentcore:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8700
+          envFrom:
+            - secretRef:
+                name: content-core-env
+          volumeMounts:
+            - mountPath: /var/log/contentcore
+              name: content-core-volume
+          command: ["supervisord"]
+          args: ["-n"]
+        - name: redis
+          image: redis:4.0
+          ports:
+            - containerPort: 6379
+        - name: nginx
+          image: nginx:1.12
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              name: nginx-conf-volume
+              readOnly: true
+            - mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              name: nginx-cc-conf-volume
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              port: 80
+              path: /v1/health
+      volumes:
+        - name: nginx-conf-volume
+          configMap:
+            name: nginx-config
+        - name: nginx-cc-conf-volume
+          configMap:
+            name: nginx-cc
+        - name: content-core-volume
+          hostPath:
+            path: /var/log/contentcore
+            type: DirectoryOrCreate

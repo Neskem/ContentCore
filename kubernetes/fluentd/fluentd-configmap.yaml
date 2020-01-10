@@ -1,0 +1,35 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+#[[START configMapNameCM]]
+  name: fluentd-gcp-config
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-gcp-custom
+#[[END configMapNameCM]]
+data:
+  containers.input.conf: |-
+    <source>
+      @type tail
+      path /var/log/contentcore/worker.log
+      pos_file /var/log/gcp-contentcore.log.pos
+      # Tags at this point are in the format of:
+      # reform.var.log.containers.<POD_NAME>_<NAMESPACE_NAME>_<CONTAINER_NAME>-<CONTAINER_ID>.log
+      tag reform.*
+      read_from_head true
+      <parse>
+        @type multi_format
+        <pattern>
+          format /\[(?<time>.+),(?<thread>\d{3}): (?<serverity>.+)\/(?<message>.+)/
+          time_format %Y-%m-%dT%H:%M:%S.%N%:z
+        </pattern>
+      </parse>
+    </source>
+    <filter reform.**>
+      @type parser
+      format /\[(?<time>.+),(?<thread>\d{3}): (?<serverity>.+)\/(?<message>.+)/
+      reserve_data true
+      suppress_parse_error_log true
+      emit_invalid_record_to_error false
+      key_name message
+    </filter>

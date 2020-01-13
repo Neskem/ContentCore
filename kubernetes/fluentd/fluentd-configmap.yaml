@@ -16,20 +16,36 @@ data:
       # Tags at this point are in the format of:
       # reform.var.log.containers.<POD_NAME>_<NAMESPACE_NAME>_<CONTAINER_NAME>-<CONTAINER_ID>.log
       tag reform.*
-      read_from_head true
+      read_from_head false
       <parse>
-        @type multi_format
+        type multi_format
         <pattern>
-          format /\[(?<time>.+),(?<thread>\d{3}): (?<serverity>.+)\/(?<message>.+)/
-          time_format %Y-%m-%dT%H:%M:%S.%N%:z
+          expression /\[(?<time>.+),(?<thread>\d{3}): (?<serverity>.+)\/(?<log>.+)/
+          time_key time
+          time_format %Y-%m-%d %H:%M:%S
         </pattern>
       </parse>
     </source>
-    <filter reform.**>
-      @type parser
-      format /\[(?<time>.+),(?<thread>\d{3}): (?<serverity>.+)\/(?<message>.+)/
-      reserve_data true
-      suppress_parse_error_log true
-      emit_invalid_record_to_error false
-      key_name message
+    <match reform.**>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        # Extract local_resource_id from tag for 'k8s_container' monitored
+        # resource. The format is:
+        # 'k8s_container.<namespace_name>.<pod_name>.<container_name>'.
+        "logging.googleapis.com/local_resource_id" ${"k8s_container.#{tag_suffix[4].rpartition('.')[0].split('_')[1]}.#{tag_suffix[4].rpartition('.')[0].split('_')[0]}.#{tag_suffix[4].rpartition('.')[0].split('_')[2].rpartition('-')[0]}"}
+        message ${record['log']}
+        serverity $(record['serverity'])
+      </record>
+      tag reform.cc
+      remove_keys thread
     </filter>
+    <match reform.cc>
+      @type detect_exceptions
+      remove_tag_prefix raw
+      message message
+      stream "logging.googleapis.com/local_resource_id"
+      multiline_flush_interval 5
+      max_bytes 500000
+      max_lines 1000
+    </match>

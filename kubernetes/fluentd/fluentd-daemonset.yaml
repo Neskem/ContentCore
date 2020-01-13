@@ -112,7 +112,7 @@ spec:
           type: ""
         name: varlog
       - hostPath:
-          path: /var/log/contentcore
+          path: /var/log/containers
           type: DirectoryOrCreate
         name: varlibdockercontainers
 #[START configMapNameDS]

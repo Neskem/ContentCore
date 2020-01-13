@@ -33,6 +33,8 @@ CELERY_TASK_RESULT_EXPIRES = os.environ.get('CELERY_TASK_RESULT_EXPIRES', 3600)
 CELERY_ENABLE_UTC = True
 CELERY_ACCEPT_CONTENT = (os.environ.get(
     'CELERY_ACCEPT_CONTENT') or ' '.join(['msgpack'])).split()
+CELERYD_LOG_FORMAT = '{"time": %(asctime)s, "stream":"stderr", ' \
+                     '"log": [%(task_name)s(%(task_id)s)][%(levelname)s]%(message)s}'
 SINGLE_BEAT_REDIS_SERVER = os.environ.get('SINGLE_BEAT_REDIS_SERVER')
 
 ALLOW_ORIGINS = os.environ.get('ALLOW_ORIGINS')

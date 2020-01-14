@@ -1,0 +1,11 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: efk-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: stg-k8s-es-ip
+  namespace: kube-logging
+spec:
+  backend:
+    serviceName: elastic-gke-logging-1-elasticsearch-nodeport
+    servicePort: 9200

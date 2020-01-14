@@ -1,0 +1,11 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: kibana-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: stg-k8s-kibana-ip
+  namespace: kube-logging
+spec:
+  backend:
+    serviceName: elastic-gke-logging-1-kibana-nodeport
+    servicePort: 5601

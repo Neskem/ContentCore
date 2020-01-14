@@ -39,7 +39,6 @@ data:
       </record>
       tag reform.cc
       remove_keys thread
-    </filter>
     <match reform.cc>
       @type detect_exceptions
       remove_tag_prefix raw
@@ -49,3 +48,5 @@ data:
       max_bytes 500000
       max_lines 1000
     </match>
+  output.conf: |-
+

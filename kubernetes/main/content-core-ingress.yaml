@@ -3,7 +3,7 @@ kind: Ingress
 metadata:
   name: content-core-ingress
   annotations:
-    kubernetes.io/ingress.global-static-ip-name: stg-k8s-cc-ip
+    kubernetes.io/ingress.global-static-ip-name: kubernetes-cc
 spec:
   tls:
     - secretName: breaktime-tls
@@ -11,7 +11,7 @@ spec:
     serviceName: content-core-service
     servicePort: 80
   rules:
-    - host: stg-content.alchemy.breaktime.com.tw
+    - host: ceres-content.alchemy.breaktime.com.tw
       http:
         paths:
           - backend:

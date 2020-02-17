@@ -6,19 +6,19 @@
 $ cd /kubernetes/env/
 $ kubeclt apply -f content-core-namespace.yaml
 $ cd /kubernetes/env/<environment>/
-$ kubectl apply -f content-core-secret.yaml -n content-core
+$ kubectl apply -f content-core-secret.yaml -n breaktime
 ```
 * Create nginx config file
 ```
 $ cd /kubernetes/nginx
-$ kubectl create configmap nginx-config --from-file=nginx.conf -n content-core
-$ kubectl create configmap nginx-cc --from-file=default.conf -n content-core
+$ kubectl create configmap nginx-config --from-file=nginx.conf -n breaktime
+$ kubectl create configmap nginx-cc --from-file=default.conf -n breaktime
 ```
 
 * Create ssl authorization
 ```
 $ cd /kubernetes/ssl
-$ kubectl create secret tls breaktime-tls --cert breaktime_cert.pem --key breaktime_key.pem -n content-core
+$ kubectl create secret tls breaktime-tls --cert breaktime_cert.pem --key breaktime_key.pem -n breaktime
 ```
 
 * Create docker tls secret file 
@@ -28,7 +28,7 @@ $ kubectl create secret docker-registry regcred \
 --docker-username=<docker_account_name> \
 --docker-password=<docker_account_name> \
 --docker-email=<docker_account_email> \
--n content-core
+-n breaktime
 ```
 p.s If you don't use docker hub, --docker-server can replace by your docker-server.
 
@@ -36,7 +36,7 @@ p.s If you don't use docker hub, --docker-server can replace by your docker-serv
 * Create k8s main components
 ```
 $ cd /kubernetes/main
-$ kubectl apply -f . -n content-core
+$ kubectl apply -f . -n breaktime
 ```
 
 * Check pod is running or not

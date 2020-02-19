@@ -104,6 +104,12 @@ def get_content(url_hash):
         res['msg'] = f'Authorization is not correct.'
         return jsonify(res), 401
     webpages_data = get_webpages_xpath(url_hash)
+    if webpages_data is False:
+        res.update({
+            'msg': 'failed',
+            'status': False
+        })
+        return jsonify(res), 200
     return_data = {'data': {'url': webpages_data.url, 'url_structure_type': webpages_data.url_structure_type,
                             'title': webpages_data.title, 'cover': webpages_data.cover,
                             'content': webpages_data.content,

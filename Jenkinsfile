@@ -13,6 +13,7 @@ podTemplate(label: "$LABEL",cloud: "$CLOUD" ) {
                 docker ps
                 pwd
                 cd "${BASE_DIR}"/docker_prd
+                git pull
                 git checkout -b "${GIT_BRANCH}" -t origin/"${GIT_BRANCH}"
                 docker images -a
                 cd "${BASE_DIR}"
@@ -64,10 +65,10 @@ podTemplate(label: "$CLABEL",cloud: "$CCLOUD" ) {
         }
         stage('CD-Deploy') {
             sh """
-                kubectl get deployments
+                kubectl get deployments -n breaktime
                 cd "${BASE_DIR}"/kubernetes/main
                 sed -i -e 's,breaktimeinc/breaktime.contentcore.*,'breaktimeinc/breaktime.contentcore:"${DOCKER_TAG}"',g' content-core-deployment.yaml
-                kubectl apply -f content-core-deployment.yaml
+                kubectl apply -f content-core-deployment.yaml -n breaktime
                 """
         }
     }

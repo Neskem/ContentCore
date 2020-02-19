@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: content-core-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: stg-k8s-cc-ip
+spec:
+  tls:
+    - secretName: breaktime-tls
+  backend:
+    serviceName: content-core-service
+    servicePort: 80
+  rules:
+    - host: stg-content.alchemy.breaktime.com.tw
+      http:
+        paths:
+          - backend:
+              serviceName: content-core-service
+              servicePort: 80

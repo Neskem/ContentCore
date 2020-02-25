@@ -246,6 +246,8 @@ class CrawlerObj:
                                       meta_keywords=cat_wpx['meta_keywords'], wp_url=cat_wpx['wp_url'],
                                       category=cat_wpx['category'], categories=cat_wpx['categories'])
             inform_ac.set_ac_sync(True)
+            auto_sync = domain_rules.setdefault("auto_sync", "Y")
+            inform_ac.judge_auto_sync(auto_sync, self.priority)
             inform_ac.calculate_crawl_quality(cat_wpx['len_char'], cat_wpx['len_img'])
             if cat_wpx['content_hash'] is not None:
                 inform_ac.check_url_to_content(cat_wpx['content_hash'])
@@ -477,6 +479,8 @@ class CrawlerObj:
                                   meta_jdoc=meta_jdoc, meta_description=meta_description, meta_keywords=meta_keywords,
                                   wp_url=wp_url, category=category, categories=categories)
 
+        auto_sync = domain_rules.setdefault("auto_sync", "Y")
+        iac.judge_auto_sync(auto_sync, self.priority)
         iac.calculate_crawl_quality(len_char, len_img)
         return iac, content_hash, len_char
 

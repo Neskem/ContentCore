@@ -43,7 +43,6 @@ class InformACObj:
             self.zi_defy.append('quality')
         else:
             self.quality = True
-            self.zi_sync = True
 
         update_task_main_sync_status(self.url_hash, status='doing', inform_ac_status=self.ac_sync, zi_sync=self.zi_sync)
         return True
@@ -55,9 +54,15 @@ class InformACObj:
             self.zi_defy.append('quality')
         else:
             self.quality = True
-            self.zi_sync = True
 
         update_task_main_sync_status(self.url_hash, status='doing', inform_ac_status=self.ac_sync, zi_sync=self.zi_sync)
+        return True
+
+    def judge_auto_sync(self, auto_sync, priority):
+        # Always set before calculate_crawl_quality function
+        if auto_sync == "N" and priority != 1:
+            self.zi_sync = False
+            self.zi_defy.append('auto_sync')
         return True
 
     def sync_external_to_ac(self):

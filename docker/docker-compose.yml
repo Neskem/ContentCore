@@ -30,12 +30,7 @@ services:
         build:
             context: ../
             dockerfile: Dockerfile
-        image: breaktimeinc/breaktime.contentcore
         command: supervisord -n
-        # if need to build image in local environment
-        # build:
-        #    context: ../
-        #    dockerfile: Dockerfile
         depends_on:
             - redis
         volumes:
@@ -59,29 +54,6 @@ services:
             timeout: 10s
             retries: 3
             start_period: 40s
-
-    # hub:
-    #     container_name: hub
-    #     image: selenium/hub:3.13.0-argon
-    #     environment:
-    #         - GRID_MAX_SESSION=20
-    #         - GRID_BROWSER_TIMEOUT=100000
-    #         - GRID_TIMEOUT=90000
-    #         - GRID_NEW_SESSION_WAIT_TIMEOUT=300000
-    #     ports:
-    #         - "4444:4444"
-    # chrome:
-    #     container_name: chrome
-    #     image: selenium/node-chrome:3.13.0-argon
-    #     volumes:
-    #         - /dev/shm:/dev/shm
-    #     depends_on:
-    #         - hub
-    #     environment:
-    #         HUB_HOST: hub
-
-    #         #volumes:
-    #         #- /dev/shm:/dev/shm # Mitigates the Chromium issue described at https://code.google.com/p/chromium/issues/detail?id=519952
 
 volumes:
     pgdata:

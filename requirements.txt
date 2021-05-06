@@ -12,7 +12,7 @@ celery==4.3.0
 kombu==4.6.3
 billiard==3.5.0.4
 flask_headers==1.0
-flask_cors==3.0.7
+flask_cors==3.0.9
 WTForms==2.1
 WTForms-JSON==0.3.3
 single-beat==0.3.1

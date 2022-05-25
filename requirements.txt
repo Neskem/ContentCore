@@ -7,7 +7,7 @@ redis==3.3.11
 simplejson==3.16.0
 psycopg2-binary==2.7.6.1
 werkzeug==0.15.5
-PyJWT==1.7.1
+PyJWT==2.4.0
 celery==4.3.0
 kombu==4.6.3
 billiard==3.5.0.4

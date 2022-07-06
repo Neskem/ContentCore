@@ -17,7 +17,7 @@ WTForms==2.1
 WTForms-JSON==0.3.3
 single-beat==0.3.1
 sentry-sdk[flask]==0.6.6
-lxml==4.2.1
+lxml==4.9.1
 dateparser==0.7.0
 gevent==1.4.0
 greenlet==0.4.14

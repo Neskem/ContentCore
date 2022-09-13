@@ -22,7 +22,7 @@ dateparser==0.7.0
 gevent==1.4.0
 greenlet==0.4.14
 tornado==5.1.1
-flower==0.9.3
+flower==1.2.0
 sendgrid==5.5.0
 logging-tree==1.8
 Naked==0.1.31
